@@ -1,0 +1,12 @@
+<?php
+
+namespace Slate\Data {
+    trait TCountable {
+        /** Countable */
+        public function count(): int {
+            return count($this->{static::$container});
+        }
+    }
+}
+
+?>

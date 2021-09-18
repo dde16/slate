@@ -1,0 +1,161 @@
+<?php
+
+namespace Slate\IO {
+
+    use Slate\Crypto\Hash;
+    use Slate\Data\Iterator\TAnchoredIterator;
+    use Slate\Data\Iterator\TMatchingIterator;
+    use Slate\Exception\ParseException;
+
+trait TStreamReadable {
+        use TStreamIterable;
+        use TMatchingIterator;
+        use TAnchoredIterator;
+
+        public function distance(): int {
+            return $this->tell() - $this->anchors[$this->anchor];
+        }
+
+        public function hash(string $algorithm, int $blocksize = 32768): Hash { 
+            $this->assertOpen();
+            
+            $hash = new Hash($algorithm);
+
+            do {
+                if(($data = $this->read($blocksize)) !== null)
+                    $hash->update($data);
+                
+            } while(!$this->isEof());
+
+            return $hash;
+        }
+
+        public function json(bool $assert = false, bool $assoc = true, int $flags = 0): array|bool {
+            $this->assertOpen();
+
+            $json = json_decode($this->readAll(), $assoc, flags: $flags);
+
+            if(json_last_error() !== JSON_ERROR_NONE && $assert) {
+                throw new ParseException(json_last_error_msg() . " while parsing json for this stream.");
+            }
+
+            return $json;
+        }
+
+        public function anchor(): void {
+            $this->assertOpen();
+
+            $this->anchors[++$this->anchor] = $this->tell();
+        }
+
+        public function revert(): void {
+            $this->assertOpen();
+
+            if($this->anchor < 0)
+                throw new \Error("Trying to revert a non-existent anchor.");
+
+            $this->seek($this->anchors[$this->anchor--]);
+        }
+
+        public function isEof(): bool {
+            $this->assertOpen();
+
+            return feof($this->resource);
+        }
+
+        public function readAll(int $blocksize = Stream::BUFFER_SIZE): string|null {
+            $this->assertOpen();
+
+            if($this->isEof())
+                return null;
+
+            $data = null;
+            $currentPosition = ftell($this->resource);
+
+            while(!feof($this->resource)) {
+                $data .= fread($this->resource, $blocksize);
+            }
+
+            if($data === null)
+                $this->seek($currentPosition);
+
+            return $data;
+        }
+
+        public function pipe(IStreamWriteable $stream, int $bufferSize = 8096): void {
+            $this->assertOpen();
+
+            $this->anchor();
+            $this->rewind();
+
+            while(!$this->isEof()) {
+                $stream->write($this->read($bufferSize));
+                $stream->flush();
+            }
+
+            $this->revert();
+        }
+
+        public function read(int $length = null, bool $eofNull = false): string|null {  
+            $this->assertOpen();
+
+            if($length === null) {
+                $data = $this->readAll();
+            }
+            else {
+                $data = fread($this->resource, $length);
+
+                if($eofNull && $data !== false) {
+                    if(strlen($data) !== $length)
+                        $data = null;
+                }
+                else if($data === false) {
+                    $data = null;
+                }
+            }
+
+            return $data;
+        }
+
+        public function readChar(): string|null {
+            $this->assertOpen();
+
+            return fgetc($this->resource);
+        }
+
+        public function readByte(): int {
+            $this->assertOpen();
+
+            return ord($this->readChar());
+        }
+
+        public function readUntil(string $until, bool $eof = true): string|null {
+            $this->assertOpen();
+
+            $buffer = "";
+            $this->anchor();
+            $untilLength = strlen($until);
+            $seekby = $untilLength === 1 ? 0 : -1;
+            // $seekby = ($untilLength * -1) + 1;
+            $found = false;
+
+            while(($frame = $this->read($untilLength)) !== null && !$found) {
+                if(!($found = ($frame == $until))) {
+                    $buffer .= substr($frame, 0, 1);
+                }
+                
+                if(($this->isEof())) {
+                    $found = $eof;
+                }
+                else $this->relseek($seekby);
+            }
+
+
+            if($found) return $buffer;
+
+            $this->revert();
+        }
+    }
+}
+
+?>

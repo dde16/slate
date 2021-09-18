@@ -1,0 +1,44 @@
+{
+    "name": "dde16/slate",
+    "description": "An all-complete MVC and ORM framework for PHP.",
+    "keywords": [],
+    "license": "MIT",
+    "authors": [{
+        "name": "dde16"
+    }],
+    "version": "3.1.2",
+    "type": "library",
+    "require": {
+		"php": ">=8.0"
+    },
+    "autoload": {
+        "files": [
+            "glob/DataType.php",
+            "glob/CompoundType.php",
+            "glob/ScalarType.php",
+            
+            "glob/Any.php",
+            "glob/Arr.php",
+            "glob/Base64.php",
+            "glob/Boolean.php",
+            "glob/Compound.php",
+            "glob/Cls.php",
+            "glob/Fnc.php",
+            "glob/Functions.php",
+            "glob/Hex.php",
+            "glob/Integer.php",
+            "glob/Json.php",
+            "glob/Math.php",
+            "glob/Obj.php",
+            "glob/Path.php",
+            "glob/Real.php",
+            "glob/Rsc.php",
+            "glob/Str.php",
+            "glob/Sys.php",
+            "glob/Type.php"
+        ],
+        "psr-4": {
+            "Slate\\": "src"
+        }
+    }
+}

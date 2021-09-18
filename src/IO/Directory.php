@@ -1,0 +1,262 @@
+<?php
+
+namespace Slate\IO {
+
+    use Generator;
+    use Slate\Exception\PathNotFoundException;
+    use Slate\Exception\IOException;
+
+    use Slate\Data\Iterator\IExtendedIterator;
+
+    /**
+     * An OOP style directory handler.
+     */
+    class Directory  {
+        protected string $path;
+        protected $resource;
+
+        public function __construct(string $path) {
+            $this->path = \Path::normalise($path);
+        }
+
+        public function getPath(): string {
+            return $this->path;
+        }
+
+        /**
+         * @see mkdir
+         */
+        public function create(int $permissions = 0700, bool $recursive = false): bool {
+            return mkdir($this->path, $permissions, $recursive);
+        }
+        
+        /**
+         * Open a file within the current directory.
+         *
+         * @param  mixed $path Must be relative to directory.
+         * @param  mixed $mode
+         * @return void
+         */
+        public function openFile(string $path, string $mode = File::WRITE_ONLY): File {
+            $path = $this->path . \Path::normalise($path);
+
+            $dir =  dirname($path);
+
+            if(!\Path::isDir($dir) && !\Path::exists($path))
+                mkdir($dir, \Path::getPermissions($this->path), true);
+
+            return (new File($path));
+        }
+  
+        /**
+         * Create a file within the current directory.
+         *
+         * @param  mixed $path Must be relative to directory.
+         * @param  mixed $mode
+         * @return void
+         */
+        public function createFile(string $path, bool $createDir = false): void {
+            $fullpath = $this->path . \Path::normalise($path);
+
+            if($createDir) {
+                if(\Path::isFile($fullpath)) {
+                    $dir = dirname($fullpath);
+
+                    mkdir($dir, \Path::getPermissions($this->path), true);
+                }
+                else if(\Path::exists($fullpath)) {
+                    throw new IOException("Path '$fullpath' is already a directory.");
+                }
+            }
+
+            File::touch($path);
+        }
+        
+        /**
+         * Open another directory within the current directory.
+         *
+         * @param  mixed $path Must be relative to the parent directory.
+         * @param  mixed $mode
+         * @return void
+         */
+        public function openDirectory(string $path, bool $create = false): static {
+            $path = $this->path . \Path::normalise($path);
+
+            $dir = dirname($path);
+
+            if(!\Path::exists($path) && $create)
+                mkdir($dir, \Path::getPermissions($dir), true);
+
+            return (new Directory($path));
+        }
+
+        public function createDirectory(string $path, int $permissions = 0777, bool $recursive = true): bool {
+            return mkdir($this->path.\Path::normalise($path), permissions: $permissions, recursive: $recursive);
+        }
+
+        /**
+         * Delete a file within the current directory.
+         *
+         * @param  mixed $path Must be relative to directory.
+         * @return void
+         */
+        public function deleteFile(string $path = null): bool {
+            $path = $this->path.\Path::normalise($path);
+
+            if(\Path::exists($path)) {
+                if(\Path::isDirectory($path)) {
+                    return rrmdir($path);
+                }
+                else if(\Path::isFile($path)) {
+                    return unlink($path);
+                }
+            }
+        }
+
+        /**
+         * @see rrmdir
+         */
+        public function delete(bool $symlinks = false): bool {
+            $this->close();
+
+            return rrmdir($this->path);
+        }
+        
+        /**
+         * Check if a file or directory exists within the current directory.
+         *
+         * @param  mixed $path
+         * @return bool
+         */
+        public function has(string $path): bool {
+            return \Path::exists($this->path.\Path::normalise($path));
+        }
+
+        /**
+         * Check if a file exists within the current directory.
+         *
+         * @param  mixed $path
+         * @return bool
+         */
+        public function hasFile(string $path): bool {
+            return \Path::isFile($this->path.\Path::normalise($path));
+        }
+
+        /**
+         * Check if a directory exists within the current directory.
+         *
+         * @param  mixed $path
+         * @return bool
+         */
+        public function hasDirectory(string $path): bool {
+            return \Path::isDirectory($this->path.\Path::normalise($path));
+        }
+     
+        /**
+         * Open the directory.
+         *
+         * @throws PathNotFoundException In the event of the path not existing when create is false.
+         * @throws IOException           If the path is a file or there is an error openinng the directory.
+         * 
+         * @param  mixed $create Create if the directory doesn't exist.
+         * @return void
+         */
+        public function open(bool $create = false): void {
+            if(!\Path::exists($this->path)) {
+                if($create) {
+                    $this->create();
+                }
+                else {
+                    throw new PathNotFoundException([
+                        "path" => $this->path
+                    ]);
+                }
+            }
+            else if(\Path::isDirectory($this->path)) {
+                if(($this->resource = opendir($this->path)) === false) {
+                    throw new IOException(
+                        \Str::format("Unkown error while opening the directory '{}'.", $this->path)
+                    );
+                }
+            }
+            else {
+                throw new IOException(
+                    \Str::format("Cannot open a directory handle for file {}", $this->path)
+                );
+            }
+        }
+
+        /**
+         * @see readdir
+         */
+        protected function read(): string|false {
+            return readdir($this->resource);
+        }
+
+        /**
+         * Iterate through files and directories within the parent directory.
+         * Doesn't inclode dotlinks.
+         * 
+         * @return Generator
+         */
+        public function walk(): Generator {
+            if($this->resource !== NULL) {
+                while(($name = $this->read()) !== FALSE) {
+                    if(!\Str::isDotlink($name)) {
+                        $fullpath = $this->path . "/" . $name;
+
+                        yield array_merge(
+                            \Path::info($fullpath),
+                            [
+                                "fullpath" => $fullpath,
+                                "is_file" => \Path::isFile($fullpath),
+                                "is_directory" => \Path::isDirectory($fullpath)
+                            ]
+                        );
+                    }
+                }
+            }
+        }
+        
+        /**
+         * Rename a file or directory within the parent directory.
+         * 
+         * @throws IOException If there was an IO error while renaming or the directory isnt open.
+         *
+         * @param  mixed $source
+         * @param  mixed $destination
+         * @return void
+         */
+        public function rename(string $source, string $destination): void {
+            if($this->resource !== NULL) {
+                $sourcePath      = $this->path . "/" . $source;
+                $destinationPath = $this->path . "/" . $destination;
+
+                if(!rename($sourcePath, $destinationPath)) {
+                    throw new IOException(
+                        \Str::format("Unable to rename file '{}' to '{}' in directory '{}'.", $source, $destination, $this->path)
+                    );
+                }
+            }
+            else {
+                throw new IOException(
+                    "Directory '{}' has not yet been opened."
+                );
+            }
+        }
+
+        public function close(): void {
+            if($this->resource !== NULL) {
+                closedir($this->resource);
+
+                $this->resource = null;
+            }
+        }
+
+        public function getFullpath(string $relativePath): string {
+            return $this->path . \Path::normalise($relativePath);
+        }
+    }
+}
+
+?>
