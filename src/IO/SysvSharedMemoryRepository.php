@@ -10,7 +10,9 @@ namespace Slate\IO {
     class SysvSharedMemoryRepository extends Repository {
         public SysvSharedMemoryHashmap $hashmap;
 
-        public function __construct(int $key, int $size, int $permissions = 0600) {
+        public function __construct(int $key, int $size, int $permissions = 0600, bool $autoforget = false) {
+            parent::__construct($autoforget);
+
             $this->hashmap = new SysvSharedMemoryHashmap($key, $size, $permissions);
         }
 

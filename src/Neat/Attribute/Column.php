@@ -65,7 +65,7 @@ namespace Slate\Neat\Attribute {
 
         public function getDefault(): mixed {
             if($intialiser = ($this->parent->getDeclaringClass()->getName())::design()->getAttrInstance(Initialiser::class, $this->parent->getName()))
-                return static::{$intialiser->parent->getName()}();
+                return $intialiser->parent->invoke(null);
 
             if($this->parent->hasDefaultValue()) 
                 return $this->parent->getDefaultValue();

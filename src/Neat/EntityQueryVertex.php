@@ -51,6 +51,7 @@ namespace Slate\Neat {
             switch($name) {
                 case "flag":
                 case "callback":
+                case "orderDirection":
                     $this->{$name} = $value;
                     break;
                 

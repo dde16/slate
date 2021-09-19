@@ -132,7 +132,7 @@ namespace Slate\Metalang {
             return $this->getMethod($method)->invoke($object, $arguments);
         }
     
-        public function getAttrInstance(string|array $classes, string $key, bool $subclasses = false): MetalangAttribute|null {
+        public function getAttrInstance(string|array $classes, string $key, bool $subclasses = true): MetalangAttribute|null {
             $attribute = null;
 
             if(is_string($classes)) $classes = [$classes];

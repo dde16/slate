@@ -6,9 +6,7 @@ namespace Slate\Neat\Attribute {
     use Slate\Utility\Logger;
 
     #[Attribute(Attribute::TARGET_METHOD)]
-    class Benchmark extends MetalangAttribute {
-        public const NAME = "Benchmark";
-    
+    class Benchmark extends MetalangAttribute {    
         protected string $pipe;
     
         public function __construct(string $pipe = "stdout") {
@@ -25,21 +23,6 @@ namespace Slate\Neat\Attribute {
     
             if($this->pipe === "stdout") {
                 debug("[Benchmark] " . $message);
-            }
-            else if(\Str::startswith($this->pipe, "log:")) {
-                $logger = \Str::afterFirst($this->pipe, ":");
-    
-                if(!Log::has($logger))
-                    throw new \Error(
-                        \Str::format(
-                            "Unknown logger '{}' specified as a benchmark pipe for {}::{}().",
-                            $logger,
-                            $this->parent->getDeclaringClass()->getName(),
-                            $this->parent->getName()
-                        )
-                    );
-    
-                Log::logger($logger)->log(Logger::DEBUG, $message);
             }
             else {
                 throw new \Error("Unknown benchmark pipe '".$this->pipe."'");

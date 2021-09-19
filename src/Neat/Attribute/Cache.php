@@ -10,10 +10,10 @@ namespace Slate\Neat\Attribute {
         public const NAME = "Cache";
     
         protected string $repo;
-        protected ?int    $ttl = null;
+        protected ?float    $ttl = null;
         protected bool    $persistent;
     
-        public function __construct(string $repo, int $ttl, bool $persistent = false) {
+        public function __construct(string $repo, float $ttl, bool $persistent = false) {
             if($ttl !== null ? $ttl < 1 : false)
                 throw new \Error("The Time to Live must be a non-zero, positive, integer.");
     
@@ -30,7 +30,7 @@ namespace Slate\Neat\Attribute {
             return $this->repo;
         }
     
-        public function getTtl(): int|null {
+        public function getTtl(): float|null {
             return $this->ttl;
         }
     

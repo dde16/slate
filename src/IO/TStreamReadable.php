@@ -30,7 +30,7 @@ trait TStreamReadable {
             return $hash;
         }
 
-        public function json(bool $assert = false, bool $assoc = true, int $flags = 0): array|bool {
+        public function json(bool $assert = false, bool $assoc = true, int $flags = 0): ?array {
             $this->assertOpen();
 
             $json = json_decode($this->readAll(), $assoc, flags: $flags);
