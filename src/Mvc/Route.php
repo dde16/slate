@@ -1,75 +1,53 @@
 <?php
 
 namespace Slate\Mvc {
+
+    use Slate\Data\IJitStructureItem;
     use Slate\Http\HttpRequest;
     use Slate\Http\HttpResponse;
     
-    abstract class Route {
-        const PARAMETER_PATTERN = "/{(?'key'[\w\d\-\_\.]+)}/";
+    abstract class Route implements IJitStructureItem {
+        public ?string  $name;
+        public int      $size;
 
-        public ?string $name;
-        public string $original;
-        public string $pattern;
-        public string $regex;
-        public array  $keys;
-        public int    $size;
+        protected bool  $fallback;
+
+        public RouteUri $uri;
     
-        public function __construct(string $pattern) {
-            $this->original = $pattern;
-            list(
-                $this->pattern,
-                $this->regex,
-                $this->keys,
-                $this->size
-            ) = $this->build($pattern);
+        public function __construct(string $pattern, bool $fallback = false) {
+            $this->uri = new RouteUri($pattern);
+            $this->size = $this->uri->slashes();
+
             $this->name = null;
+            $this->fallback = $fallback;
         }
-    
-        public function build(string $pattern): array {
-            $pattern = \Str::addPrefix($pattern, "/");
-            $keys    = [];
-            $size    = \Str::count($pattern, "/");
 
-    
-            $regex = \Str::wrapc(preg_replace_callback(
-                Route::PARAMETER_PATTERN,
-                function($matches) use(&$pattern, &$keys) {
-                    $name = $matches["key"];
-    
-                    if(\Arr::contains($keys, $name))
-                        throw new \Error(\Str::format("Duplicate parameter name for route '{}'.", $pattern));
-    
-                    $keys[] = $name;
-            
-                    return "(?'$name'[^\/]+)";
-                },
-                \Str::replace($pattern, "/", "\/")
-            ), "/^$/");
-    
-            return [$pattern, $regex, $keys, $size];
+        public function isFallback(): bool {
+            return $this->fallback;
+        }
+
+        public function consumeAncestors(array $parents): void {
+            foreach($parents as $parent) {
+                if($parent->domain) {
+                    $this->uri->host = $parent->domain;
+                }
+
+                if($parent->prefix) {
+                    $this->uri->setPath(
+                        "/" . $parent->prefix . $this->uri->getPath()
+                    );
+                }
+
+                if($parent->name) {
+                    if($this->name) {
+                        $this->name = $parent->name . $this->name;
+                    }
+                }
+            }
         }
 
         public function format(array $data = []): string {
-            $pattern = $this->pattern;
-            $query = [];
-
-            foreach($data as $key => $value) {
-                if(\Arr::contains($this->keys, $key)) {
-                    $pattern = \Str::replace($pattern, "{".$key."}", \Str::val($value));
-                }
-                else {
-                    $query[] = [$key, $value];
-                }
-            }
-
-            return $pattern.(!\Arr::isEmpty($query) ? "?". \Arr::join(\Arr::map(
-                $query,
-                function($entry) {
-                    list($key, $value) = $entry;
-
-                    return "$key=".urlencode($value);
-                }
-            ), "&") : "");
+            return $this->uri->restformat($data);
         }
 
         public function named(string $name): static {
@@ -78,21 +56,13 @@ namespace Slate\Mvc {
             return $this;
         }
     
-        public function match(HttpRequest $request, bool $bypass = false): array|null {
-            if(preg_match($this->regex, $request->path, $matches) || $bypass) {
-                $controllerArguments = [];
-
-                foreach($this->keys as $key) {
-                    $controllerArguments[$key] = $matches[$key];
-                }
-
-                return [
-                    "webpath"   => $request->path,
-                    "arguments" => $controllerArguments
-                ];
-            }
+        public function match(HttpRequest $request, array $patterns = [], bool $bypass = false): array|null {
+            $controllerArguments = $this->uri->match($request->uri->getPath(), $patterns);
     
-            return null;
+            return $controllerArguments !== null || $this->fallback ? [
+                "webpath"   => $request->uri->getPath(),
+                "arguments" => $controllerArguments ?: []
+            ] : null;
         }
     }
 }

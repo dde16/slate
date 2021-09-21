@@ -25,7 +25,6 @@ namespace Slate\Neat\Attribute {
             return $this->instantiate;
         }
 
-
         public function consume($property): void {
             parent::consume($property);
 

@@ -48,7 +48,7 @@ abstract class Compound extends DataType {
         if(\Any::isString($path))
             $path = \Str::split($path, ".");
 
-        $length = \Arr::count($path);
+        $length = count($path);
 
         if($length > 0) {
             $target = &$compound[$path[0]];
@@ -59,10 +59,12 @@ abstract class Compound extends DataType {
                 return true;
             }
             else{
-                if($target === null && $fallback !== null) $target = $fallback;
+                if($target === null && $fallback !== null) {
+                    $target = $fallback;
+                }
 
                 if(\Any::isCompound($target))
-                    return \Compound::set($target, \Arr::slice($path, 1), $value);
+                    return \Compound::set($target, \Arr::slice($path, 1), $value, $fallback);
             }
         }
 
@@ -78,21 +80,25 @@ abstract class Compound extends DataType {
      * 
      * @return object
      */
-    public static function &get(object|array &$compound, array|string $path, mixed $fallback = null, &$fellback = null): mixed {
+    public static function &get(object|array &$compound, array|string $path, mixed $fallback = null, bool &$fellback = false): mixed {
         if(\Any::isString($path))
             $path = \Str::split($path, ".");
 
-        $length = \Arr::count($path);
+        $length = count($path);
 
         if($length > 0) {
+            $keyed = false;
+
             if(is_object($compound)) {
+                $keyed = property_exists($compound, $path[0]);
                 $value = &$compound->{$path[0]};
             }
-            else {
+            else if(is_array($compound)) {
+                $keyed = \Arr::hasKey($compound, $path[0]);
                 $value = &$compound[$path[0]];
             }
 
-            if($length === 1) {
+            if($length === 1 && $keyed) {
                 $fellback = false;
                 return $value;
             }

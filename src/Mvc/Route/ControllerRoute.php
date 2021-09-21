@@ -1,20 +1,22 @@
 <?php
 
-namespace Slate\Mvc {
+namespace Slate\Mvc\Route {
     use Slate\Http\HttpRequest;
     use Slate\Http\HttpResponse;
     use Slate\Http\HttpProtocol;
     use Slate\Exception\HttpException;
+    use Slate\Mvc\App;
     use Slate\Mvc\Attribute\Postprocessor;
     use Slate\Mvc\Attribute\Preprocessor;
     use Slate\Mvc\Attribute\Route as RouteAttribute;
-
+    use Slate\Mvc\Result;
+    use Slate\Mvc\Route;
 
     class ControllerRoute extends Route {
         public array  $targets;
 
-        public function __construct(string $pattern, array $targets) {
-            parent::__construct($pattern);
+        public function __construct(string $pattern, array $targets, bool $fallback = false) {
+            parent::__construct($pattern, $fallback);
 
             $this->targets = \Arr::map(
                 $targets,
@@ -66,10 +68,8 @@ namespace Slate\Mvc {
                             $cacheKeyFormat,
                             \Arr::dotsByValue([
                                 "request" => [
-                                    "path" => $request->path,
-                                    "protocol" => \Str::lower(
-                                        HttpProtocol::getKeyOf($request->protocol)
-                                    ),
+                                    "path" => $request->uri->getPath(),
+                                    "protocol" => $request->uri->getProtocol(),
                                     "version" => $request->version,
                                     "parameters" => $request->parameters->toArray(),
                                     "query" => $request->query->toArray(),
@@ -141,10 +141,9 @@ namespace Slate\Mvc {
             );
         }
 
-        public function match(HttpRequest $request, bool $bypass = false): array|null {
-            if(($result = parent::match($request, $bypass)) !== null) {
+        public function match(HttpRequest $request, array $patterns = [], bool $bypass = false): array|null {
+            if(($result = parent::match($request, $patterns, $bypass)) !== null) {
                 foreach($this->targets as list($controller, $action)) {
-
                     if(!class_exists($controller))
                         throw new HttpException(500, "Class '$controller' doesn't exist.");
 

@@ -1,6 +1,8 @@
 <?php
 
 namespace Slate\Neat {
+
+    use Slate\Facade\DB;
     use Slate\Neat\Entity;
     use Slate\Sql\Statement\SqlSelectStatement;
 
@@ -25,13 +27,13 @@ namespace Slate\Neat {
                             // )",
                             \Arr::repeat($this->entity::ref($this->entity::design()->getPrimaryKey()->getColumnName(), Entity::REF_RESOLVED | Entity::REF_ITEM_WRAP), 2)
                         );
-        
-                    if($this->limit !== null)  {
-                        $query->where($rowVariable, "<=", $this->limit);
-                        $rowVariable = "@rowNumber";
+
+                    if($this->limit !== null) {
+
+                        $query->where($rowVariable, "BETWEEN", DB::raw(($this->offset ?: 0) . " AND " . $this->limit));
                     }
-        
-                    if($this->offset !== null)  {
+                    else if($this->offset !== null) {
+
                         $query->where($rowVariable, ">=", $this->offset);
                     }
                 }
@@ -39,7 +41,8 @@ namespace Slate\Neat {
                     if($this->limit !== null) {
                         $query->limit = $this->limit;
                     }
-                    else if($this->offset !== null) {
+                    
+                    if($this->offset !== null) {
                         $query->offset = $this->offset;
                     }
                 }

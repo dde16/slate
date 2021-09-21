@@ -33,6 +33,42 @@ abstract class Str extends ScalarType {
     public const PAD_LEFT = STR_PAD_LEFT;
     public const PAD_RIGHT = STR_PAD_RIGHT;
 
+    public static function replaceManyAt(string $string, array $withs): string {
+        $mod = 0;
+
+        foreach($withs as list($with, $from, $to)) {
+
+            $from += $mod;
+            $to   += $mod;
+
+            $string = \Str::replaceAt(
+                $string,
+                $with,
+                $from,
+                $to
+            );
+
+            $substrLength = ($to - $from);
+            $withLength   = strlen($with);
+
+            $mod += $withLength - $substrLength;
+        }
+
+        return $string;
+    }
+
+    public static function replaceAt(string $string, string $with, int $from, int $to): string {
+        $len = $to - $from;
+
+        if($len < 0)
+            throw new Error("Invalid replace positions, start is larger than end.");
+
+        $left = substr($string, 0, $from);
+        $right = substr($string, $to);
+
+        return "$left$with$right";
+    }
+
     public static function isUpper(string $char): bool {
         return \Str::isChar($char) ? IntlChar::isUpper($char) : false;
     }

@@ -3,12 +3,12 @@
 namespace Slate\Http {
     use Slate\IO\StreamReader;
     use Slate\Data\Collection;
+    use Slate\Media\Uri;
     use Slate\Neat\Attribute\Getter;
     use Slate\Neat\Attribute\Setter;
 
 class HttpRequest extends HttpPacket {
         protected string     $path;
-        protected int        $protocol;
         protected int        $method;
         protected float      $version;
         
@@ -19,11 +19,12 @@ class HttpRequest extends HttpPacket {
 
         protected Collection $query;
 
+        protected Uri $uri;
+
         public function __construct(
-            int $protocol,
             int $method,
-            
-            string $path = "/",
+
+            Uri|string $uri,
 
             float $version = 1.1,
             
@@ -35,8 +36,7 @@ class HttpRequest extends HttpPacket {
         ) {
             parent::__construct();
 
-            $this->path     = $path;
-            $this->protocol = $protocol;
+            $this->uri      = is_string($uri) ? (new Uri($uri)) : $uri;
             $this->method   = $method;
             $this->version  = $version;
 
@@ -47,14 +47,9 @@ class HttpRequest extends HttpPacket {
             $this->files   = new Collection($files, Collection::READABLE);
         }
 
-        #[Getter("path")]
-        public function getPath(): string {
-            return $this->path;
-        }
-
-        #[Getter("protocol")]
-        public function getProtocol(): int {
-            return $this->protocol;
+        #[Getter("uri")]
+        public function getUri(): Uri {
+            return $this->uri;
         }
 
         #[Getter("method")]
@@ -100,13 +95,13 @@ class HttpRequest extends HttpPacket {
 
         public function get(string|int $key, array $options = []): mixed {
             return \Arr::get([
-                $this->parameters, $this->query
+                $this->parameters, $this->uri->query, $this->query
             ], $key, $options, multisource: true);
         }
 
         public function gets(array $schema): array {
             return \Arr::gets([
-                $this->parameters, $this->query
+                $this->parameters, $this->uri->query, $this->query
             ], $schema, multisource: true);
         }
 
@@ -119,10 +114,18 @@ class HttpRequest extends HttpPacket {
             return $this->bodyStream;
         }
 
-        public static function capture(): static {
-            /** Load Protocol */
-            $protocol = HttpProtocol::getValue(\Str::upper(HttpEnvironment::getProtocol()));
+        public function __clone() {
+            $this->uri = clone $this->uri;
+        }
 
+        public static function capture(): static {
+            $uri = new Uri();
+            $uri->scheme = \Str::lower(HttpEnvironment::getProtocol());
+            $uri->host     = $_SERVER["HTTP_HOST"];
+
+            $uri->setPath(HttpEnvironment::getPath());
+            $uri->query = $_GET;
+            
             /** Load Version */
             $version = HttpEnvironment::getVersion();
 
@@ -135,16 +138,13 @@ class HttpRequest extends HttpPacket {
             /** Load Cookies */
             $cookies = HttpEnvironment::getCookies();
 
-            /** Load Path */
-            $path = HttpEnvironment::getPath();
-
             /** Load Query */
-            $query = \Arr::merge($_GET, $_POST);
+            $query = $_POST;
 
             /** Load Files */
             $files = HttpEnvironment::getFiles();
 
-            return(new static($protocol, $method, $path, $version, $headers, $cookies, $query, $files));
+            return(new static($method, $uri, $version, $headers, $cookies, $query, $files));
         }
     }
 }

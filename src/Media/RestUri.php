@@ -1,0 +1,7 @@
+<?php
+
+namespace Slate\Media {
+    
+}
+
+?>

@@ -153,13 +153,15 @@ namespace Slate\Neat {
             );
     
             if($this->limit !== null || $this->offset !== null) {
-                $this->limit   = null;
-                $this->offset   = null;
+                $this->limit  = null;
+                $this->offset = null;
     
                 if($this->flag !== "?" && !\Cls::isSubclassInstanceOf($this, EntityQueryRootVertex::class)) {
                     $rowNumber =
                         Sql::winfn("ROW_NUMBER")
-                            ->partitionBy($this->entity::ref($this->column->getColumnName())->toString())
+                            ->partitionBy(
+                                $this->entity::ref($this->column->getColumnName())->toString()
+                            )
         
                             ->{"orderBy" . ucfirst(\Str::lower($this->orderDirection ?: "ASC"))}(
                                 ...(!\Arr::isEmpty($this->orderBy ?: [])

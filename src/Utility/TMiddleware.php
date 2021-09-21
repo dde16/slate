@@ -2,9 +2,16 @@
 
 namespace Slate\Utility {
     trait TMiddleware {
+        /**
+         * @var array Contains the definitions for middleware, where a given middleware name must derive from the given class, as defined as array<string, class>.
+         */
         // protected static array $middleware;
-        // protected static array $using;
 
+        /**
+         * @var array Contains the used classes for the middleware as array<string, class>.
+         */
+        // protected static array $using;
+        
         public static function usable(string $name): bool {
             return \Arr::hasKey(static::$middleware, $name);
         }
@@ -18,9 +25,12 @@ namespace Slate\Utility {
                 $class = $name;
 
                 if(\Cls::exists($class)) {
-                    $names = \Arr::keys(\Arr::filter(static::$middleware, function($middleware) use($class) {
-                        return \Cls::isSubclassOf($class, $middleware);
-                    }));
+                    $names = \Arr::keys(
+                        \Arr::filter(
+                            static::$middleware,
+                            fn($middleware) => \Cls::isSubclassOf($class, $middleware)
+                        )
+                    );
 
                     $count = count($names);
 
@@ -28,19 +38,19 @@ namespace Slate\Utility {
                         $name = $names[0];
                     }
                     else if($count > 1) {
-                        throw new Error(\Str::format(
+                        throw new \Error(\Str::format(
                             "Multiple names arose for tapping of middleware class '{}', you must explicitly clarify a name.",
                             $class
                         ));
                     }
                     else {
-                        throw new BadFunctionCallException(\Str::format(
+                        throw new \BadFunctionCallException(\Str::format(
                             "Middleware class '{}' is not allowed as a derivative.", $class
                         ));
                     }
                 }
                 else {
-                    throw new BadFunctionCallException(\Str::format(
+                    throw new \BadFunctionCallException(\Str::format(
                         "Middleware class '{}' does not exist.", $class
                     ));
                 }
@@ -51,7 +61,7 @@ namespace Slate\Utility {
                     static::$using[$name] = $class;
                 }
                 else {
-                    throw new BadFunctionCallException(\Str::format(
+                    throw new \BadFunctionCallException(\Str::format(
                         "Middleware class '{}' does not exist.", $class
                     ));
                 }

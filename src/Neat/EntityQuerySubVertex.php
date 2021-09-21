@@ -25,22 +25,20 @@ namespace Slate\Neat {
         }
         
         public function modifyQuery(SqlSelectStatement $query): void {
-            if($this->limit !== null || $this->offset !== null) {
-                if($this->offset !== null) {
-                    $query->where(
-                        $this->entity::ref("RowNumber", Entity::REF_RESOLVED | Entity::REF_ITEM_WRAP),
-                        ">=", 
-                        $this->offset
-                    );
-                }
-    
-                if($this->limit !== null) {
-                    $query->where(
-                        $this->entity::ref("RowNumber", Entity::REF_RESOLVED | Entity::REF_ITEM_WRAP),
-                        "<=", 
-                        $this->limit
-                    );
-                }
+            if($this->offset !== null) {
+                $query->where(
+                    $this->entity::ref("RowNumber", Entity::REF_RESOLVED | Entity::REF_ITEM_WRAP),
+                    ">=", 
+                    $this->offset
+                );
+            }
+
+            if($this->limit !== null) {
+                $query->where(
+                    $this->entity::ref("RowNumber", Entity::REF_RESOLVED | Entity::REF_ITEM_WRAP),
+                    "<=", 
+                    $this->limit
+                );
             }
 
             foreach($this->scopes as list($scope, $arguments)) {

@@ -69,7 +69,7 @@ namespace Slate\Mvc {
             /** Start a buffer to avoid premature response header sending. */
             ob_start();
 
-            $path = $this->request->path;
+            $path = $this->request->uri->getPath();
 
             $mvcIndexPath  = Env::get("mvc.index.path",  [ "important" => true ]);
             $mvcPublicPath = Env::get("mvc.public.path", [ "important" => true ]);
@@ -110,7 +110,6 @@ namespace Slate\Mvc {
                 ob_end_flush();
             }
             else {
-                debug($match);
                 throw new HttpException(404, "No route by that path was found.");
             }
         }

@@ -6,38 +6,62 @@
     use Slate\Mvc\Result\RedirectResult;
 
     use Closure;
+    use Slate\Data\JitStructure;
     use Slate\Exception\HttpException;
     use Slate\Mvc\Result\ViewResult;
-    
+    use Slate\Mvc\Route\ControllerRoute;
+    use Slate\Mvc\Route\FunctionRoute;
+    use Slate\Mvc\Route\ViewRoute;
+    use Slate\Utility\TSingleton;
+
     class Router {
-        const PATTERN_PART = "[A-Za-z0-9\-\.\_\~\!\$\&\'\(\)\*\+\,\;\=\:\@\%]+";
-        const PATTERN_ACTION = "[a-zA-Z_][a-zA-Z0-9_]+";
-        // const PATTERN_ACTION = "[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]+";
+        use TSingleton;
 
+        public JitStructure $jit;
 
-        public static array   $routes   = [];
-        public static array   $views    = [];
-        public static ?Route $fallback = null;
+        public array   $patterns = [];
 
-        public static function many(string $pattern, array $targets): ControllerRoute {
+        public array   $routes   = [];
+        public array   $views    = [];
+        public ?Route $fallback = null;
+
+        public bool    $built    = false;
+
+        protected function __construct() {
+            $this->jit = new JitStructure;
+        }
+
+        protected function pattern(string $name, string $pattern): void {
+            $this->patterns[$name] = $pattern;
+        }
+
+        protected function many(string $pattern, array $targets): void {
             $route = new ControllerRoute($pattern, $targets);
 
-            return static::$routes[$route->size][] = $route;
+            // $this->routes[$route->size][] = 
+            $this->jit->push($route);
         }
 
-        public static function view(string $pattern, string $view = null, array $data = []): ViewRoute {
+        protected function view(string $pattern, string $view = null, array $data = []): void {
             $route = new ViewRoute($pattern, $view ?: $pattern, $data);
 
-            return static::$routes[$route->size][] = $route;
+            $this->jit->push($route);
+
+            // return $this->routes[$route->size][] = $route;
         }
 
-        public static function redirect(string $pattern, string $redirect = null): void {
-            static::add($pattern, function($request, $response) use($redirect) {
+ 
+        protected function domain(string $domain, Closure $group): void {
+            $this->jit->push(new RouterGroup(["domain" => $domain], $group));
+        }
+
+        protected function redirect(string $pattern, string $redirect = null): void {
+            $this->add($pattern, function($request, $response) use($redirect) {
                 return (new RedirectResult($redirect));
             });
         }
 
-        public static function add(string|array $patterns, string|array|Closure $targets): void {
+        protected function add(string|array $patterns, string|array|Closure $targets): void {
             if(is_string($patterns))
                 $patterns = [$patterns];
 
@@ -49,40 +73,99 @@
                     $route = new ControllerRoute($pattern, [$targets]);
                 }
 
-                static::$routes[$route->size][] = $route;
+                $this->jit->push($route);
             }
         }
 
-        public static function fallback(Closure|Route|array|string $fallback): void {
+        protected function fallback(Closure|Route|array|string $fallback): void {
 
             if(is_array($fallback) || is_string($fallback)) {
-                $fallback = new ControllerRoute("/", [$fallback]);
+                $fallback = new ControllerRoute("/", [$fallback], true);
             }
             else if($fallback instanceof Closure) {
-                $fallback = new FunctionRoute("/", $fallback);
+                $fallback = new FunctionRoute("/", $fallback, true);
             }
 
-            static::$fallback = $fallback;
+            $this->jit->push($fallback);
         }
         
+        protected function build(): void {
+            $jit = $this->jit->toArray();
 
-        public static function match(HttpRequest $request): array|null {
-            $size = \Str::count($request->path, "/");
+            foreach(\Arr::flatten($jit) as $route) {
+                $scheme = $route->uri->scheme;
+                $host   = $route->uri->host;
+                $port   = $route->uri->port;
 
-            foreach((@static::$routes[$size] ?: []) as $index => $route){
-                if(($match = $route->match($request)) !== NULL) {
-                    return [$route, $match];
+                if(!$route->isFallback()) {
+                    $this->routes[$scheme ?: "*"][$host ?: "*"][$port ?: "*"][$route->size][] = $route;
+                }
+                else {
+                    $path = [$scheme, $host, $port];
+
+
+                    if(($furthest = \Arr::lastKey($path, fn($part) => $part !== null)) !== null) {
+                        $path = \Arr::slice($path, 0, $furthest+1);
+                    }
+
+                    $path = \Arr::map($path, fn($part) => $part ?: "*");
+                    
+                    \Compound::set($this->routes, [...$path, "__fallback"], $route, []);
                 }
             }
 
-            if(static::$fallback !== null) {
-                $imitation = clone $request;
-                $imitation->path = "/";
 
-                if(($match = static::$fallback->match($imitation)) === null)
-                    throw new HttpException(500, "Fallback match is returning null.");
+            $this->built = true;
+        }
 
-                return [static::$fallback, $match];
+        protected function match(HttpRequest $request): array|null {
+            if(!$this->built) {
+                $this->build();
+            }
+
+            $requestSlashes = \Str::count($request->uri->getPath(), "/");
+
+            $schemes = [$request->uri->getScheme(), "*"];
+            $hosts   = [$request->uri->getHost(),   "*"];
+            $ports   = ["*"];
+
+            if($request->uri->getPort() !== null)
+                $ports = [$request->uri->getPort(), ...$ports];
+
+            foreach($schemes as $scheme) {
+                if(\Arr::hasKey($this->routes, $scheme)) {
+                    foreach($hosts as $host) {
+                        if(\Arr::hasKey($this->routes[$scheme], $host)) {
+                            foreach($ports as $port) {
+                                if(\Arr::hasKey($this->routes[$scheme][$host], $port)) {
+                                    foreach($this->routes[$scheme][$host][$port][$requestSlashes] as $route) {
+                                        if(($match = $route->match($request, $this->patterns)) !== NULL) {
+                                            return [$route, $match];
+                                        }
+                                    }
+
+                                    if(\Arr::hasKey($this->routes[$scheme][$host][$port], "__fallback")) {
+                                        $route = $this->routes[$scheme][$host][$port]["__fallback"];
+        
+                                        return [$route, $route->match()];
+                                    }
+                                }
+                            }
+
+                            if(\Arr::hasKey($this->routes[$scheme][$host], "__fallback")) {
+                                $route = $this->routes[$scheme][$host]["__fallback"];
+
+                                return [$route, $route->match($request, $this->patterns)];
+                            }
+                        }
+                    }
+
+                    if(\Arr::hasKey($this->routes[$scheme], "__fallback")) {
+                        $route = $this->routes[$scheme]["__fallback"];
+
+                        return [$route, $route->match($request, $this->patterns)];
+                    }
+                }
             }
 
             return  null;

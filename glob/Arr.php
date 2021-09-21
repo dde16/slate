@@ -1073,7 +1073,7 @@ abstract class Arr extends CompoundType {
      * 
      * @return array
      */
-    public static function lastEntry($array, Closure $filter = null): array|null {
+    public static function lastEntry($array, Closure $filter = null): ?array {
         if($filter === NULL) {
             $lastKey = array_key_last($array);
             $lastValue = $array[$lastKey];
@@ -1100,7 +1100,7 @@ abstract class Arr extends CompoundType {
      * 
      * @return string|int
      */
-    public static function lastKey (array|ArrayAccess $array, callable|string $filter = null): string|int {
+    public static function lastKey (array|ArrayAccess $array, callable|string $filter = null): string|int|null {
         return ($entry = \Arr::lastEntry($array, $filter)) !== null ? $entry[0] : null;
     }
     
@@ -1347,23 +1347,11 @@ abstract class Arr extends CompoundType {
      * 
      * @return array
      */
-    public static function cluster (array|ArrayAccess $array, callable $callback, int $count, bool $preserve = true): array {
-        $clusters = \Arr::repeat([], $count);
-
-        if($count <= 1) {
-            throw new Error();
-        }
+    public static function cluster (array|ArrayAccess $array, callable $callback, bool $preserve = true): array {
+        $clusters = [];
 
         foreach($array as $key => $value) {
             $cluster = $callback($value, $key);
-
-            if(!\Any::isInt($cluster)) {
-                throw new Error();
-            }
-
-            if($cluster > $count) {
-                throw new Error();
-            }
 
             if($preserve)
                 $clusters[$cluster][$key] = $value;
@@ -1824,7 +1812,7 @@ abstract class Arr extends CompoundType {
      */
     public static function decategorise (array|ArrayAccess $array): array {
         return \Arr::reduce(
-            iterator_to_array(\Arr::entries($array)),
+            \Arr::entries($array),
             function($aggregate, $accumulator) {
                 foreach($accumulator[1] as $index => $value) {
                     $aggregate[$index][$accumulator[0]] = $value;

@@ -396,10 +396,12 @@ class EntityQuery implements IStringForwardConvertable {
 
         public function page(int $size, int $number): array {
             $query = clone $this;
-            $query->limit($size, $number > 0 ? ($number * $size) + 1 : 0);
+
+            $query->limit(($size * ($number+1))+1, ($size * $number) + 1);
 
             if($this->conn === null)
                 $query->using($this->entity::conn(fallback: true));
+
 
             $rows = $query->get();
     
@@ -408,7 +410,7 @@ class EntityQuery implements IStringForwardConvertable {
 
             $hasNext = !\Arr::isEmpty($secondaryChunk);
 
-            return [$primaryChunk, $hasNext];
+            return [$primaryChunk, $hasNext, $query];
         }
     
         public function chunk(int $size, bool $meta = false, bool $aggr = false): Generator {

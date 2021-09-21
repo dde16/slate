@@ -44,10 +44,7 @@ namespace Slate\Media {
 
         public function __construct(string $uri = null) {
             if($uri !== null) {
-
                 $parsed = parse_url($uri);
-
-                // http_build_query()
 
                 $this->scheme   = $parsed["scheme"];
                 $this->host     = $parsed["host"];
