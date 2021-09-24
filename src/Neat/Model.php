@@ -78,7 +78,7 @@ namespace Slate\Neat {
                 \Arr::associate($properties, null, function(mixed $collision): Closure|string|null {
                     return (is_array($collision) || is_string($collision) || ($collision instanceof Closure)) ? $collision : null;
                 }),
-                function($fromKey, $toKey) {
+                function($fromKey, $toKey) use($properties) {
                     if($toKey === null)
                         $toKey = $fromKey;
                     
@@ -99,10 +99,14 @@ namespace Slate\Neat {
                             $value = $toKey($value);
                             $toKey = $fromKey;
                         }
-                        else if(is_object($value) ? \Cls::isSubclassInstanceOf($value, Model::class) : false) {
-                            $value = $value->toArray($toKey);
+                        else if(is_array($toKey)) {
+                            if(is_object($value) ? \Cls::isSubclassInstanceOf($value, Model::class) : false) {
+                                $value = $value->toArray($toKey);
+                            }
+                            
                             $toKey = $fromKey;
                         }
+
 
                         return [$toKey, $value];
                     }

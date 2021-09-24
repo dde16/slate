@@ -12,7 +12,7 @@ trait TSetterAttributeImplementation {
             $design = static::design();
 
             if(($setterAttribute = $design->getAttrInstance(Setter::class, $name)) !== null) {
-                $setterAttribute->parent->invokeArgs($this, [$value]);
+                $setterAttribute->parent->invokeArgs($this, [$value, $name]);
             }
             else {
                     

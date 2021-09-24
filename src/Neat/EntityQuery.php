@@ -397,11 +397,10 @@ class EntityQuery implements IStringForwardConvertable {
         public function page(int $size, int $number): array {
             $query = clone $this;
 
-            $query->limit(($size * ($number+1))+1, ($size * $number) + 1);
+            $query->limit(($size * ($number+1))+1, ($size * $number) + intval($number > 0));
 
             if($this->conn === null)
                 $query->using($this->entity::conn(fallback: true));
-
 
             $rows = $query->get();
     

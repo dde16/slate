@@ -2,7 +2,9 @@
 
 namespace Slate\Neat\Implementation {
     use Slate\Metalang\Attribute\AttributeGet;
+    use Slate\Neat\Attribute\Computed;
     use Slate\Neat\Attribute\Getter;
+    use Slate\Neat\Attribute\GetterOf;
 
 trait TGetterAttributeImplementation {
         
@@ -13,8 +15,11 @@ trait TGetterAttributeImplementation {
             if(($getterAttribute = $design->getAttrInstance(Getter::class, $name)) !== null) {
                 list($match, $result) = $next($name);
 
-                if(!$match)
-                    $result = $getterAttribute->parent->invoke($this);
+                $args = [$name];
+
+                if(!$match) {
+                    $result = $getterAttribute->parent->invokeArgs($this, $args);
+                }
 
                 return [true, $result];
             }
