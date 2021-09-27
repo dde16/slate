@@ -69,7 +69,7 @@ namespace Slate\Mvc\Route {
                             \Arr::dotsByValue([
                                 "request" => [
                                     "path" => $request->uri->getPath(),
-                                    "protocol" => $request->uri->getProtocol(),
+                                    "protocol" => $request->uri->getScheme(),
                                     "version" => $request->version,
                                     "parameters" => $request->parameters->toArray(),
                                     "query" => $request->query->toArray(),

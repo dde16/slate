@@ -1370,6 +1370,22 @@ abstract class Arr extends CompoundType {
     }
 
     /**
+     * A different version of array_merge which preserves integer keys.
+     */
+    public static function mergePreserve(array|ArrayAccess ...$arrays): array {
+        
+        $buffer = [];
+
+        foreach($arrays as $array) {
+            foreach($array as $key => $value) {
+                $buffer[$key] = $value;
+            }
+        }
+
+        return $buffer;
+    }
+
+    /**
      * Alias of 'array_splice' but by-value.
      */
     public static function splice (array|ArrayAccess $array, int $offset = 0, int $length = null, $replacement = null): array {

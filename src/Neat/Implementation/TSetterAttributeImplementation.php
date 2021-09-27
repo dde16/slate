@@ -11,11 +11,10 @@ trait TSetterAttributeImplementation {
         public function setterImplemetor(string $name, mixed $value, object $next): void {
             $design = static::design();
 
-            if(($setterAttribute = $design->getAttrInstance(Setter::class, $name)) !== null) {
-                $setterAttribute->parent->invokeArgs($this, [$value, $name]);
+            if(($setter = $design->getAttrInstance(Setter::class, $name)) !== null) {
+                $setter->parent->invokeArgs($this, [$value, $setter->getFor()]);
             }
             else {
-                    
                 $next($name, $value);
             }
             

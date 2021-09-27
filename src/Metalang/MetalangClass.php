@@ -11,6 +11,14 @@ namespace Slate\Metalang {
     abstract class MetalangClass {
         public const DESIGN = MetalangDesign::class;
 
+        
+        /**
+         * @var bool $safe
+         * This will toggle whether the getter and setter will raise an error on
+         * eg. protected property, uninitialised property etc
+         */
+        protected bool $safe = false;
+
         public function __construct() {
             if(!\Cls::getConstant(static::class, "JIT", false)) 
                 static::design();
@@ -18,6 +26,14 @@ namespace Slate\Metalang {
 
         public static function design(): MetalangDesign {
             return MetalangDesign::of(static::class);
+        }
+
+        public function setSafeMode(bool $safeMode): void {
+            $this->safe = $safeMode;
+        }
+
+        public function toggleSafeMode(): void {
+            $this->safe = !$this->safe;
         }
 
         public function __call(string $name, array $arguments): mixed {
@@ -104,15 +120,30 @@ namespace Slate\Metalang {
                     return $result;
             }
 
-            if($design->hasProperty($name, \ReflectionProperty::IS_PROTECTED | \ReflectionProperty::IS_PRIVATE))
-                throw new \Error(
-                    \Str::format(
-                        "Unable to access enclosed property {}::\${}",
-                        static::class, $name
-                    )
-                );
+            if($design->hasProperty($name, \ReflectionProperty::IS_PROTECTED | \ReflectionProperty::IS_PRIVATE)) {
+                if(!$this->safe) {
+                    throw new \Error(
+                        \Str::format(
+                            "Unable to access enclosed property {}::\${}",
+                            static::class, $name
+                        )
+                    );
+                }
+                
+                return null;
+            }
+
+            try {
+                $value = $this->{$name};
+            }
+            catch(\Throwable $throwable) {
+                if(!$this->safe)
+                    throw $throwable;
+
+                $value = null;
+            }
             
-            return $this->{$name};
+            return $value;
         }
     
         public function __set(string $name, mixed $value): void {

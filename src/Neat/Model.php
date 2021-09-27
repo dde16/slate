@@ -30,6 +30,14 @@ namespace Slate\Neat {
         use TCarryAttributeImplementation;
         use TJsonAttributeImplementation;
 
+        /**
+         * @var string $context
+         * Controls the context to which some of the Attributes operate under.
+         * This is for eg. if you want to fill an object normally or with an api.
+         */
+        protected ?string $context = null;
+
+
         public function __construct(array $array = []) {
             parent::__construct();
 
@@ -45,6 +53,7 @@ namespace Slate\Neat {
 
             $this->fromArray($array);
         }
+
 
         public function fromArray(array $properties): void {
             foreach($properties as $propertyName => $propertyValue) {

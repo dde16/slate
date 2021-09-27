@@ -147,7 +147,7 @@
                                     if(\Arr::hasKey($this->routes[$scheme][$host][$port], "__fallback")) {
                                         $route = $this->routes[$scheme][$host][$port]["__fallback"];
         
-                                        return [$route, $route->match()];
+                                        return [$route, $route->match($request, $this->patterns)];
                                     }
                                 }
                             }

@@ -12,13 +12,12 @@ trait TGetterAttributeImplementation {
         public function getterImplemetor(string $name, object $next): mixed {
             $design = static::design();
 
-            if(($getterAttribute = $design->getAttrInstance(Getter::class, $name)) !== null) {
+            if(($getter = $design->getAttrInstance(Getter::class, $name)) !== null) {
                 list($match, $result) = $next($name);
 
-                $args = [$name];
 
                 if(!$match) {
-                    $result = $getterAttribute->parent->invokeArgs($this, $args);
+                    $result = $getter->parent->invokeArgs($this, [$getter->getFor()]);
                 }
 
                 return [true, $result];
