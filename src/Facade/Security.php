@@ -6,8 +6,7 @@ namespace Slate\Facade {
     use Slate\Utility\Facade;
 
     final class Security extends Facade {
-
-        public static function sanitise(mixed $input, array $escape = ["\"", "'", "`"]): mixed {
+        public static function sanitise(mixed $input, array $escape = ["\"", "'", "`"], bool|string $html = false): mixed {
             $output = null;
     
             switch(\Any::getType($input)) {
@@ -26,21 +25,15 @@ namespace Slate\Facade {
                         );
                     }
     
-                    // if($html !== NULL) {
-                    //     if(\Any::isInt($html)) {
-                    //         switch($html) {
-                    //             case "all":
-                    //                 $output = htmlentities($output);
-                    //                 break;
-                    //             case "specials":
-                    //                 $output = htmlspecialchars($output);
-                    //                 break;
-                    //         }
-                    //     }
-                    //     else if(\Any::isString($html)) {
-                    //         $output = htmlentities($output);
-                    //     }
-                    // }
+                    switch($html) {
+                        case true:
+                        case "all":
+                            $output = htmlentities($output);
+                            break;
+                        case "specials":
+                            $output = htmlspecialchars($output);
+                            break;
+                    }
                     break;
                 case "object":
                 case "array":

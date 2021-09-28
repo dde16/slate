@@ -1,6 +1,8 @@
 <?php
 
 namespace Slate\Mvc\Result {
+
+    use Slate\Exception\IOException;
     use Slate\Exception\PathNotFoundException;
     
     use Slate\Mvc\Env;
@@ -17,8 +19,9 @@ namespace Slate\Mvc\Result {
             }
 
             $path = Env::get("mvc.view.path").\Path::normalise($path);
+            $root = env("mvc.root.path");
 
-            if(\Path::safe(env("mvc.root.path"), $path)) {
+            if(\Path::safe($root, $path)) {
                 $this->data = Buffer::wrap(function() use($path, $data) {
                     $_DATA = $data;
                     unset($data);
@@ -29,9 +32,7 @@ namespace Slate\Mvc\Result {
                 });
             }
             else {
-                throw new PathNotFoundException([
-                    "path" => $path
-                ]);
+                throw new IOException(["subPath" => $path, "rootPath" => $root], IOException::ERROR_UNSAFE_PATH);
             }
         }
 

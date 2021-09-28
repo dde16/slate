@@ -4,6 +4,7 @@ namespace Slate\Mvc {
 
     use Slate\Data\Repository\IRepository;
     use Slate\Exception\HttpException;
+    use Slate\Exception\IOException;
     use Slate\Exception\PathNotFoundException;
     use Slate\Exception\SlateException;
     use Slate\Foundation\Kernel;
@@ -66,16 +67,13 @@ class ConsoleKernel extends Kernel {
             if($resolved !== null) {
                 $root = $resolved;
 
-                if(!\Path::exists($root))
-                    throw new PathNotFoundException("Root path '$root' was not found.");
-
-                if(!\Path::isDirectory($root))
-                    throw new PathNotFoundException("Root path '$root' is not a directory.");
+                if(!is_dir($root))
+                    throw new IOException("Root directory '$root' was not found.", IOException::ERROR_DIR_NOT_FOUND);
                 
                 Env::set("mvc.root.path", \Path::normalise($root));
             }
             else {
-                throw new \Error("Unable to resolve the root path '$root'.");
+                throw new IOException("Unable to resolve the root path '$root'.", IOException::ERROR_UNRESOLVABLE_PATH);
             }
         }
 
@@ -349,12 +347,6 @@ class ConsoleKernel extends Kernel {
                     $this->response->send();
                 }
             });
-            // register_shutdown_function(function() {
-            //     echo "An error occured, while handling another error.";
-            //     echo SlateException::getHtml($this->lastError);
-            //     debug($this->lastError);
-            //     debug(error_get_last());
-            // });
         }
     }
 }

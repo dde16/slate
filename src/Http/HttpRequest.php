@@ -1,8 +1,11 @@
 <?php
 
 namespace Slate\Http {
+
+    use Closure;
     use Slate\IO\StreamReader;
     use Slate\Data\Collection;
+    use Slate\Facade\Security;
     use Slate\Media\Uri;
     use Slate\Neat\Attribute\Getter;
     use Slate\Neat\Attribute\Setter;
@@ -143,6 +146,14 @@ class HttpRequest extends HttpPacket {
 
             /** Load Files */
             $files = HttpEnvironment::getFiles();
+
+            foreach([&$uri->query, &$query] as $methodQuery) {
+                if(env("mvc.security.auto-sanitise", ["fallback" => true]) === true)
+                    $methodQuery = Security::sanitise(
+                        $methodQuery,
+                        env("mvc.security.auto-sanitise.escapes", ["fallback" => ["\"", "'", "`"], "validator" => Closure::fromCallable('is_array')])
+                    );
+            }
 
             return(new static($method, $uri, $version, $headers, $cookies, $query, $files));
         }

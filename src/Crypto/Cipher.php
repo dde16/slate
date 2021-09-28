@@ -6,10 +6,24 @@ namespace Slate\Crypto {
     use Slate\Neat\Attribute\Setter;
     use Slate\Neat\Model;
 
+    /**
+     * A class to encrypt and decrypt data.
+     * Persists the method and key.
+     */
     class Cipher extends Model {
+        /**
+         * @var string
+         */
         protected string $method;
 
+        /**
+         * @var int
+         */
         protected int       $ivlen;
+        
+        /**
+         * @var string
+         */
         protected string    $key;
 
         public function __construct(string $method, string $key) {

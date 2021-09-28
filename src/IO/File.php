@@ -111,9 +111,12 @@ namespace Slate\IO {
             $resource = fopen($this->path, $this->mode);
 
             if($resource === FALSE) {
-                throw new IOException([
-                    "path" => $this->path
-                ]);
+                throw new IOException(
+                    \Str::format(
+                        "Unable to open file at '{}'.",
+                        $this->path
+                    )
+                );
             }
 
             $this->resource = $resource;
@@ -297,7 +300,7 @@ namespace Slate\IO {
                 return $mime;
             }
             else {
-                throw new PathNotFoundException([ "path" => $path ]);
+                throw new IOException(["path" => $path], IOException::ERROR_FILE_NOT_FOUND);
             }
 
             return null;
@@ -311,33 +314,32 @@ namespace Slate\IO {
             $resource = fopen($path, File::WRITE_ONLY);
 
             if($resource === FALSE) {
-                throw new IOException([
-                    "path" => $path
-                ]);
+                throw new IOException(\Str::format(
+                    "Unable to open to touch file at '{}'.",
+                    $path
+                ));
             }
 
             fclose($resource);
         }
 
         public static function getSizeOf(string $path): int|false {
-            if(!\Path::exists($path)) {
-                throw new PathNotFoundException([
-                    "path" => $path
-                ]);
-            }
+            if(!File::exists($path))
+                throw new IOException(["path" => $path], IOException::ERROR_FILE_NOT_FOUND);
 
             return filesize($path);
         }
 
         public static function getContentsOf(string $path): string {
             if(!\Path::exists($path)) {
-                throw new PathNotFoundException([
-                    "path" => $path
-                ]);
+                throw new IOException(["path" => $path], IOException::ERROR_FILE_NOT_FOUND);
             }
 
             if(($contents = file_get_contents($path)) === FALSE)
-                throw new IOException(["path" => $path]);
+                throw new IOException(\Str::format(
+                    "Unable to get contents for file at path '{}'.",
+                    $path
+                ), IOException::ERROR_FILE_OPEN_FAILURE);
 
             return $contents;
         }

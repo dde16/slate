@@ -3,7 +3,7 @@
 namespace Slate\IO {
 
     use Closure;
-    use Slate\Exception\BufferException;
+    use Error;
     
     abstract class Buffer {
         const START = 1;
@@ -37,11 +37,8 @@ namespace Slate\IO {
          * @return void
          */
         public static function start(Closure $callback = null, int $size = 0, int $flags = Buffer::HANDLER_STANDARD) {
-            if(ob_start($callback, $size, $flags) === FALSE) {
-                throw new BufferException([
-                    "action" => "creating"
-                ]);
-            }
+            if(ob_start($callback, $size, $flags) === FALSE)
+                throw new Error("Unknown error while creating buffer.");
         }
 
         /**

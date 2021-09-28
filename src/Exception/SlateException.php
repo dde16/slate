@@ -1,28 +1,27 @@
 <?php
 
 namespace Slate\Exception {
-    
+
+    use Closure;
     use Slate\Http\HttpCode;
     use Throwable;
+    use Exception;
 
-abstract class SlateException extends \Exception {
-        public function __construct($arguments) {
-            $message = "";
+    abstract class SlateException extends Exception {
+        public const ERROR_DEFAULT          = (1<<0);
 
-            if(\Any::isString($arguments)) {
-                $message = $arguments;
-            }
-            else {
-                $message = \Str::format(
-                    $this->format,
-                    $arguments
-                );
-            }
+        /**
+         * Stores predefined messages in the format
+         */
+        public const ERROR_MESSAGES = [];
 
-            parent::__construct(
-                $message,
-                $this->code
-            );
+        public function __construct(string|array $argument = null, int $code = 0, ?Throwable $previous = null) {
+            $message = $argument;
+
+            if($argument === null || is_array($argument))
+                $message = \Str::format(static::ERROR_MESSAGES[$code], $argument ?: []);
+
+            parent::__construct($message, $code, $previous); 
         }
         
         public static function httpify($throwable): Throwable {

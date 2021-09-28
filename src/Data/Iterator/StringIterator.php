@@ -53,7 +53,10 @@ namespace Slate\Data\Iterator {
         }
 
         public function offsetAssign(string|int $offset, string $value): void {
-            throw new \Error("Assigning strings to offsets is not supported due to its inefficient process.");
+            if(!\Str::isChar($value))
+                throw new \Error("Strings offset assigned must be single characters.");
+
+            $this->string[$offset] = $value;
         }
 
         public function offsetPush(string $value): void {

@@ -3,7 +3,6 @@
 namespace Slate\IO {
 
     use Generator;
-    use Slate\Exception\PathNotFoundException;
     use Slate\Exception\IOException;
 
     use Slate\Data\Iterator\IExtendedIterator;
@@ -155,8 +154,7 @@ namespace Slate\IO {
         /**
          * Open the directory.
          *
-         * @throws PathNotFoundException In the event of the path not existing when create is false.
-         * @throws IOException           If the path is a file or there is an error openinng the directory.
+         * @throws IOException           If the path is a file, the file doesn't exist; or there is an error openinng the directory.
          * 
          * @param  mixed $create Create if the directory doesn't exist.
          * @return void
@@ -167,22 +165,16 @@ namespace Slate\IO {
                     $this->create();
                 }
                 else {
-                    throw new PathNotFoundException([
-                        "path" => $this->path
-                    ]);
+                    throw new IOException(["path" => $this->path], IOException::ERROR_DIR_NOT_FOUND);
                 }
             }
             else if(\Path::isDirectory($this->path)) {
                 if(($this->resource = opendir($this->path)) === false) {
-                    throw new IOException(
-                        \Str::format("Unkown error while opening the directory '{}'.", $this->path)
-                    );
+                    throw new IOException(["path" => $this->path], IOException::ERROR_DIR_OPEN_FAILURE);
                 }
             }
             else {
-                throw new IOException(
-                    \Str::format("Cannot open a directory handle for file {}", $this->path)
-                );
+                throw new IOException(["path" => $this->path], IOException::ERROR_DIR_NOT_FOUND);
             }
         }
 

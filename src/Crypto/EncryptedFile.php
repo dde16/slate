@@ -4,10 +4,19 @@ namespace Slate\Crypto {
     use Slate\IO\File;
 
     class EncryptedFile extends File {
+        /**
+         * @var Cipher
+         */
         protected Cipher $cipher;
 
+        /**
+         * @var string|null
+         */
         protected ?string $iv;
 
+        /**
+         * @var int
+         */
         protected int $blocksize;
 
         public function __construct(string $path, string $method, string $key, string $mode = null, int $chunksize = null) {
@@ -65,18 +74,23 @@ namespace Slate\Crypto {
             );
         }
 
-        public function readblock(): string|null {
+        public function readblock(): ?string {
             if(($block = $this->read($this->blocksize, eofNull: true)) !== null) {
                 $plaintext = $this->cipher->decrypt($block, iv: $this->iv);
 
-                if($plaintext === false) {
-                    throw new \Error("Unable to decrypt this block.");
-                }
+                if($plaintext === false)
+                    throw new \Error(\Str::format(
+                        "Unable to decrypt cipher block at position {}.",
+                        $this->tell()
+                    ));
 
                 return $plaintext;
             }
             else {
-                throw new \Error("Unable to read the full block.");
+                throw new \Error(\Str::format(
+                    "Unable to read cipher block at position {}.",
+                    $this->tell()
+                ));
             }
 
             return null;

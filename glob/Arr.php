@@ -96,12 +96,25 @@ abstract class Arr extends CompoundType {
      * 
      * @return string
      */
-    public static function list (array|ArrayAccess $array, string $delimiter, string|array $wrapper = "", string $container = ""): string {
-        return \Str::wrapc(\Arr::join(\Arr::map(\Arr::filter($array), function($value) use($wrapper) {
-            $value = strval($value);
+    public static function list (array|ArrayAccess $array, string $delimiter, string|array $itemWrap = "", string $listWrap = ""): string {
+        return \Str::wrapc(
+            \Arr::join(
+                \Arr::map(
+                    \Arr::filter($array),
+                    function($value) use($itemWrap) {
+                        $value = strval($value);
 
-            return is_string($wrapper) ? \Str::wrapc($value, $wrapper) : \Arr::join([$wrapper[0], $value, $wrapper[1]]);
-        }), $delimiter), $container);
+                        return is_string($itemWrap)
+                            ? \Str::wrapc($value, $itemWrap)
+                            : \Arr::join([
+                                $itemWrap[0], $value, $itemWrap[1]
+                            ]);
+                    }
+                ),
+                $delimiter
+            ),
+            $listWrap
+        );
     }
 
     /**
@@ -133,7 +146,7 @@ abstract class Arr extends CompoundType {
                     );
                 }
                 else if(\Arr::isAssoc($value) && !$empty) {
-                    $branches = \Arr::merge($branches, \Arr::branches($value, $flags, $path));
+                    $branches = \Arr::merge($branches, \Arr::branches($value, $flags, $tmpPath));
                 }
                 else {
                     $branches[] = [$tmpPath, $value];
@@ -159,7 +172,7 @@ abstract class Arr extends CompoundType {
         return \Arr::filter(
             $array,
             function($value) use($threshold){ 
-                return $value > $threshold;
+                return $value >= $threshold;
             }
         );
     }
@@ -204,7 +217,7 @@ abstract class Arr extends CompoundType {
      * @return bool
      */
     public static function isAssocOffset(mixed $offset): bool {
-        return (!is_int($offset) && is_string($offset));
+        return is_string($offset) && filter_var($offset, FILTER_VALIDATE_INT) === false;
     }
 
     /**
@@ -218,47 +231,6 @@ abstract class Arr extends CompoundType {
         $slice = \Arr::slice($array, 0, count($start));
 
         return $slice == $start;
-    }
-    
-    /**
-     * Finds all subcombinations within an array.
-     * 
-     * @param array $array
-     */
-    public static function subcomb (array|ArrayAccess $array): array {
-        $versions = [[]];
-
-        foreach($array as $key => $value) {
-            if(\Any::isArray($value)) {
-                $value = \Arr::flatten($value);
-
-                $versionsAggregate = [];
-
-                foreach($value as $subkey => $subvalue) {
-                    $versionsAggregate = \Arr::merge(
-                        $versionsAggregate,
-                        \Arr::map(
-                            $versions, 
-                            function($version) use($subvalue) {
-                                return [...$version, $subvalue];
-                            }
-                        )
-                    );
-                }
-
-                $versions = $versionsAggregate;
-            }
-            else if(\Arr::isEmpty($versions)) {
-                $versions[] = [$value];
-            }
-            else{
-                foreach($versions as &$version) {
-                    $version[] = $value;
-                }
-            }
-        }
-
-        return $versions;
     }
 
     /**
@@ -277,7 +249,7 @@ abstract class Arr extends CompoundType {
      */
     public static function all($array, callable $callback = null): bool {
         if ($callback === NULL) {
-            $callback = function ($value) { return $value == true; };
+            $callback = fn($value) => $value == true;
         }
 
         foreach($array as $key => $value) {
@@ -342,12 +314,7 @@ abstract class Arr extends CompoundType {
      */
     public static function isAssoc (array|ArrayAccess $array, bool $sequential = false): bool{
         if($sequential === false)
-            return \Arr::any(
-                \Arr::keys($array),
-                function($key) {
-                    return(!is_int($key) && is_string($key));
-                }
-            );
+            return \Arr::any(\Arr::keys($array), fn($key) => \Arr::isAssocOffset($key));
 
         $arrayKeys = \Arr::keys($array);
         $arraySize = count($arrayKeys);
@@ -377,11 +344,8 @@ abstract class Arr extends CompoundType {
      * @return int
      */
     public static function count($array, string|callable $filter = null, int $mode = COUNT_NORMAL): int {
-        if(\Any::isString($filter)) {
-            $filter = function($value) use ($filter) {
-                return \Any::traverse($value, $filter);
-            };
-        }
+        if(\Any::isString($filter))
+            $filter = fn($value) => \Any::traverse($value, $filter);
 
         if($filter !== null) {
             $count = 0;
@@ -402,7 +366,7 @@ abstract class Arr extends CompoundType {
      * @return bool
      */
     public static function isEmpty (array|ArrayAccess $array): bool {
-        return \Arr::count($array) === 0;
+        return count($array) === 0;
     }
 
     /**
@@ -414,7 +378,7 @@ abstract class Arr extends CompoundType {
      * 
      * @return array
      */
-    public static function dotsByValue (array|ArrayAccess $array,  string $using = "/",  int $flags = \Arr::DOTS_EVAL_ASSOC ^ \Arr::DOTS_EVAL_ARRAY, string|array $path = []): array {
+    public static function dotsByValue (array|ArrayAccess $array,  string $using = ".",  int $flags = \Arr::DOTS_EVAL_ALL, string|array $path = []): array {
         if(\Any::isString($path)) $path = \Str::split($path, $using);
 
         $dots = [];
@@ -566,14 +530,8 @@ abstract class Arr extends CompoundType {
         $entries = [];
 
         foreach($array as $key => $value) {
-            if($strict) {
-                if($value === $search) {
-                    $entries[] = $key;
-                }
-            }
-            else if($value == $search) {
+            if($strict ? ($value === $search) : ($value == $search))
                 $entries[] = $key;
-            }
         }
 
         return $entries;
@@ -587,20 +545,8 @@ abstract class Arr extends CompoundType {
      * 
      * @return bool
      */
-    public static function contains (array|ArrayAccess $array, mixed $value): bool {
+    public static function contains(array|ArrayAccess $array, mixed $value): bool {
         return in_array($value, $array);
-    }
-
-    /**
-     * Check whether an array has a given key(s)
-     * 
-     * @param array            $array
-     * @param string|int|array $key
-     * 
-     * @return bool
-     */
-    public static function has (array|ArrayAccess $array, string|int|array $key): bool {
-        return \Any::isArray($key) ? \Arr::hasKeys($array, $key) : \Arr::hasKey($array, $key);
     }
 
     /**
@@ -626,9 +572,8 @@ abstract class Arr extends CompoundType {
     public static function hasKeys (array|ArrayAccess $array, array $keys): bool {
         return \Arr::all(
             \Arr::map(
-                $keys, function($key) use(&$array) {
-                    return array_key_exists($key, $array);
-                }
+                $keys,
+                fn($key) => array_key_exists($key, $array)
             )
         );
     }
@@ -732,6 +677,18 @@ abstract class Arr extends CompoundType {
      */
     public static function range(int $start, int $end): array {
         return range($start, $end, 1);
+    }
+
+        /**
+     * Check whether an array has a given key(s)
+     * 
+     * @param array            $array
+     * @param string|int|array $key
+     * 
+     * @return bool
+     */
+    public static function has (array|ArrayAccess $array, string|int|array $key): bool {
+        return \Any::isArray($key) ? \Arr::hasKeys($array, $key) : \Arr::hasKey($array, $key);
     }
 
     public static function getSingle (array|ArrayAccess $array, string $key, array $options = []): mixed {
@@ -846,9 +803,7 @@ abstract class Arr extends CompoundType {
     public static function xor (array|ArrayAccess $array): int {
         return \Arr::reduce(
             $array,
-            function($value, $accumulator) {
-                return $accumulator ^ $value;
-            },
+            fn($value, $accumulator) => $accumulator ^ $value,
             0
         );
     }
@@ -856,9 +811,7 @@ abstract class Arr extends CompoundType {
     public static function or (array|ArrayAccess $array): int {
         return \Arr::reduce(
             $array,
-            function($value, $accumulator) {
-                return $accumulator | $value;
-            },
+            fn($value, $accumulator) => $accumulator | $value,
             0
         );
     }

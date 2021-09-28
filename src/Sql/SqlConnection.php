@@ -104,8 +104,6 @@ namespace Slate\Sql {
                     }
                 }
                 catch(\Throwable $throwable) {
-                    debug($multiquery);
-
                     throw $throwable;
                 }
             }
@@ -161,8 +159,6 @@ namespace Slate\Sql {
                     }
                 }
                 catch(\Throwable $throwable) {
-                    debug($multiquery);
-
                     throw $throwable;
                 }
             }
@@ -208,7 +204,7 @@ namespace Slate\Sql {
                 }
             }
             catch(\PDOException $e) {
-                debug($statement->queryString);
+                $e->queryString = $statement->queryString;
                 throw $e;
             }
         }

@@ -8,7 +8,6 @@ namespace Slate\Data {
     use Slate\Utility\TConvertable;
     
     use Slate\Data\IArrayConvertable;
-    use Slate\Exception\PathNotFoundException;
     
     // class Collection implements \ArrayAccess, \Iterator, \Countable, IArrayConvertable {
     class Collection extends BasicArray implements IArrayConvertable {

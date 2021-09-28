@@ -1,6 +1,8 @@
 <?php
 
 namespace Slate\Media {
+
+    use BadFunctionCallException;
     use Slate\IO\File;
 
     use Slate\IO\Stream;
@@ -16,15 +18,18 @@ namespace Slate\Media {
     use Slate\Exception\PathNotFoundException;
 
     use InvalidArgumentException;
+    use Slate\Data\Collection;
+    use Slate\Exception\IOException;
 
-    class Image {
+class Image {
         /* Properties */
-        public $resource;
-        public $colours;
+        public mixed      $resource;
+        public Collection $colours;
 
         /* Constructor */
         public function __construct() {
-            $this->colours = collect();
+            $this->resource = null;
+            $this->colours  = collect();
         }
 
         public function crop(int $x, int $y, int $width, int $height, bool $inplace = true): ?Image {
@@ -85,7 +90,7 @@ namespace Slate\Media {
             $argumentsCount = func_num_args();
 
             if($argumentsCount === 1) {
-                throw new InvalidArgumentException();
+                throw new BadFunctionCallException();
             }
 
             $name = $arguments[0];
@@ -108,17 +113,15 @@ namespace Slate\Media {
                 }
             }
             else if($argumentsCount === 3) {
-                $argumentsTypes = \Arr::getTypes($arguments);
-
-                if(\Arr::all($argumentsTypes, function($type) { return($type === "integer"); })) {
+                if(\Arr::all($arguments, fn($value) => is_int($value))) {
                     list($red, $green, $blue) = $arguments;
                 }
                 else {
-                    throw new InvalidArgumentException();
+                    throw new InvalidArgumentException("All three colours must be non-zero positive integers.");
                 }
             }
             else {
-                throw new InvalidArgumentException();
+                throw new InvalidArgumentException("There must be three colours.");
             }
 
             $this->colours[$name] = imagecolorallocate($this->resource, $red, $green, $blue);
@@ -130,11 +133,8 @@ namespace Slate\Media {
             string $fontfile,
             string $text
         ): array {
-            if(!File::exists($fontfile)) {
-                throw new PathNotFoundException([
-                    "path" => $fontfile
-                ]);
-            }
+            if(!file_exists($fontfile))
+                throw new IOException(["path" => $fontfile], IOException::ERROR_FILE_NOT_FOUND);
 
             $boundingBox = imagettfbbox(
                 $size,
@@ -231,9 +231,7 @@ namespace Slate\Media {
                 }
             }
             else {
-                throw new PathNotFoundException([
-                    "path" => $fontfile
-                ]);
+                throw new IOException("Unable to find font file '{$fontfile}'.", IOException::ERROR_FILE_NOT_FOUND);
             }
         }
 
@@ -423,20 +421,16 @@ namespace Slate\Media {
         }
 
         public function importPath(string $path): void {
-            if(\Str::isPath($path)) {
-                if(File::exists($path)) {
-                    $file = new File($path);
-                    $file->open("r");
+            if(file_exists($path)) {
+                $file = new File($path);
+                $file->open("r");
 
-                    $this->importStream($file);
+                $this->importStream($file);
 
-                    $file->close();
-                }
-                else {
-                    throw new PathNotFoundException([
-                        "path" => $path
-                    ]);
-                }
+                $file->close();
+            }
+            else {
+                throw new IOException(["path" => $path], IOException::ERROR_FILE_NOT_FOUND);
             }
         }
         
