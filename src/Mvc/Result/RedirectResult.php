@@ -11,6 +11,7 @@ namespace Slate\Mvc\Result {
         public function __construct(string $path, string $mode = "temporary") {
             $this->path = $path;
             $this->mode = "temporary";
+            parent::__construct();
         }
 
         public function modify(HttpResponse &$response): void {

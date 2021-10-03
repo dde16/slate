@@ -60,76 +60,37 @@ namespace Slate\Mvc\Route {
                 ),
                 [$request],
                 function(HttpRequest $request) use($controllerDesign, $controllerClass, $controllerPostprocessors, $controllerRoute, $controllerInstance, $controllerAction, $response) {
-                    $cachedResult = null;
-
-                    if(($repo = $controllerRoute->cache) !== null) {
-                        $cacheKeyFormat = $controllerRoute->cachekey ?: "{request.path}";
-                        $cacheKey = \Str::format(
-                            $cacheKeyFormat,
-                            \Arr::dotsByValue([
-                                "request" => [
-                                    "path" => $request->uri->getPath(),
-                                    "protocol" => $request->uri->getScheme(),
-                                    "version" => $request->version,
-                                    "parameters" => $request->parameters->toArray(),
-                                    "query" => $request->query->toArray(),
-                                    "header" => \Arr::mapAssoc(
-                                        $request->headers->toArray(),
-                                        function($key, $value) {
-                                            return [\Str::lower($key), $value];
-                                        }
-                                    )
-                                ]
-                            ], ".")
-                        );
-    
-                        if(App::repo($repo)->has($cacheKey)) {
-                            $cachedResult = App::repo($repo)->pull($cacheKey);
-                        }
+                    try {
+                        $controllerResult = $controllerInstance->{$controllerAction}($request, $response);
+                    }
+                    catch(\Throwable $throwable) {
+                        $controllerResult = $throwable;
+                        $cacheResult = false;
                     }
 
-                    if($cachedResult !== null) {
-                        $controllerResult = $cachedResult;
-                    } 
-                    else {
-                        $cacheResult = true;
+                    $bypass = false;
 
-                        try {
-                            $controllerResult = $controllerInstance->{$controllerAction}($request, $response);
-                        }
-                        catch(\Throwable $throwable) {
-                            $controllerResult = $throwable;
-                            $cacheResult = false;
-                        }
+                    if(is_object($controllerResult) ? (is_subclass_of($controllerResult, Result::class) || $controllerResult instanceof Result) : false) {
 
-                        $bypass = false;
+                        $bypass = $controllerResult->bypasses();
+                    }
 
-                        if(is_object($controllerResult) ? (is_subclass_of($controllerResult, Result::class) || $controllerResult instanceof Result) : false) {
-
-                            $bypass = $controllerResult->bypasses();
-                        }
-
-                        if(!$bypass) {
-                            $controllerResult = \Fnc::chain(
-                                \Arr::map(
-                                    $controllerPostprocessors,
-                                    function($postprocessorName) use($controllerDesign, $controllerInstance, $controllerClass) {
-                                        if(($postprocessor = $controllerDesign->getAttrInstance(Postprocessor::class, $postprocessorName)) === null)
-                                            throw new \Error("Unknown postprocessor '$postprocessorName' in controller '$controllerClass'.");
-                
-                                        return $postprocessor->parent->getClosure($controllerInstance);
-                                    }
-                                ),
-                                [$request, $response, $controllerResult],
-                                function(HttpRequest $request, HttpResponse $response, mixed $data) {
-                                    return $data;
+                    if(!$bypass) {
+                        $controllerResult = \Fnc::chain(
+                            \Arr::map(
+                                $controllerPostprocessors,
+                                function($postprocessorName) use($controllerDesign, $controllerInstance, $controllerClass) {
+                                    if(($postprocessor = $controllerDesign->getAttrInstance(Postprocessor::class, $postprocessorName)) === null)
+                                        throw new \Error("Unknown postprocessor '$postprocessorName' in controller '$controllerClass'.");
+            
+                                    return $postprocessor->parent->getClosure($controllerInstance);
                                 }
-                            );
-    
-                            if($repo !== null && $cacheResult) {
-                                App::repo($repo)->put($cacheKey, $controllerResult);
+                            ),
+                            [$request, $response, $controllerResult],
+                            function(HttpRequest $request, HttpResponse $response, mixed $data) {
+                                return $data;
                             }
-                        }
+                        );
 
                             
 

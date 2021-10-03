@@ -19,6 +19,10 @@ namespace Slate\IO {
         public function derive(string $key): string {
             return $key;
         }
+
+        public function expired(string $key): bool {
+            return $this->hashmap->offsetExists($key) ? ($this->hashmap[$key]["ttl"] > microtime(true)) : false;
+        }
         
         public function until(string $key, mixed $value, DateTimeInterface|DateInterval|float|int $ttl = null): void {
             $ttl = $ttl !== null ? \Real::fromDateTime($ttl) : -1.0;

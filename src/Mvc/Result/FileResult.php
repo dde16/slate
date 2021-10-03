@@ -14,8 +14,9 @@ namespace Slate\Mvc\Result {
 
         public function __construct(string $path, string $mime = null, bool $bypass = true) {
             $this->file = new File($path);
-            $this->bypass = $bypass;
             $this->mime = ($mime ?: $this->file->getExtensionMime()) ?: "text/plain";
+
+            parent::__construct($bypass);
         }
 
         public function modify(HttpResponse &$response): void {

@@ -6,7 +6,9 @@ namespace Slate\Mvc\Result {
     use Slate\Mvc\Result;
 
     abstract class CommandResult extends Result  {
-        protected bool $bypass = true;
+        public function __construct(bool $bypass = true) {
+            parent::__construct($bypass);
+        }
 
         public abstract function modify(HttpResponse &$response): void;
     }

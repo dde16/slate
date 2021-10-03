@@ -147,9 +147,8 @@ namespace Slate\Data\Repository {
                 $file = $this->directory->openFile($derived);
                 $file->open("r");
 
-
                 if(!$this->expired($file)) {
-                    $value = $this->deserialize($file->readAll());
+                    $value = $this->deserialize($all = $file->readAll());
 
                     $got = true;
 

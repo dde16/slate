@@ -9,7 +9,7 @@ namespace Slate\Mvc\Result {
         public function __construct(array|object $data, bool $bypass = false) {
             $this->data   = $data;
             $this->mime   = "application/json";
-            $this->bypass = $bypass;
+            parent::__construct($bypass);
         }
 
         public function toString(): string {

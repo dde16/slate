@@ -65,14 +65,14 @@ namespace Slate\Data\Repository {
          */
         function has(string $key): bool;
 
-        // /**
-        //  * Check if an item by a given key has expired.
-        //  * 
-        //  * @param string $key
-        //  * 
-        //  * @return bool
-        //  */
-        // function expired(string $key): bool;
+        /**
+         * Check if an item by a given key has expired.
+         * 
+         * @param string $key
+         * 
+         * @return bool
+         */
+        function expired(string $key): bool;
     
         /**
          * Remove a cache item by its given key.

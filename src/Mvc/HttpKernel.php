@@ -7,7 +7,7 @@ namespace Slate\Mvc {
     use Slate\Foundation\Stager;
     use Slate\Http\HttpRequest;
     use Slate\Http\HttpResponse;
-
+    use Slate\Mvc\Result\AnyResult;
     use Slate\Mvc\Result\CommandResult;
     use Slate\Mvc\Result\DataResult;
 
@@ -89,10 +89,7 @@ namespace Slate\Mvc {
 
                 if($routeResult !== null) {
                     if(!(is_object($routeResult) ? \Cls::isSubclassInstanceof($routeResult, Result::class) : false)) {
-                        $routeResult = ResultFactory::create(
-                            \Any::getType($routeResult, tokenise: true),
-                            [$routeResult]
-                        );
+                        $routeResult = new AnyResult($routeResult);
                     }
                 
                     if(\Cls::isSubclassInstanceof($routeResult, CommandResult::class)) {

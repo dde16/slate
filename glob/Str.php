@@ -628,6 +628,14 @@ abstract class Str extends ScalarType {
         return trim($source);
     }
 
+    public static function controls(string $string): string {
+        return 
+            Str::swap(
+                $string,
+                ["\r" => "\\r", "\f" => "\\f", "\n" => "\\n", "\t" => "\\t", "\0" => "\\0"],
+            );
+    }
+
     public static function repr($any): string {
         $value = "null";
 

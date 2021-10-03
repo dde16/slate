@@ -7,7 +7,7 @@ namespace Slate\Mvc\Attribute {
     use Slate\Http\HttpRequest;
     use UnexpectedValueException;
 
-#[Attribute(Attribute::TARGET_METHOD)]
+    #[Attribute(Attribute::TARGET_METHOD)]
     class Route extends MetalangAttribute {
         public int     $methods;
         public ?string $cache = null;

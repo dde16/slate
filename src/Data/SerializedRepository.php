@@ -19,6 +19,10 @@ namespace Slate\Data {
         public function deserialize(string $value): mixed {
             return $this->serializer->deserialize($value);
         }
+
+        public function getSerializer(): Serializer {
+            return $this->serializer;
+        }
     }
 }
 

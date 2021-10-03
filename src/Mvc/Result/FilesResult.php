@@ -1,6 +1,8 @@
 <?php
 
 namespace Slate\Mvc\Result {
+
+    use Slate\Http\HttpResponse;
     use Slate\IO\Mime;
 
     use Slate\Http\HttpResponseFile;
@@ -22,7 +24,7 @@ namespace Slate\Mvc\Result {
                     ];
                 }
             );
-            $this->bypass = $bypass;
+            parent::__construct($bypass);
         }
         
         public function modify(HttpResponse &$response): void {
