@@ -36,13 +36,9 @@ trait TRetryAttributeImplementation {
         public static function retrySharedImplementor(string $name, array $arguments, Closure $call, object $next): mixed {
             $design = static::design();
     
-            if(($retryAttribute = $design->getAttrInstance(Retry::class, $name)) !== null) {
-                $methodName = $retryAttribute->parent->getName();
-                
+            if(($retryAttribute = $design->getAttrInstance(Retry::class, $name)) !== null) {                
                 $count = 1;
                 $continue  = true;
-                
-
 
                 while($continue) {
                     list($match, $result) = $next($name, $arguments);
@@ -50,13 +46,17 @@ trait TRetryAttributeImplementation {
                     if(!$match)
                         $result = $call($name, $arguments);
 
-                    if($result !== true)
-                        if($count++ >= $retryAttribute->getBackoff())
+                    if($retryAttribute->resultNonMatch($result)) {
+                        if($retryAttribute->shouldBackOff($count++)) {
                             $continue = false;
-                        else
-                            sleep($retryAttribute->getDelay());
-                    else
+                        }
+                        else {
+                            time_sleep_until(microtime(true) + $retryAttribute->getDelay());
+                        }
+                    }
+                    else {
                         $continue = false;
+                    }
                 }
     
                 return [true, $result];

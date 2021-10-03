@@ -31,13 +31,6 @@ namespace Slate\Sql\Statement {
         public function build(): array {
             return ["UPDATE", $this->buildFroms(), $this->buildLowPriorityModifier(), $this->buildIgnoreModifier(), $this->buildSetClause(), $this->buildWhereClause(), $this->buildLimitClause()];
         }
-
-        public function go(): bool {
-            
-            $conn = App::conn($this->conn);
-
-            return $conn->prepare($this->toString())->execute();
-        }
     }
 }
 

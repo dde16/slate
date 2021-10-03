@@ -12,10 +12,6 @@ trait TStreamReadable {
         use TMatchingIterator;
         use TAnchoredIterator;
 
-        public function distance(): int {
-            return $this->tell() - $this->anchors[$this->anchor];
-        }
-
         public function hash(string $algorithm, int $blocksize = 32768): Hash { 
             $this->assertOpen();
             
@@ -133,28 +129,44 @@ trait TStreamReadable {
             $this->assertOpen();
 
             $buffer = "";
-            $this->anchor();
             $untilLength = strlen($until);
-            $seekby = $untilLength === 1 ? 0 : -1;
-            // $seekby = ($untilLength * -1) + 1;
             $found = false;
 
-            while(($frame = $this->read($untilLength)) !== null && !$found) {
-                if(!($found = ($frame == $until))) {
+            while((!$found && !$this->isEof()) ? ($frame = $this->read($untilLength)) !== null : false) {
+                if(!($found = ($frame == $until)))
                     $buffer .= substr($frame, 0, 1);
-                }
                 
-                if(($this->isEof())) {
-                    $found = $eof;
-                }
-                else $this->relseek($seekby);
+                $this->relseek(-(strlen($frame) - 1));
             }
 
-
-            if($found) return $buffer;
-
-            $this->revert();
+            return ($found || ($eof ? $this->isEof() : false)) ? $buffer : null;
         }
+
+        // public function readUntil(string $until, bool $eof = true): string|null {
+        //     $this->assertOpen();
+
+        //     $buffer = "";
+        //     $this->anchor();
+        //     $untilLength = strlen($until);
+        //     $found = false;
+
+
+        //     while(($frame = $this->read($untilLength)) !== null && !$found) {
+        //         if(!($found = ($frame == $until))) {
+        //             $buffer .= substr($frame, 0, 1);
+        //         }
+                
+        //         if(($this->isEof())) {
+        //             $found = $eof;
+        //         }
+
+        //         $this->relseek($untilLength - (strlen($frame) + 1));
+        //     }
+
+        //     if($found) return $buffer;
+
+        //     $this->revert();
+        // }
     }
 }
 

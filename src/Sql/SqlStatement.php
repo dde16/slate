@@ -2,17 +2,13 @@
 
 namespace Slate\Sql {
 
-use Slate\Data\IStringForwardConvertable;
+    use Slate\Data\IStringForwardConvertable;
+    use Slate\Mvc\App;
 
 abstract class SqlStatement extends SqlConstruct {
+        use TSqlUsingConnection;
+
         public array $variables = [];
-        protected ?string $conn = null;
-
-        public function using(string $conn): static {
-            $this->conn = $conn;
-
-            return $this;
-        }
 
         public function var(string $name, string|IStringForwardConvertable $value = "NULL"): static {
             $this->variables[$name] = $value;
@@ -32,6 +28,10 @@ abstract class SqlStatement extends SqlConstruct {
                     ],
                     "\n"
                 );
+        }
+
+        public function go(): bool {
+            return $this->conn()->prepare($this->toString())->execute();
         }
     }
 }

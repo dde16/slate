@@ -6,7 +6,7 @@ namespace Slate\Utility {
     use Slate\IO\IStreamWriteable;
     use Throwable;
 
-class Logger {
+    class Logger {
         const OFF      = 0;
 
         /**

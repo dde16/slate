@@ -5,8 +5,8 @@ namespace Slate\Neat\Attribute {
     use Slate\Neat\EntityDesign;
 
 class OneToAny extends MetalangAttribute {
-        public string $foreignImmediateClass;
-        public string $foreignImmediateProperty;
+        public ?string $foreignImmediateClass = null;
+        public ?string $foreignImmediateProperty = null;
         protected array $foreignChainingProperties;
     
     
@@ -74,10 +74,8 @@ class OneToAny extends MetalangAttribute {
 
             if(!\Cls::exists($foreignClass))
                 throw new \Error(\Str::format(
-                    "Error when defining {} attribute for {}::\${}, as the foreign class {} doesnt exist.",
+                    "Error when defining {} attribute as the foreign class {} doesnt exist.",
                     \Str::afterLast(static::class, "\\"),
-                    $this->parent->getDeclaringClass()->getName(),
-                    $this->parent->getName(),
                     $foreignClass
                 ));
 

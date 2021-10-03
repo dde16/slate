@@ -16,6 +16,17 @@ namespace Slate\Data\Iterator {
         public function deanchor(): void {
             $this->anchor--;
         }
+
+        public function anchor(): void {
+            $this->anchors[++$this->anchor] = $this->key();
+        }
+
+        public function revert(): void {
+            if($this->anchor < 0)
+                throw new \Error("Trying to revert a non-existent anchor.");
+
+            $this->seek($this->anchors[$this->anchor--]);
+        }
     }
 }
 

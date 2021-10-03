@@ -5,8 +5,9 @@ namespace Slate\Mvc {
     use Slate\Data\IJitStructureItem;
     use Slate\Http\HttpRequest;
     use Slate\Http\HttpResponse;
-    
-    abstract class Route implements IJitStructureItem {
+    use SplStack;
+
+abstract class Route implements IJitStructureItem {
         public ?string  $name;
         public int      $size;
 
@@ -27,22 +28,32 @@ namespace Slate\Mvc {
         }
 
         public function consumeAncestors(array $parents): void {
+            $prefixes = new SplStack;
+
             foreach($parents as $parent) {
-                if($parent->domain) {
+                if($parent->domain)
                     $this->uri->host = $parent->domain;
-                }
 
                 if($parent->prefix) {
-                    $this->uri->setPath(
-                        "/" . $parent->prefix . $this->uri->getPath()
-                    );
+                    $prefixes->push($parent->prefix);
                 }
 
                 if($parent->name) {
-                    if($this->name) {
-                        $this->name = $parent->name . $this->name;
-                    }
+                    if(!$this->name)
+                        $this->name = "";
+
+                    $this->name = $parent->name . $this->name;
                 }
+            }
+
+            while(!$prefixes->isEmpty()) {
+                $prefix = $prefixes->pop();
+
+                $this->uri->setPath(
+                    \Path::normalise($prefix) . $this->uri->getPath()
+                );
+                
+                $this->size = $this->uri->slashes();
             }
         }
 

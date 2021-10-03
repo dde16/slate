@@ -20,7 +20,7 @@ namespace Slate\Neat {
     use Slate\Data\TStringNativeForwardConvertable;
     use Throwable;
 
-class EntityQuery implements IStringForwardConvertable {
+    class EntityQuery implements IStringForwardConvertable {
         use TStringNativeForwardConvertable;
 
         use TSqlWhereClause;
@@ -454,32 +454,30 @@ class EntityQuery implements IStringForwardConvertable {
             return $query->get()->current()["ROWS"] ?: 0;
         }
     
-        public function toSqlQueries(string $vertexKey = null, SqlSelectStatement $query = null, array $anchors = []): array {
+        public function toSqlQueries(string $currentVertexKey = null, SqlSelectStatement $currentQuery = null, array $anchors = []): array {
             $queries = [];
     
-            if($vertexKey === null)
-                $vertexKey = $this->entity::ref()->toString();
+            if($currentVertexKey === null)
+                $currentVertexKey = $this->entity::ref()->toString();
     
-            if(!$this->graph->hasVertex($vertexKey))
-                throw new \Error("Malformed entity query: graph vertex '$vertexKey' doesnt exist.");
+            if(!$this->graph->hasVertex($currentVertexKey))
+                throw new \Error("Malformed entity query: graph vertex '$currentVertexKey' doesnt exist.");
     
-            $vertex = $this->graph->getVertex($vertexKey);
+            $currentVertex = $this->graph->getVertex($currentVertexKey);
     
-            if($query === null){
-                $query = DB::select();
-                $vertex->modifyQuery($query);
-    
-                if($this->wheres !== null)
-                    $query->wheres = clone $this->wheres;
-    
-                $query->from($vertex->toString(), as: $vertex->entity::ref(flags: Entity::REF_OUTER_WRAP | Entity::REF_RESOLVED)->toString());
-            }
+            $currentQuery =
+                $currentQuery
+                    ?? DB::select()
+                        ->from(
+                            $currentVertex,
+                            as: $currentVertex->entity::ref(flags: Entity::REF_OUTER_WRAP | Entity::REF_RESOLVED)->toString()
+                        );
             
-            $query->columns($vertex->getColumns());
+            $currentQuery->columns($currentVertex->getColumns());
     
-            if($vertex->hasEdges()) {
+            if($currentVertex->hasEdges()) {
     
-                foreach($vertex->edges as $foreignVertexKey => $foreignVertexEdges) {
+                foreach($currentVertex->edges as $foreignVertexKey => $foreignVertexEdges) {
                     $foreignVertex = $this->graph->getVertex($foreignVertexKey);
     
                     if(!\Arr::isEmpty($foreignVertexEdges)) {
@@ -487,9 +485,8 @@ class EntityQuery implements IStringForwardConvertable {
                     
                         $joinColumn = $foreignVertexEdge->along;
     
-                        $joinQuery = clone ($query);
-                        $foreignVertex->modifyQuery($joinQuery);
-    
+                        $joinQuery = clone ($currentQuery);
+                        $currentVertex->modifyQuery($joinQuery, $foreignVertex);
     
                         $joinForeignProperty = $foreignVertex->entity::design()->getAttrInstance(
                             Column::class,
@@ -498,7 +495,7 @@ class EntityQuery implements IStringForwardConvertable {
     
                         $joinLocalProperty = (
                             (\Cls::isSubclassInstanceOf($joinColumn, OneToAny::class)
-                                ? $vertex->entity::design()->getAttrInstance(
+                                ? $currentVertex->entity::design()->getAttrInstance(
                                     [Column::class],
                                     $joinColumn->getLocalProperty()
                                 )
@@ -509,9 +506,9 @@ class EntityQuery implements IStringForwardConvertable {
                         $joinAnchor = \Str::wrap($foreignVertexKey, "`");
                         $joinQuery->column(\Str::wrap($foreignVertexEdgeKey, "'"), as: $joinAnchor);
                         $joinType = $foreignVertex->flag === "?" ? 'leftJoin' : 'innerJoin';
-                        $joinCondition = function($condition) use($foreignVertex, $joinLocalProperty, $joinForeignProperty, $vertex) {
+                        $joinCondition = function($condition) use($foreignVertex, $joinLocalProperty, $joinForeignProperty, $currentVertex) {
                             $condition->orOn(
-                                $vertex->entity::{$joinLocalProperty->parent->getName()}(),
+                                $currentVertex->entity::{$joinLocalProperty->parent->getName()}(),
                                 "=",
                                 DB::raw(
                                     $foreignVertex->entity::{$joinForeignProperty->parent->getName()}()->toString()
@@ -546,7 +543,22 @@ class EntityQuery implements IStringForwardConvertable {
                 }
             }
             else {
-                $queries[] = [$query, $anchors];
+                $currentVertex->modifyQuery($currentQuery, null);
+
+                if($this->wheres !== null) {
+                    if($currentQuery->wheres === null) {
+                        $currentQuery->wheres = clone $this->wheres;
+                    }
+                    else {
+                        $currentQuery->wheres->where(clone $this->wheres);
+                    }
+                }
+
+                if(($callback = $currentVertex->callback) !== null) {
+                    $callback($currentQuery);
+                }
+                
+                $queries[] = [$currentQuery, $anchors];
             }
     
             return $queries;

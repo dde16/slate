@@ -4,7 +4,9 @@ namespace Slate\Data\Iterator {
     use ArrayIterator;
     use Slate\Data\Iterator\IExtendedIterator;
 
-    class ArrayExtendedIterator extends ArrayIterator implements IExtendedIterator {
+    class ArrayExtendedIterator extends ArrayIterator implements IExtendedIterator, IAnchoredIterator {
+        use TAnchoredIterator;
+
         public function prev(): void {
             prev($this);
         }

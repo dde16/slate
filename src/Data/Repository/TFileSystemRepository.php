@@ -29,6 +29,8 @@ namespace Slate\Data\Repository {
         }
     
         public function flush(): bool {
+            // $wasOpen = $this->isOpen();
+
             if($this->directory->delete()) {
                 $this->directory->open(create: true);
     

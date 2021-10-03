@@ -63,13 +63,9 @@ function redirect(string $path, string $mode = "temporary"): Slate\Mvc\Result\Re
 }
 
 function route(string $name, array $data = []): string|null {
-    foreach(Slate\Mvc\Router::$routes as $slashes => $routes) {
-        foreach($routes as $route) {
-            if($route->name === $name) {
-                return $route->format($data);
-            }
-        }
-    }
+    foreach(\Arr::flatten(Slate\Mvc\Router::routes()) as $route)
+        if($route->name === $name)
+            return $route->format($data);
 
     return null;
 }

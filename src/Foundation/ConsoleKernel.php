@@ -14,6 +14,10 @@ namespace Slate\Foundation {
             $this->root = $root;
             $this->argv = $argv;
         }
+
+        public static function coloured(string $text, int $colour): string {
+            return "\033[{$colour}m{$text}\033[0m";
+        }
     
         #[AttributeCall(Stager::class)]
         public function stagerInstanceImplementor(string $name, array $arguments, object $next): mixed {

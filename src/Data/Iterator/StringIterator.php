@@ -25,23 +25,6 @@ namespace Slate\Data\Iterator {
             $this->string  = $string;
             $this->seek(0);
         }
-
-        public function distance(): int {
-            $lastAnchor = $this->anchor-1;
-
-            return  $this->tell() - (($lastAnchor >= 0) ? $this->anchors[$lastAnchor] : 0);
-        }
-
-        public function anchor(): void {
-            $this->anchors[++$this->anchor] = $this->pointer;
-        }
-
-        public function revert(): void {
-            if($this->anchor < 0)
-                throw new \Error("Trying to revert a non-existent anchor.");
-
-            $this->pointer = $this->anchors[$this->anchor--];
-        }
         
         /**
          * @see ftell
@@ -67,11 +50,11 @@ namespace Slate\Data\Iterator {
         }
 
         public function offsetExists($offset): bool {
-            return $offset > strlen($this->string);
+            return $offset < strlen($this->string);
         }
 
         public function offsetUnset($offset): void {            
-            throw new \Error("Unsetting string offsets is not supported due to its inefficient process.");
+            throw new \Error("Unsetting string offsets not supported.");
         }
 
         public function offsetGet($offset): mixed {
@@ -182,7 +165,7 @@ namespace Slate\Data\Iterator {
         }
 
         public function isEof(int|bool $pointer = true): bool {
-            return ((is_bool($pointer) && $pointer ? $this->pointer : $pointer) >= strlen($this->string));
+            return (((is_bool($pointer) && $pointer) ? $this->pointer : $pointer) >= strlen($this->string));
         }
 
         public function relseek(int $pointer): void {

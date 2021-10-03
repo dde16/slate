@@ -23,6 +23,16 @@ namespace Slate\Metalang {
             return $this->parent->getName();
         }
 
+        /**
+         * This will pass in the parent context to the Attribute.
+         * 
+         * Do NOT call the getAttrInstance(s) methods inside of this function, 
+         * since the attribute wont be registered; it will loop and crash.
+         * 
+         * @param ReflectionClass|ReflectionMethod|ReflectionProperty|ReflectionClassConstant|ReflectionParameter $parent
+         * 
+         * @return void
+         */
         public function consume(ReflectionClass|ReflectionMethod|ReflectionProperty|ReflectionClassConstant|ReflectionParameter $parent): void {
             $this->parent    = $parent;
         }

@@ -32,6 +32,51 @@ abstract class Arr extends CompoundType {
     public const RECURSIVE_TOP_DOWN = (1<<1);
 
     /**
+     * Format/transform a compound value.
+     *
+     * @return void
+     */
+    public static function format(array $compound, array $format): array|object {
+        return \Arr::mapAssoc(
+            \Arr::associate($format, null, function(mixed $collision): Closure|string|null {
+                return (is_array($collision) || is_string($collision) || ($collision instanceof Closure)) ? $collision : null;
+            }),
+            function($fromKey, $toKey) use($compound) {
+                if($toKey === null)
+                    $toKey = $fromKey;
+                
+                if(\Str::startswith($fromKey, "@")) {
+                    $fromKey = \Str::removePrefix($fromKey, "@");
+
+                    $toValue = $compound[$toKey];
+
+                    return [
+                        $compound[$fromKey],
+                        $toKey instanceof Closure ? $toKey($toValue) : $toValue
+                    ];
+                }
+                else {
+                    $value =  $compound[$fromKey];
+
+                    if($toKey instanceof Closure) {
+                        $value = $toKey($value);
+                        $toKey = $fromKey;
+                    }
+                    else if(is_array($toKey)) {
+                        if(is_array($value)) 
+                            $value = \Arr::format($value, $toKey);
+                        
+                        $toKey = $fromKey;
+                    }
+
+
+                    return [$toKey, $value];
+                }
+            }
+        );
+    }
+
+    /**
      * Convert from an aggregated list to an associative array.
      * For example:
      * "key.0"   => "x"
@@ -586,14 +631,14 @@ abstract class Arr extends CompoundType {
      * 
      * @return array
      */
-    public static function firstEntry($array, Closure $filter = null): array|null {
-        if($filter === NULL) {
+    public static function firstEntry(array|ArrayAccess|Traversable $array, Closure $filter = null): array|null {
+        if($filter === NULL && !(is_object($array) ? \Cls::implements($array, Traversable::class) : false)) {
             $firstKey = array_key_first($array);
             $firstValue = $array[$firstKey];
         }
         else {
             foreach($array as $key => $value) {
-                if($filter($value, $key)) {
+                if($filter ? $filter($value, $key) : true) {
                     $firstKey    = $key;
                     $firstValue  = $value;
                     break;
@@ -612,7 +657,7 @@ abstract class Arr extends CompoundType {
      * 
      * @return mixed
      */
-    public static function first (array|ArrayAccess $array, Closure $filter = null): mixed {
+    public static function first (array|ArrayAccess|Traversable $array, Closure $filter = null): mixed {
         return ($entry = \Arr::firstEntry($array, $filter)) !== null ? $entry[1] : null;
     }
 

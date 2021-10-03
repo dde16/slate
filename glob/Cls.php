@@ -57,9 +57,9 @@ abstract class Cls {
      * @param  mixed $class
      * @return void
      */
-    public static function getInterfaces(string|object $class): array {
+    public static function getInterfaces(mixed $class): array {
         if(($implements = class_implements($class)) === false)
-            throw new \Error("Undefined class " . (is_string($class) ? $class : get_class($class)));
+            return [];
 
         return \Arr::values($implements);
     }

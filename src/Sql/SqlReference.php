@@ -2,10 +2,14 @@
 
 namespace Slate\Sql {
 
+    use Slate\Data\IAnyForwardConvertable;
     use Slate\Data\IStringForwardConvertable;
+    use Slate\Data\TStringNativeForwardConvertable;
 
-    class SqlReference {
-        public string|IStringForwardConvertable|null $reference = null;
+class SqlReference implements IStringForwardConvertable {
+        use TStringNativeForwardConvertable;
+
+        public mixed $reference = null;
         public ?string $as        = null;
 
         public function __construct(string|IStringForwardConvertable $reference) {
@@ -19,13 +23,26 @@ namespace Slate\Sql {
         }
 
         public function toString(): string {
+            $ref = $this->reference;
+
+            if(is_object($ref)) {
+                if(\Cls::implements($ref, IAnyForwardConvertable::class )){
+                    $ref = $ref->toAny();
+                }
+
+                if(is_object($ref)) {
+                    if(\Cls::isSubclassInstanceOf($ref, SqlConstruct::class)) {
+                        $ref = \Str::wrapc($ref->toString(), "()");
+                    }
+                    else {
+                        $ref = $ref->toString();
+                    }
+                }
+                
+            }
+
             return (
-                \Any::isObject($this->reference)
-                    ? (\Cls::isSubclassInstanceOf($this->reference, SqlConstruct::class)
-                        ? \Str::wrapc($this->reference->toString(), "()")
-                        : $this->reference->toString()
-                    )
-                    : $this->reference
+                $ref
             ). ($this->as !== null ? " AS " . $this->as : "");
         }
     }

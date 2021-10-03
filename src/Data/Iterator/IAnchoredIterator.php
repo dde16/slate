@@ -11,7 +11,6 @@ namespace Slate\Data\Iterator {
     interface IAnchoredIterator extends Iterator {
         function anchor(): void;
         function revert(): void;
-        function distance(): int;
     }
 }
 

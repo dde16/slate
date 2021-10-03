@@ -9,18 +9,24 @@ namespace Slate\Facade {
     use Slate\Sql\Statement\TSqlDeleteStatement;
     use Slate\Sql\Statement\TSqlInsertStatement;
     use Slate\Sql\Statement\TSqlUpdateStatement;
+    use Slate\Sql\Statement\TSqlDropStatement;
 
     use Slate\Sql\MySqlConnection;
     use Slate\Sql\SqlConnection;
     use Slate\Sql\SqlRaw;
+    use Slate\Sql\Statement\TSqlAlterStatement;
+    use Slate\Sql\Statement\TSqlCreateStatement;
 
-    final class DB extends Facade {
+final class DB extends Facade {
         use TMiddleware;
 
         use TSqlSelectStatement;
         use TSqlDeleteStatement;
         use TSqlUpdateStatement;
         use TSqlInsertStatement;
+        use TSqlDropStatement;
+        use TSqlAlterStatement;
+        use TSqlCreateStatement;
 
         public const SUPPORTED = ["mysql"];
 

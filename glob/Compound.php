@@ -2,6 +2,8 @@
 
 /** Compound Type and Functions */
 abstract class Compound extends DataType {
+    
+
     /**
      * Used to safely set a nested value in an array or object.
      *

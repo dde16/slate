@@ -1,6 +1,8 @@
 <?php
 
 namespace Slate\IO {
+
+    use Generator;
     use Slate\Exception\PathNotFoundException;
     use Slate\Exception\IOException;
 
@@ -164,13 +166,13 @@ namespace Slate\IO {
             $this->write($data.$delimiter);
         }
 
-        public function readlines(int $count = 1, string $delimiter = "\r\n", string $encoding = null): array {
+        public function readlines(int $count = 1, string $delimiter = "\r\n", string $encoding = null): Generator {
             $lines = [];
             $index = 0;
 
             while(($index < $count)) {
                 if($line = $this->readline($delimiter, $encoding)) {
-                    $lines[] = $line;
+                    yield $line;
                 }
                 else {
                     break;
@@ -178,8 +180,12 @@ namespace Slate\IO {
 
                 $index++;
             }
+        }
 
-            return $lines;
+        public function split(string $delimiter = "\r\n"): Generator {
+            while(!$this->isEof() ? ($data = $this->readUntil($delimiter) ?: $this->read()) : false) {
+                yield $data;
+            }
         }
 
         public function readline(string $delimiter = "\n", string $encoding = null): string|null {

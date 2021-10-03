@@ -8,154 +8,59 @@ namespace Slate\Data {
         protected array  $stack = [];
         protected mixed  $current = null;
         protected int    $depth = 0;
-        public array  $tree = [];
 
-        public function get(string|array $path, mixed $fallback = null, bool &$fellback = null, array $currpath = []): mixed {
-            if(is_string($path))
-                $path = \Str::split($path, ".");
+        public function toArray(): array {
+            $root   = [];
+            $refs   = [&$root];
+            $ancestors = [];
+            $pkey   = 0;
 
+            while(!\Arr::isEmpty($this->stack)) {
+                $current = array_pop($this->stack);
+                $ref     = &$refs[array_key_last($refs)];
 
-            if(\Arr::isEmpty($currpath)) {
-                $fellback = true;
+                if($current !== null) {
+                    $key     = null;
 
-                $data = \Compound::get($this->tree, $path, null, $fellback);
-
-                if(!$fellback)  
-                    return $data;
-            }
-            
-            $pathEmpty = \Arr::isEmpty($path);
-
-            $tree = [];
-
-            $items  = \Arr::filter($this->stack, fn($item) => !($item instanceof Closure));
-            $groups = \Arr::filter($this->stack, fn($item) => ($item instanceof Closure));
-
-            $this->stack = [];
-
-            foreach($items as list($name, $data)) {
-                $pathMatch = $name === $path[0];
-
-                if($pathEmpty) {
-                    $tree[$name] = $data;
-                }
-                else if($pathMatch) {
-                    $tree[$name] = $data;
-                }
-
-                if(\Arr::isEmpty($currpath)) {
-                    \Compound::set($this->tree, $path, $tree[$name], []);
-                }
-
-                if($pathMatch) {
-                    return $tree[$name];
-                }
-            }
-
-            foreach($groups as $group) {
-                list($name, $closure) = $group;
-
-                $pathMatch = $name === $path[0];
-
-                if($pathEmpty || $pathMatch) {
-                    $this->current = $group;
-                    $closure();
-                    $this->current = null;
-
-                    $fellback = false;
-
-                    if($pathEmpty) {
-                        $tree[$name] = $this->get([], $fallback,  $fellback, [...$currpath, $name]);
-                    }
-                    else if($pathMatch) {
-                        $tree[$name] = $this->get(\Arr::slice($path, 1), $fallback, $fellback, [...$currpath, $name]);
+                    if(\Cls::implements($current, IJitStructureKeyedNode::class)) {
+                        $key = $current->getKey();
                     }
 
-                    if(\Arr::isEmpty($currpath) && !$fellback) {
-                        \Compound::set($this->tree, $path, $tree[$name], []);
+                    if(\Cls::implements($current, IJitStructureGroup::class) || $current instanceof Closure) {
+                        $this->push(null);
+                        $this->current = $current;
+                        $current();
+                        $this->current = null;
+
+                        $ancestors[] = $current;
+
+                        $ref[$pkey] = [];
+                        $refs[] = &$ref[$pkey];
+
+                        $pkey++;
                     }
+                    else {
+                        if(is_object($current) ? \Cls::implements($current, IJitStructureItem::class) : false) {
+                            $current->consumeAncestors($ancestors);
+                        }
 
-                    if($pathMatch) {
-                        return $tree[$name];
+                        if($key === null) {
+                            $ref[$pkey++] = $current;
+                        }
+                        else {
+                            $ref[$key] = $current;
+                        }
                     }
-                }
-            }
-
-            if(count($path) === 1) {
-                $fellback = true;
-                return $fallback;
-            }
-
-            return $tree;
-        }
-
-        public function toArray(array $ancestors = []): array {
-            
-            $tree = [];
-
-            list($items, $groups) = \Arr::cluster(
-                $this->stack,
-                fn($item) =>
-                    (is_object($item)
-                        ? (\Cls::implements($item, IJitStructureGroup::class) || $item instanceof Closure
-                            ? 1
-                            : 0
-                        )
-                        : 0
-                    )
-            );
-
-            $this->stack = [];
-
-            foreach($items as $data) {
-                $key = null;
-
-                if(is_object($data)) {
-                    if(\Cls::implements($data, IJitStructureItem::class)) {
-                        $data->consumeAncestors($ancestors);
-                    }
-
-                    if(\Cls::implements($data, IJitStructureKeyedNode::class)) {
-                        $key = $data->getKey();
-                    }
-                }
-
-                if($key === null) {
-                    $tree[] = $data;
                 }
                 else {
-                    $tree[$key] = $data;
+                    $ref = \Arr::reverse($ref);
+                    array_pop($refs);
+                    array_pop($ancestors);
                 }
             }
 
-            foreach($groups as $group) {
-                $key = null;
-
-                if(\Cls::implements($group, IJitStructureKeyedNode::class)) {
-                    $key = $group->getKey();
-                }
-                
-                $this->current = $group;
-                $group();
-                $this->current = null;
-
-                $subtree = $this->toArray([...$ancestors, $group]);
-
-                if($key === null) {
-                    $tree[] = $subtree;
-                }
-                else if(\Arr::hasKey($tree, $key)) {
-                    $tree[$key] = \Arr::merge(
-                        $tree[$key],
-                        $subtree
-                    );
-                }
-                else {
-                    $tree[$key] = $subtree;
-                }
-            }
-
-            return $tree;
+            
+            return \Arr::reverse($root);
         }
 
         public function current(): ?array {

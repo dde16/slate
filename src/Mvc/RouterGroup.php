@@ -17,11 +17,17 @@ namespace Slate\Mvc {
         #[Fillable]
         protected ?string $name   = null;
     
-        protected Closure $callback;
+        protected ?Closure $callback = null;
     
-        public function __construct(array $options, Closure $callback) {
+        public function __construct(array $options, ?Closure $callback = null) {
             parent::__construct($options);
             $this->callback = $callback;
+        }
+
+        public function group(Closure $closure): static {
+            $this->callback = $closure;
+
+            return $this;
         }
     
         public function __invoke(): void {

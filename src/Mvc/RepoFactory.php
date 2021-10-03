@@ -11,7 +11,7 @@ namespace Slate\Mvc {
         public const MAP = [
             "filesystem"        => FileSystemRepository::class,
             "memory"            => SysvSharedMemoryRepository::class,
-            "encrypted"         => EncryptedFileSystemRepository::class
+            "encrypted-fs"      => EncryptedFileSystemRepository::class
         ];
     }
 }

@@ -5,7 +5,6 @@ namespace Slate\Exception {
     use Exception;
     
     class HttpException extends Exception {
-        public $code                = 1000;
         public int     $httpCode    = 500;
         public ?string $httpMessage = null;
 

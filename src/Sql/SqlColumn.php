@@ -1,6 +1,9 @@
 <?php
 
 namespace Slate\Sql {
+
+    use Slate\Sql\Expression\SqlColumnBlueprint;
+    use Slate\Sql\Expression\SqlConstraintBlueprint;
     use Slate\Sql\Type\SqlTypeFactory;
     use Slate\Sql\Type\SqlType;
 
@@ -126,6 +129,14 @@ namespace Slate\Sql {
 
         public function getDefault(string $target): mixed {
             return $this->type->getDefault($target);
+        }
+
+        public function getColumnBlueprint(): SqlColumnBlueprint {
+            return(new SqlColumnBlueprint($this->name));
+        }
+
+        public function getConstraintBlueprint(): ?SqlConstraintBlueprint {
+            return(new SqlConstraintBlueprint());
         }
     }
 }

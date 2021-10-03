@@ -3,6 +3,7 @@
 namespace Slate\Neat {
 
     use Closure;
+    use Slate\Data\IAnyForwardConvertable;
     use Slate\Facade\Sql;
     use Slate\Neat\Attribute\Column;
     use Slate\Neat\Attribute\Scope;
@@ -18,8 +19,9 @@ namespace Slate\Neat {
     use Slate\Sql\Modifier\TSqlResultModifiers;
     use Slate\Sql\SqlReference;
     use Slate\Sql\SqlStatement;
+    use Slate\Sql\Statement\SqlSelectStatement;
 
-    class EntityQueryVertex extends SqlStatement {
+class EntityQueryVertex extends SqlStatement implements IAnyForwardConvertable {
         use TSqlHighPriorityModifier;
         use TSqlResultModifiers;
         use TSqlNoCacheModifier;
@@ -34,6 +36,8 @@ namespace Slate\Neat {
         public string    $entity;
         public array     $edges;
         public array     $scopes;
+
+        public EntityQueryVertex $nextVertex;
     
         public function __construct(string $entity) {
             $this->id       = $entity::ref();
@@ -45,12 +49,18 @@ namespace Slate\Neat {
             $this->from($entity::ref()->toString());
         }
 
+        
+        public function __clone() {
+            if($this->wheres !== null)
+                $this->wheres = clone $this->wheres;
+        }
+
         public function addOption(string $name, mixed $value): bool {
             $valid = true;
 
             switch($name) {
-                case "flag":
                 case "callback":
+                case "flag":
                 case "orderDirection":
                     $this->{$name} = $value;
                     break;
@@ -93,19 +103,6 @@ namespace Slate\Neat {
             }
 
             return $valid;
-
-            // if(\Arr::contains(["flag", "callback"], $twig)) {
-            //     $currentClassVertex->{$twig} = $value;
-            // }
-            // else if(\Arr::contains(["where", "limit", "offset", "orderBy", "orderByAsc", "orderByDesc"], $twig)) {
-                
-            // }
-            // else if($twig === "scopes") {
-            //     $currentClassVertex->scopes = 
-            // }
-            // else {
-                
-            // }
         }
     
         public function hasEdges(): bool {
@@ -124,6 +121,14 @@ namespace Slate\Neat {
                 }
             );
         }
+        public function modifyQuery(SqlSelectStatement $query, EntityQueryVertex $foreignVertex = null): void {
+            foreach($this->scopes as list($scope, $arguments)) 
+                $scope->parent->invokeArgs(null, [$query, ...$arguments]);
+        }
+
+        public function toAny(): mixed {
+            return $this->toString();
+        }
     
         public function toString(): string {
             $build = $this->build();
@@ -138,12 +143,8 @@ namespace Slate\Neat {
                     : $this->entity::ref();
         }
     
-        public function build(): array {
-            $limit = $this->limit;
-            $offset = $this->offset;
-            $columns = $this->columns;
-            $orderBy = $this->orderBy;
-            $wheres = $this->wheres;
+        public function build(): array {  
+            // debug("Building {$this->entity}");
             
             $this->orderBy = \Arr::map(
                 $this->orderBy,
@@ -151,40 +152,7 @@ namespace Slate\Neat {
                     return $orderBy instanceof EntityReference ? $orderBy->toString(Entity::REF_SQL | Entity::REF_ITEM_WRAP) : $orderBy;
                 }
             );
-    
-            if($this->limit !== null || $this->offset !== null) {
-                $this->limit  = null;
-                $this->offset = null;
-    
-                if($this->flag !== "?" && !\Cls::isSubclassInstanceOf($this, EntityQueryRootVertex::class)) {
-                    $rowNumber =
-                        Sql::winfn("ROW_NUMBER")
-                            ->partitionBy(
-                                $this->entity::ref($this->column->getColumnName())->toString()
-                            )
-        
-                            ->{"orderBy" . ucfirst(\Str::lower($this->orderDirection ?: "ASC"))}(
-                                ...(!\Arr::isEmpty($this->orderBy ?: [])
-                                    ? \Arr::map(
-                                        $this->orderBy,
-                                        function($orderBy) {
-                                            return ($orderBy instanceof EntityReference) ? $orderBy->toString(Entity::REF_SQL) : $orderBy;
-                                        }
-                                    )
-                                    : [
-                                        $this->entity::ref($this->column->getColumnName())->toString()
-                                    ]
-                                )
-                            );
-        
-                    $this->columns = [
-                        (new SqlReference("*")), 
-                        (new SqlReference($rowNumber))->as("`RowNumber`" )
-                    ];
-                    $this->orderBy = [];
-                }
-            }
-    
+
             $build = [
                 "SELECT",
                 $this->buildHighPriorityModifier(),
@@ -195,23 +163,13 @@ namespace Slate\Neat {
                 $this->buildWhereClause(),
                 $this->buildOrderByClause()
             ];
-    
-            $this->limit = $limit;
-            $this->offset = $offset;
-            $this->columns = $columns;
-            $this->orderBy = $orderBy;
-            $this->wheres = $wheres;
-    
-            if(!\Arr::isEmpty($this->orderBy)) {
 
-
-                if($this->limit === null)
-                    $this->limit = "18446744073709551615";
-
+            if(!\Arr::isEmpty($this->orderBy) && $this->hasEdges()) {
+                $this->limit = "18446744073709551615";
 
                 $build[] = $this->buildLimitClause();
             }
-    
+
             return $build;
         }
     }

@@ -3,8 +3,11 @@
 namespace Slate\Sql {
 
     use Slate\Data\IStringForwardConvertable;
+    use Slate\Data\TStringNativeForwardConvertable;
 
-    class SqlExistsExpression { 
+    class SqlExistsExpression implements IStringForwardConvertable { 
+        use TStringNativeForwardConvertable;
+
         protected IStringForwardConvertable $source;
 
         public function __construct(IStringForwardConvertable $source) {

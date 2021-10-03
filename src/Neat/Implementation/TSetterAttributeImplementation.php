@@ -11,8 +11,13 @@ trait TSetterAttributeImplementation {
         public function setterImplemetor(string $name, mixed $value, object $next): void {
             $design = static::design();
 
-            if(($setter = $design->getAttrInstance(Setter::class, $name)) !== null) {
-                $setter->parent->invokeArgs($this, [$value, $setter->getFor()]);
+            if(($setter = $design->getAttrInstance([Setter::class, Property::class], $name)) !== null) {
+                $args = [$value, $setter->getFor()];
+
+                if(\Cls::isSubclassInstanceOf($setter, Property::class))
+                    $args = [$value, true, $setter->getFor()];
+
+                $setter->parent->invokeArgs($this, $args);
             }
             else {
                 $next($name, $value);

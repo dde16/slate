@@ -8,6 +8,9 @@ namespace Slate\Facade {
     use Slate\Sql\SqlExistsExpression;
     use Slate\Sql\SqlWindowFunction;
 
+    /**
+     * A facade containing functions relating to the SQL language.
+     */
     final class Sql extends Facade {
         public static function winfn(string $name): SqlWindowFunction {
             return(new SqlWindowFunction($name));

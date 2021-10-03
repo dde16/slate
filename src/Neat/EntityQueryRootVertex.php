@@ -3,12 +3,16 @@
 namespace Slate\Neat {
 
     use Slate\Facade\DB;
+    use Slate\Facade\Sql;
     use Slate\Neat\Entity;
+    use Slate\Sql\SqlReference;
     use Slate\Sql\Statement\SqlSelectStatement;
 
     class EntityQueryRootVertex extends EntityQueryVertex {
-        public function modifyQuery(SqlSelectStatement $query): void {
-            if($this->limit !== null || $this->offset !== null) {
+        public function modifyQuery(SqlSelectStatement $query, EntityQueryVertex $foreignVertex = null): void {
+            parent::modifyQuery($query, $foreignVertex);
+
+            if($this->limit !== null || $this->offset !== null) {                
                 if($this->hasEdges()) {
                     $query->var("rowCache", "NULL");
                     $query->var("rowNumber", "0");
@@ -29,28 +33,21 @@ namespace Slate\Neat {
                         );
 
                     if($this->limit !== null) {
-
                         $query->where($rowVariable, "BETWEEN", DB::raw(($this->offset ?: 0) . " AND " . $this->limit));
                     }
                     else if($this->offset !== null) {
-
                         $query->where($rowVariable, ">=", $this->offset);
                     }
                 }
                 else if(\Arr::isEmpty($this->orderBy)) {
-                    if($this->limit !== null) {
+                    if($this->limit !== null)
                         $query->limit = $this->limit;
-                    }
                     
-                    if($this->offset !== null) {
+                    if($this->offset !== null)
                         $query->offset = $this->offset;
-                    }
                 }
             }
 
-            foreach($this->scopes as list($scope, $arguments)) {
-                $scope->parent->invokeArgs(null, [$query, ...$arguments]);
-            }
     
             // return $query;
         }

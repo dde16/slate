@@ -3,7 +3,7 @@
 namespace Slate\Metalang\Attribute {
     use Attribute;
 
-    #[Attribute(ATTRIBUTE::TARGET_METHOD)]
+    #[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
     class AttributeCall extends AttributeImplementor {
         public const NAME = "AttributeCall";
     }
