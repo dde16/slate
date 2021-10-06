@@ -272,7 +272,7 @@ namespace Slate\IO {
         }
 
         /** Static */
-        public static function getExtensionMimeOf(string $path): string {
+        public static function getExtensionMimeOf(string $path): ?string {
             $pathInfo = \Path::info($path);
 
             if($extension = $pathInfo["extension"]) {

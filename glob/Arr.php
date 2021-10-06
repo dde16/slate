@@ -1681,7 +1681,7 @@ abstract class Arr extends CompoundType {
     }
 
     /**
-     * A variant of 'array_column' which upon duplicate keys, will store them in an array.
+     * A variant of 'array_column' which upon duplicate keys, will store their values together in an array.
      * 
      * @param array $array
      * @param int   $keyIndex
@@ -1708,7 +1708,7 @@ abstract class Arr extends CompoundType {
 
 
     /**
-     * Change the order of an associative array.
+     * Remove the keys of an array and order it.
      * 
      * @param array $array
      * @param array $order The keys to order by.

@@ -64,6 +64,10 @@ namespace Slate\Sql\Condition {
         public function where() {
             return $this->condition(func_get_args(), "AND");
         }
+
+        public function andWhere() {
+            return $this->condition(func_get_args(), "AND");
+        }
         
         public function orWhere() {
             return $this->condition(func_get_args(), "OR");

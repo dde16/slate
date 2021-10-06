@@ -126,8 +126,18 @@ class HttpRequest extends HttpPacket {
             $uri->scheme = \Str::lower(HttpEnvironment::getProtocol());
             $uri->host     = $_SERVER["HTTP_HOST"];
 
+            $queries = ["get" => $_GET, "post" => $_POST];
+
+            foreach($queries as $method => $query) {
+                if(env("mvc.security.auto-sanitise", ["fallback" => true]) === true)
+                    $queries[$method] = Security::sanitise(
+                        $query,
+                        env("mvc.security.auto-sanitise.escapes", ["fallback" => ["\"", "'", "`"], "validator" => Closure::fromCallable('is_array')])
+                    );
+            }
+
             $uri->setPath(HttpEnvironment::getPath());
-            $uri->query = $_GET;
+            $uri->query = $queries["get"];
             
             /** Load Version */
             $version = HttpEnvironment::getVersion();
@@ -142,19 +152,12 @@ class HttpRequest extends HttpPacket {
             $cookies = HttpEnvironment::getCookies();
 
             /** Load Query */
-            $query = $_POST;
+            $query = $queries["post"];
 
             /** Load Files */
             $files = HttpEnvironment::getFiles();
 
-            foreach([&$uri->query, &$query] as $methodQuery) {
-                if(env("mvc.security.auto-sanitise", ["fallback" => true]) === true)
-                    $methodQuery = Security::sanitise(
-                        $methodQuery,
-                        env("mvc.security.auto-sanitise.escapes", ["fallback" => ["\"", "'", "`"], "validator" => Closure::fromCallable('is_array')])
-                    );
-            }
-
+            
             return(new static($method, $uri, $version, $headers, $cookies, $query, $files));
         }
     }

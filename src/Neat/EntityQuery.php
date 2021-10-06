@@ -394,13 +394,20 @@ namespace Slate\Neat {
             return $this;
         }
 
-        public function page(int $size, int $number): array {
+        public function _page(int $size, int $number): EntityQuery {
             $query = clone $this;
 
             $query->limit(($size * ($number+1))+1, ($size * $number) + intval($number > 0));
 
             if($this->conn === null)
                 $query->using($this->entity::conn(fallback: true));
+
+            return $query;
+        }
+        
+
+        public function page(int $size, int $number): array {
+            $query = $this->_page($size, $number);
 
             $rows = $query->get();
     

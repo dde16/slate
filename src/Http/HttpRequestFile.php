@@ -13,9 +13,8 @@ namespace Slate\Http {
             string $mime,
             int    $error
         ) {
-            parent::__construct($path);
+            parent::__construct($field, $path);
 
-            $this->httpField = $field;
             $this->httpFileName = $filename;
 
             $this->httpMime = $mime;

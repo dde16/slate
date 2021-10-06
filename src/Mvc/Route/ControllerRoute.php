@@ -65,13 +65,11 @@ namespace Slate\Mvc\Route {
                     }
                     catch(\Throwable $throwable) {
                         $controllerResult = $throwable;
-                        $cacheResult = false;
                     }
 
                     $bypass = false;
 
                     if(is_object($controllerResult) ? (is_subclass_of($controllerResult, Result::class) || $controllerResult instanceof Result) : false) {
-
                         $bypass = $controllerResult->bypasses();
                     }
 
@@ -91,10 +89,6 @@ namespace Slate\Mvc\Route {
                                 return $data;
                             }
                         );
-
-                            
-
-                        
                     }
 
                     return $controllerResult;

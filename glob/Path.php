@@ -37,7 +37,7 @@ abstract class Path {
 
     public static function getPermissions(string $path): int|false {
         if(!\Path::exists($path)) {
-            throw new Slate\Exception\PathNotFoundException([
+            throw new Slate\Exception\IOException([
                 "path" => $path
             ]);
         }
@@ -47,7 +47,7 @@ abstract class Path {
 
     public static function getOwner(string $path): int|false {
         if(!\Path::exists($path)) {
-            throw new Slate\Exception\PathNotFoundException([
+            throw new Slate\Exception\IOException([
                 "path" => $path
             ]);
         }
@@ -57,7 +57,7 @@ abstract class Path {
 
     public static function chmod(string $path, int $mode): bool {
         if(!\Path::exists($path)) {
-            throw new Slate\Exception\PathNotFoundException([
+            throw new Slate\Exception\IOException([
                 "path" => $path
             ]);
         }
@@ -67,7 +67,7 @@ abstract class Path {
 
     public static function chown(string $path, $user): bool {
         if(!\Path::exists($path)) {
-            throw new Slate\Exception\PathNotFoundException([
+            throw new Slate\Exception\IOException([
                 "path" => $path
             ]);
         }
@@ -81,7 +81,7 @@ abstract class Path {
 
     public static function getFreeSpace(string $path): float|false {
         if(!\Path::exists($path)) {
-            throw new Slate\Exception\PathNotFoundException([
+            throw new Slate\Exception\IOException([
                 "path" => $path
             ]);
         }
@@ -100,7 +100,7 @@ abstract class Path {
 
     public static function getTotalSpace(string $path): float|false {
         if(!\Path::exists($path)) {
-            throw new Slate\Exception\PathNotFoundException([
+            throw new Slate\Exception\IOException([
                 "path" => $path
             ]);
         }
@@ -136,7 +136,7 @@ abstract class Path {
             }
         }
         else {
-            throw new Slate\Exception\PathNotFoundException([
+            throw new Slate\Exception\IOException([
                 "path" => $path
             ]);
         }
@@ -163,7 +163,7 @@ abstract class Path {
             }
         }
         else {
-            throw new Slate\Exception\PathNotFoundException([
+            throw new Slate\Exception\IOException([
                 "path" => $path
             ]);
         }

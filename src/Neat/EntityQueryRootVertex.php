@@ -33,10 +33,10 @@ namespace Slate\Neat {
                         );
 
                     if($this->limit !== null) {
-                        $query->where($rowVariable, "BETWEEN", DB::raw(($this->offset ?: 0) . " AND " . $this->limit));
+                        $query->trailingWheres[] = ["and", [$rowVariable, "BETWEEN", DB::raw(($this->offset ?: 0) . " AND " . $this->limit)]];
                     }
                     else if($this->offset !== null) {
-                        $query->where($rowVariable, ">=", $this->offset);
+                        $query->trailingWheres[] = ["and", [$rowVariable, ">=", $this->offset]];
                     }
                 }
                 else if(\Arr::isEmpty($this->orderBy)) {
@@ -47,9 +47,6 @@ namespace Slate\Neat {
                         $query->offset = $this->offset;
                 }
             }
-
-    
-            // return $query;
         }
     }
 }
