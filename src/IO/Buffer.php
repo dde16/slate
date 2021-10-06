@@ -5,6 +5,11 @@ namespace Slate\IO {
     use Closure;
     use Error;
     
+    /**
+     * Facade for buffer functions.
+     * 
+     * TODO: refractor
+     */
     abstract class Buffer {
         const START = 1;
         const PIPE  = 2;
