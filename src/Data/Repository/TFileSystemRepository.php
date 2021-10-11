@@ -87,7 +87,7 @@ namespace Slate\Data\Repository {
                 $file->relseek(-1);
 
                 if($ttl === null)
-                    throw new \Error("Unable to parse the ttl for cache key '". $file->filename ."'.");
+                    throw new \Error("Unable to parse the ttl for cache key '". $file->path->getFilename() ."'.");
 
                 if($close)
                     $file->close();

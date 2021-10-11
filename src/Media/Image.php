@@ -187,7 +187,7 @@ class Image {
                 $text
             ));
 
-            if(File::exists($fontfile)) {
+            if(is_file($fontfile)) {
                 if($this->colours->has($colourName)) {
                     $colour = $this->colours[$colourName];
 
@@ -301,7 +301,7 @@ class Image {
 
             $scale    = $height / $originalHeight;
             $nuHeight = $height;
-            $nuWidth  = \Math::round($scale * $originalWidth);
+            $nuWidth  = round($scale * $originalWidth);
 
             $this->scaleTo($nuWidth, $nuHeight);
         }

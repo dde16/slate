@@ -81,7 +81,7 @@ class InterpreterDesign extends MetalangDesign  {
                         throw new \Error(\Str::format("Already counting token '{}'.", $tokenName));
 
                     if(!\Arr::contains($this->countTrackedMap, $alias)) {
-                        $trackId = 2 ** $this->tracking;
+                        $trackId = 1 << $this->tracking;
                         $this->countTrackedMap[$trackId]       = $alias;
                     }
                     else {
@@ -104,7 +104,7 @@ class InterpreterDesign extends MetalangDesign  {
                 if(!is_array($closeTokens))
                     $closeTokens = [$closeTokens];
 
-                $trackId = 2 ** $this->tracking;
+                $trackId = 1 << $this->tracking;
                 $this->levelTrackedMap[$trackId] = $alias;
     
                 foreach($openTokens as $openTokenId) {
@@ -129,7 +129,7 @@ class InterpreterDesign extends MetalangDesign  {
                 if(!is_array($closeTokens))
                     $closeTokens = [$closeTokens];
 
-                $trackId = 2 ** $this->tracking;
+                $trackId = 1 << $this->tracking;
                 $this->levelTrackedResetMap[$trackId] = $alias;
     
                 foreach($openTokens as $openTokenId) {

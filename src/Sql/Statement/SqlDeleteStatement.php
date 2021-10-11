@@ -4,9 +4,9 @@ namespace Slate\Sql\Statement {
     use Slate\Sql\SqlConstruct;
     use Slate\Sql\SqlStatement;
 
-    use Slate\Sql\Modifier\TSqlLowPriorityModifier;
-    use Slate\Sql\Modifier\TSqlQuickModifier;
-    use Slate\Sql\Modifier\TSqlIgnoreModifier;
+    
+    
+    
 
     use Slate\Sql\Clause\TSqlFromClause;
     use Slate\Sql\Clause\TSqlWhereClause;
@@ -16,23 +16,28 @@ namespace Slate\Sql\Statement {
     use Slate\Facade\DB;
     use Slate\Mvc\App;
     use Slate\Sql\ISqlResultProvider;
+    use Slate\Sql\SqlModifier;
 
     class SqlDeleteStatement extends SqlStatement  {
-        use TSqlLowPriorityModifier;
-        use TSqlQuickModifier;
-        use TSqlIgnoreModifier;
-
         use TSqlFromClause;
         use TSqlWhereClause;
         use TSqlOrderByClause;
         use TSqlLimitClause;
+
+        public const MODIFIERS =
+            SqlModifier::LOW_PRIORITY
+            | SqlModifier::QUICK
+            | SqlModifier::IGNORE
+        ;
     
         public function build(): array {
             return [
                 "DELETE",
-                $this->buildLowPriorityModifier(),
-                $this->buildQuickModifier(),
-                $this->buildIgnoreModifier(),
+                ...$this->buildModifiers([
+                    SqlModifier::LOW_PRIORITY,
+                    SqlModifier::QUICK,
+                    SqlModifier::IGNORE
+                ]),
                 $this->buildFromClause(),
                 $this->buildWhereClause(),
                 $this->buildOrderByClause(),

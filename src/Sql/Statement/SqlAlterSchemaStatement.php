@@ -6,9 +6,9 @@ namespace Slate\Sql\Statement {
     use Slate\Sql\Clause\TSqlCollateClause;
     use Slate\Sql\Clause\TSqlFromClause;
     use Slate\Sql\Clause\TSqlMediumClause;
-    use Slate\Sql\Modifier\TSqlIgnoreModifier;
-    use Slate\Sql\Modifier\TSqlReplaceModifier;
-    use Slate\Sql\Modifier\TSqlTemporaryModifier;
+    
+    
+    
     use Slate\Sql\SqlStatement;
 
     class SqlAlterSchemaStatement extends SqlStatement {

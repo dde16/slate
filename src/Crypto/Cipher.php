@@ -41,14 +41,12 @@ namespace Slate\Crypto {
         public function setMethod(string $method): void {
             $methods = openssl_get_cipher_methods();
 
-            if(\Arr::contains($methods, $method)  || \Arr::contains($methods, \Str::lower($method))) {
+            if(\Arr::contains($methods, \Str::lower($method))) {
                 $this->method = $method;
                 $this->ivlen = openssl_cipher_iv_length($method);
             }
             else {
-                throw new \InvalidArgumentException(
-                    \Str::format("Cipher method '{}' is not supported.", $method)
-                );
+                throw new \InvalidArgumentException("Cipher method '{$method}' is not supported.");
             }
         }
         

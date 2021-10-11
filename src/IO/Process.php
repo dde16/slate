@@ -28,9 +28,9 @@ namespace Slate\IO {
             2 => ["pipe", "w"]  // stderr is a pipe that the child will write to
         ];
 
-        public $stdin;
-        public $stdout;
-        public $stderr;
+        public IStream $stdin;
+        public IStream $stdout;
+        public IStream $stderr;
 
         public function __construct(string $cwd = null) {
             $this->cwd = $cwd;

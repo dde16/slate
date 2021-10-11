@@ -2,31 +2,30 @@
 
 namespace Slate\Sql\Statement {
 
-    use Slate\Sql\Clause\TSqlCharacterSetClause;
-    use Slate\Sql\Clause\TSqlCollateClause;
-    use Slate\Sql\Clause\TSqlFromClause;
-    use Slate\Sql\Clause\TSqlMediumClause;
-    use Slate\Sql\Modifier\TSqlIgnoreModifier;
-    use Slate\Sql\Modifier\TSqlReplaceModifier;
-    use Slate\Sql\Modifier\TSqlTemporaryModifier;
+    use Slate\Sql\Clause\TSqlDropAuxiliariesClause;
+    use Slate\Sql\Clause\TSqlRenameAuxiliariesClause;
+    use Slate\Sql\Clause\TSqlRenameClause;
+    
+    use Slate\Sql\SqlModifier;
     use Slate\Sql\SqlStatement;
 
     class SqlAlterTableStatement extends SqlStatement {
-        use TSqlCharacterSetClause;
-        use TSqlCollateClause;
+        use TSqlDropAuxiliariesClause;
+        use TSqlRenameAuxiliariesClause;
+        use TSqlRenameClause;
 
-        protected string $schema;
+        public const MODIFIERS = SqlModifier::FORCE;
 
-        public function __construct(string $name) {
-            $this->schema = $name;
-        }
+        protected array $additions = [];
 
         public function build(): array {
             return [
-                "ALTER SCHEMA",
-                $this->schema,
-                $this->buildCharsetClause(),
-                $this->buildCollateClause()
+                "ALTER TABLE",
+                $this->name,
+                $this->buildDropAuxiliariesClause(),
+                $this->buildRenameClause(),
+                $this->buildRenameAuxiliariesClause(),
+                $this->buildModifier(SqlModifier::FORCE)
             ];
         }
     }

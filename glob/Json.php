@@ -1,15 +1,7 @@
 <?php
 
 
-abstract class Json {
-    public static function encode(mixed $source, int $options = 0, int $depth = 512): string|false {
-        return json_encode($source, $options, $depth);
-    }
-
-    public static function decode(string $source, bool $assoc = true, int $depth = 512, int $flags = 0): array|object|false {
-        return json_decode($source, $assoc, $depth, $flags);
-    }
-    
+class Json {
     public static function parse(string $json, bool $assoc = true, int $depth = 512, int $flags = 0): array {
         $json = json_decode($json, $assoc, $depth, $flags);
 
@@ -50,8 +42,9 @@ abstract class Json {
 
     /**
      * This is used to determine the full scope of a json string from
-     * a given start position. This is useful for web scraping for complex
-     * web pages.
+     * a given start position. This is useful for web scraping from complex
+     * web pages where some data is injected within the web page for SPAs
+     * like react.
      *
      * @param string $source The contents of the string to climb.
      * @param int $position Where to start in the contents.

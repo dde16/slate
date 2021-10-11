@@ -243,43 +243,43 @@ final class ArrTest extends TestCase {
         $test = [1,2,3,4,6];
 
         $this->assertEquals(
-            \Arr::endEntry($test),
-            [4, 6]
+            [4, 6],
+            \Arr::endEntry($test)
         );
 
         $this->assertEquals(
-            \Arr::end($test),
-            6
+            6,
+            \Arr::end($test)
         );
 
         $this->assertEquals(
-            \Arr::endEntry($test, fn($v) => $v < 3),
-            [1, 2]
+            [1, 2],
+            \Arr::endEntry($test, fn($v) => $v < 3)
         );
 
         $this->assertEquals(
-            \Arr::end($test, fn($v) => $v < 3),
-            2
+            2,
+            \Arr::end($test, fn($v) => $v < 3)
         );
 
         $this->assertEquals(
-            \Arr::lastEntry($test),
-            [4, 6]
+            [4, 6],
+            \Arr::lastEntry($test)
         );
 
         $this->assertEquals(
-            \Arr::last($test),
-            6
+            6,
+            \Arr::last($test)
         );
 
         $this->assertEquals(
-            \Arr::lastEntry($test, fn($v) => $v < 3),
-            [1, 2]
+            [1, 2],
+            \Arr::lastEntry($test, fn($v) => $v < 3)
         );
 
         $this->assertEquals(
-            \Arr::last($test, fn($v) => $v < 3),
-            2
+            2,
+            \Arr::last($test, fn($v) => $v < 3)
         );
     }
 
@@ -348,45 +348,112 @@ final class ArrTest extends TestCase {
         $test = [1,2,3,4,6];
 
         $this->assertEquals(
-            \Arr::startEntry($test),
-            [0, 1]
+            [0, 1],
+            \Arr::startEntry($test)
         );
 
         $this->assertEquals(
-            \Arr::start($test),
-            1
+            1,
+            \Arr::start($test)
         );
 
         $this->assertEquals(
-            \Arr::startEntry($test, fn($v) => $v > 3),
-            [3, 4]
+            [3, 4],
+            \Arr::startEntry($test, fn($v) => $v > 3)
         );
 
         $this->assertEquals(
-            \Arr::start($test, fn($v) => $v > 3),
-            4
+            4,
+            \Arr::start($test, fn($v) => $v > 3)
         );
 
         $this->assertEquals(
-            \Arr::firstEntry($test),
-            [0, 1]
+            [0, 1],
+            \Arr::firstEntry($test)
         );
 
         $this->assertEquals(
-            \Arr::first($test),
-            1
+            1,
+            \Arr::first($test)
         );
 
         $this->assertEquals(
-            \Arr::firstEntry($test, fn($v) => $v > 3),
-            [3, 4]
+            [3, 4],
+            \Arr::firstEntry($test, fn($v) => $v > 3)
         );
 
         $this->assertEquals(
-            \Arr::first($test, fn($v) => $v > 3),
-            4
+            4,
+            \Arr::first($test, fn($v) => $v > 3)
         );
     }
+
+    public function testArrayXor(): void {
+        $this->assertEquals(6, \Arr::xor([1,2,5]));
+    }
+
+    public function testArrayOr(): void {
+        $this->assertEquals(7, \Arr::or([1,4,6]));
+    }
+
+    public function testArrayMiddle(): void {
+        $this->assertEquals(1, \Arr::middle(["a","b","c"]));
+        $this->assertEquals(2, \Arr::middle(["a","b","c","d"], \Math::ROUND_HALF_UP));
+        $this->assertEquals(1, \Arr::middle(["a","b","c","d"], \Math::ROUND_HALF_DOWN));
+    }
+
+    public function testArrayModify(): void {
+        $array = [
+            "x" => 1,
+            "y" => 2
+        ];
+
+        \Arr::modify($array, ["x", "y", "z"], fn() => 2);
+
+        $this->assertEquals(["x" => 2, "y" => 2, "z" => 2], $array);
+    }
+
+    public function testArrayDive(): void {
+        $array = [
+            [
+                1,
+                2
+            ],
+            [
+                3,
+                4,
+                [
+                    5,
+                    6
+                ],
+            ]
+        ];
+
+        $this->assertEquals([1,2,3,4,[5,6]], \Arr::dive($array, 2));
+        $this->assertEquals([5, 6], \Arr::dive($array, 3));
+        $this->assertNull(\Arr::dive($array, 4));
+    }
+
+    public function testArrayDrill(): void {
+        $this->assertEquals(
+            [
+                "path" => [
+                    "to" => "something"
+                ]
+            ],
+            \Arr::drill(["path", "to"], "something")
+        );
+    }
+
+    public function testArrayFlipX(): void {
+        $this->assertEquals([3,4,1,2], \Arr::flipx([1,2,3,4]));
+        $this->assertEquals([3,2,1], \Arr::flipx([1,2,3]));
+    }
+
+    public function testArrayAssociate(): void {
+        $this->assertEquals(["zero" => true, "one" => true], \Arr::associate(["zero", "one"], true));
+    }
 }
+
 
 ?>

@@ -5,6 +5,9 @@ namespace Slate\Data {
     use Generator;
     use Slate\Data\Iterator\ArrayAssocIterator;
 
+    /**
+     * A class to pretty print rows.
+     */
     class Table extends BasicArray {
         protected static string $container = "rows";
 
@@ -30,11 +33,11 @@ namespace Slate\Data {
                 $column = \Arr::find($this->columns, $column);
 
                 if($column === -1)
-                    throw new \Error(\Str::format("Column '{}' doesn't exist.", $column));
+                    throw new \Error("Column '{$column}' doesn't exist.");
             }
 
             if($column > count($this->columns)-1)
-                throw new \Error(\Str::format("Column index '{}' is out of the range of available columns.", $column));
+                throw new \Error("Column index '{$column}' is out of the range of available columns.");
 
             return $column;
         }
@@ -79,7 +82,7 @@ namespace Slate\Data {
         }
 
         public function centredMovingAverage(int|string $sourceColumn, int $size = 2): array {
-            $backwards = (int)\Math::ceil(($size-1) / 2);
+            $backwards = (int)ceil(($size-1) / 2);
             $forwards  = $size - ($backwards + 1);
 
             return $this->movingAverage($sourceColumn, [$backwards, $forwards]);

@@ -1,7 +1,10 @@
 <?php
 
 namespace Slate\Http {
-    abstract class HttpEnvironment {
+
+use Closure;
+
+abstract class HttpEnvironment {
         public static function getBrowser(string $userAgent): array|null { 
             if(($browser = get_browser($userAgent, true)) !== false) {
                 \Arr::modify($browser, ["ismobiledevice", "istablet", "crawler"], function($value) {
@@ -25,7 +28,7 @@ namespace Slate\Http {
         }
 
         public static function hasExtensions(array $names): bool {
-            return \Arr::all($names, 'extension_loaded');
+            return \Arr::all($names, Closure::fromCallable('extension_loaded'));
         }
 
         public static function hasExtension(string $name): bool {

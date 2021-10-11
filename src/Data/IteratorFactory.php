@@ -11,9 +11,14 @@ namespace Slate\Data {
     class IteratorFactory extends Factory {
         public const MAP = [
             Generator::class => BufferedIterator::class,
-            Iterator::class => BufferedIterator::class,
-            "array"  => ArrayExtendedIterator::class,
-            "string" => StringIterator::class
+            "generator"      => BufferedIterator::class,
+
+            Iterator::class  => BufferedIterator::class,
+            "iterator"       => BufferedIterator::class,
+
+            "array"          => ArrayExtendedIterator::class,
+            
+            "string"         => StringIterator::class
         ];
     }
 }

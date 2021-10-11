@@ -8,15 +8,21 @@ namespace Slate\Sql\Expression {
     use Slate\Sql\Clause\TSqlCollateClause;
     use Slate\Sql\Clause\TSqlCommentClause;
     use Slate\Sql\Clause\TSqlCharacterSetClause;
-    use Slate\Sql\Modifier\TSqlVisibilityModifiers;
     use Slate\Sql\SqlConstruct;
+    use Slate\Sql\SqlModifier;
+    use Slate\Sql\TSqlModifierMiddleware;
+    use Slate\Sql\TSqlModifiers;
 
-    class SqlColumnBlueprint extends SqlConstruct {
+class SqlColumnBlueprint extends SqlConstruct {
+        use TSqlModifiers;
+        use TSqlModifierMiddleware;
+
         use TSqlCharacterSetClause;
         use TSqlCommentClause;
         use TSqlCollateClause;
         use TSqlEngineAttributeClause;
-        use TSqlVisibilityModifiers;
+
+        public const MODIFIERS = SqlModifier::VISIBILITY;
 
         protected string $name;
         protected string $datatype;
@@ -28,6 +34,20 @@ namespace Slate\Sql\Expression {
 
         protected bool   $uniqueKey = false;
         protected bool   $primaryKey = false;
+
+        protected ?string $insertionPoint = null;
+
+        public function first(): static {
+            $this->insertionPoint = "FIRST";
+
+            return $this;
+        }
+
+        public function after(string $column): static {
+            $this->insertionPoint = "AFTER {$column}";
+
+            return $this;
+        }
 
 
         //FIXED | DYNAMIC | DEFAULT
@@ -116,11 +136,15 @@ namespace Slate\Sql\Expression {
             return $this;
         }
 
+        public function name(): string {
+            return $this->name;
+        }
+
         public function build(): array {
             return [
                 $this->name,
-                ($this->nullable ? "NOT NULL" : null),
                 $this->datatype,
+                ($this->nullable ? "NOT NULL" : null),
                 ($this->default ? "DEFAULT {$this->default}" : null),
                 $this->visibility,
                 $this->incremental ? "AUTO_INCREMENT" : null,

@@ -1,6 +1,7 @@
 <?php
 
 namespace Slate\Media {
+    //TODO: replace file path properties with SplFileInfo
     class Uri {
         const SCHEME   = (1<<0);
         const HOST     = (1<<1);
@@ -68,29 +69,34 @@ namespace Slate\Media {
         public function __invoke(): string {
             return $this->toString();
         }
-
-        public function extend(string $url): static {
-            $url = new static($url);
-            
-            if(!$url->host) {
-                $url->scheme = $this->scheme;
-                $url->host   = $this->host;
-                $url->user   = $this->user;
-                $url->pass   = $this->pass;
-                $url->port   = $this->port;
+        
+        public function extend(string|Uri $uri): static {
+            if(is_object($uri)) {
+                $uri = clone $uri;
+            }
+            else {
+                $uri = new static($uri);
             }
             
-            if($url->relative) {
+            if(!$uri->host) {
+                $uri->scheme = $this->scheme;
+                $uri->host   = $this->host;
+                $uri->user   = $this->user;
+                $uri->pass   = $this->pass;
+                $uri->port   = $this->port;
+            }
+            
+            if($uri->relative) {
                 $split = \Str::split(\Str::trimAffix($this->getPath(), "/"), "/");
 
-                $url->setPath(
-                    "/".\Arr::join(count($split) === 1 ? $split : \Arr::slice($split, 0, -1), "/") . \Path::normalise($url->getPath())
+                $uri->setPath(
+                    "/".\Arr::join(count($split) === 1 ? $split : \Arr::slice($split, 0, -1), "/") . \Path::normalise($uri->getPath())
                 );
             }
 
-            $url->relative = 0;
+            $uri->relative = 0;
 
-            return $url;
+            return $uri;
         }
         
         public function getScheme(): ?string {
@@ -221,6 +227,21 @@ namespace Slate\Media {
             }
 
             return !\Str::isEmpty($url) ? $url : null;
+        }
+
+        public function forWeb(): bool {
+            return $this->host !== null;
+        }
+
+        public function forFileSystem(): bool {
+            return
+                \Arr::none([
+                    $this->scheme,
+                    $this->port,
+                    $this->user,
+                    $this->pass,
+                    $this->fragment
+                ]) && \Arr::isEmpty($this->query);
         }
 
         public function format(string $format): string {

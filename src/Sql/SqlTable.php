@@ -1,10 +1,10 @@
 <?php
 
 namespace Slate\Sql {
+    use Slate\Facade\DB;
+    use Slate\Sql\Expression\SqlColumnBlueprint;
 
-use Slate\Facade\DB;
-
-final class SqlTable implements ISqlStorageMedium {
+    final class SqlTable implements ISqlStorageMedium {
         protected SqlSchema $schema;
         protected string    $name;
         protected array     $columns;
@@ -14,11 +14,24 @@ final class SqlTable implements ISqlStorageMedium {
             $this->name   = $name;
         }
 
-        public function column(string $name): SqlColumn {
-            return $this->columns[$name];
+        public function column(string $name): SqlColumn|SqlColumnBlueprint|null {
+            $column = &$this->columns[$name];
+
+            if($column === null)
+                $column = new SqlColumnBlueprint($name);
+
+            return $column;
+        }
+        
+        public function load(array $options = []): void { }
+
+        public function name(): string {
+            return $this->name;
         }
 
-        public function add(SqlColumn $column) { }
+        public function fullname(): string {
+            return "{$this->schema->name()}.{$this->name}";
+        }
 
         public function exists(): bool {
             return DB::select()
@@ -30,7 +43,14 @@ final class SqlTable implements ISqlStorageMedium {
 
         public function drop(): void {}
 
-        public function commit(): void {}
+        public function commit(): void {
+            if($this->exists()) {
+
+            }
+            else {
+                $this->create();
+            }
+        }
 
         public function lock(): void {}
 
@@ -39,9 +59,15 @@ final class SqlTable implements ISqlStorageMedium {
         public function unlock(): void {}
 
         public function create(): void {
-            $stmt = DB::create()->table("{$this->schema->name()}.{$this->name}");
+            $stmt = DB::create()->table($this->fullname());
 
-            
+            foreach($this->columns as $column) {
+                if(\Cls::isSubclassInstanceOf($column, SqlColumnBlueprint::class)) {
+                    $stmt->column($column);
+                }
+            }
+
+            debug($stmt->toString());
         }
     }
 }

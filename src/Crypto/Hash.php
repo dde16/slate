@@ -34,9 +34,7 @@ namespace Slate\Crypto {
                 $this->algorithm = $algorithm;
             }
             else {
-                throw new \InvalidArgumentException(
-                    \Str::format("Hash method '{}' is not supported.", $algorithm)
-                );
+                throw new \InvalidArgumentException("Hash method '{$algorithm}' is not supported.");
             }
         }
 

@@ -87,10 +87,10 @@ namespace Slate\Data\Storage {
                     function($pair) {
                         $sum = 0;
                         
-                        for($index = count($pair); $index > 0; $index--) {
+                        for($index = strlen($pair)-1; $index >= 0; $index--) {
                             $char = $pair[$index];
 
-                            $sum += $char << $index * $this->bitsize;
+                            $sum |= ord($char) << ($index * intval($this->bitsize / 8));
                         }
 
                         return $sum;
@@ -136,7 +136,7 @@ namespace Slate\Data\Storage {
             if($charsize == null)
                 $charsize = $this->bitsize;
 
-            $charsizeMax = (2 ** $charsize)-1;
+            $charsizeMax = (1 << $charsize)-1;
             $intPackSize = (int)($this->bitsize / $charsize);
 
             $string = "";
@@ -240,9 +240,7 @@ namespace Slate\Data\Storage {
          * @return void
          */
         public function flip(): void {
-            $mask = \Integer::max($this->bitsize);
-
-            foreach($this->integers as &$int) $int ^= $mask;
+            foreach($this->integers as &$int) $int = ~$int;
         }
         
         /**
@@ -251,14 +249,11 @@ namespace Slate\Data\Storage {
          * @param  mixed $uid
          * @return static
          */
-        public static function fromUid(string $uid): static {
+        public static function fromUID(string $uid): static {
             $uid = \Str::replace($uid, "-", "");
 
             if(($length = strlen($uid)) !== 32)
-                throw new \Error(\Str::format(
-                    "Invalid UID length of {}.",
-                    $length
-                ));
+                throw new \Error("Invalid UID length of {$length}.");
 
             return(new static(\Arr::map(\Str::split($uid, 16), 'hexdec')));
         }
@@ -268,21 +263,20 @@ namespace Slate\Data\Storage {
          *
          * @return string
          */
-        public function toUid(): string {
+        public function toUID(): string {
             if(count($this->integers) !== 2)
                 throw new \Error("There must be atleast two integers to make a valid guid.");
 
             $hex = \Str::split($this->toHex(), 4);
 
             //8-4-4-4-12
-            return \Str::format(
-                "{}-{}-{}-{}-{}",
+            return \Arr::join([
                 \Arr::join(array_slice($hex, 0, 2)),
                 \Arr::join(array_slice($hex, 2, 1)),
                 \Arr::join(array_slice($hex, 3, 1)),
                 \Arr::join(array_slice($hex, 4, 1)),
                 \Arr::join(array_slice($hex, 5, 3))
-            );
+            ], "-");
         }
     }
 }

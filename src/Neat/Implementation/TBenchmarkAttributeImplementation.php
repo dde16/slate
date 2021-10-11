@@ -22,7 +22,7 @@ trait TBenchmarkAttributeImplementation {
         }
 
         #[AttributeCall(Benchmark::class, [Retry::class, Cache::class])]
-        public static function benchmarkInstanceImplementor(string $name, array $arguments, object $next): mixed {
+        public function benchmarkInstanceImplementor(string $name, array $arguments, object $next): mixed {
             return static::benchmarkSharedImplementor(
                 $name, $arguments,
                 function(string $name, array $arguments) {

@@ -9,6 +9,10 @@ class Real extends ScalarType implements \Slate\Data\ISizeStaticallyAttainable {
     const MIN              = PHP_FLOAT_MIN;
     const MAX              = PHP_FLOAT_MAX;
 
+    public static function random(): float {
+        return random_int(1, PHP_INT_MAX) / PHP_INT_MAX;
+    }
+
     public static function getSize(): int {
         return strlen(\Any::dec2bin(PHP_FLOAT_MAX));
     }

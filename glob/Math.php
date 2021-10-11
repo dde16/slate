@@ -132,57 +132,6 @@ abstract class Math {
         return max(\Arr::map($matrix, 'count'));
     }
 
-    //TODO: remove in favour of other function
-    public static function linspace(float $min, float $max, int $count = 50, bool $endpoint = true): array {
-        $range = $max - $min;
-
-        $unit = floor($range / ($endpoint ? $count - 1 : $count));
-        $space = [];
-
-        for ($value = $min; $value <= $max; $value += $unit)
-            $space[] = $value;
-
-        if ($endpoint === false)
-            array_pop($space);
-        
-        return $space;
-    }
-
-    //TODO: remove and combine with linspace
-    public static function generateData(
-        array $bounds,
-        int   $count,
-        int   $precision = 1000
-    ) {
-        $bounds = \Arr::map(
-            $bounds,
-            function($bound) use($precision) {
-                return \Arr::map(
-                    $bound,
-                    function($dimensionBound) use($precision) {
-                        return (int)round($dimensionBound * $precision);
-                    }
-                );
-            }
-        );
-
-
-        $points = [];
-
-        for($index = 0; $index < $count; $index++) {
-            $point = [];
-
-            foreach($bounds as list($lowerDimensionBound, $upperDimensionBound)) {
-                $point[] = random_int($lowerDimensionBound, $upperDimensionBound) / $precision;
-            }
-
-
-            $points[] = $point;
-        }
-
-        return $points;
-    }
-
     /**
      * Get the euclidean distance of two matrices.
      * 
@@ -207,61 +156,6 @@ abstract class Math {
     }
 
     /**
-     * Perform the fourier transform.
-     * 
-     * @param array $amplitudes
-     * 
-     * @return array
-     */
-    public static function fft(array $amplitudes): array {
-        $size = count($amplitudes);
-
-        if($size <= 1)
-            return $amplitudes;
-
-        // Formerly 'hN'
-        $median = $size / 2;
-
-        $odd = $even = \Arr::padRight([], 0, $median);
-
-        for($index = 0; $index < $median; ++$index) {
-            $even[$index] = $amplitudes[$index * 2];
-            $odd[$index] = $amplitudes[($index * 2) + 1];
-        }
-
-        $even = \Math::fft($even);
-        $odd  = \Math::fft($odd);
-
-        $inversePi = (-2) * PI();
-
-        for($index= 0; $index < $median; ++$index) {
-
-            if(!($even[$index] instanceof \Slate\Math\ComplexNumber))
-                $even[$index] = new \Slate\Math\ComplexNumber($even[$index] ?: 0, 0);
-
-            if(!($odd[$index] instanceof \Slate\Math\ComplexNumber))
-                $odd[$index] = new \Slate\Math\ComplexNumber($odd[$index] ?: 0, 0);
-
-            $p = $index / $size;
-
-            $t = new \Slate\Math\ComplexNumber(0, $inversePi * $p);
-
-            $t->exponential($t);
-            $t->multiply($odd[$index]);
-
-            $odd[$index] = clone $even[$index];
-            $odd[$index]->add($t);
-
-            $even[$index]->subtract($t);
-
-            $amplitudes[$index]           = $odd[$index];
-            $amplitudes[$index + $median] = $even[$index];
-        }
-
-        return $amplitudes;
-    }
-
-    /**
      * Perform eulers formula.
      * 
      * @param float|int $i
@@ -271,7 +165,7 @@ abstract class Math {
      * 
      * @return float
      */
-    public static function eulersFormula(float|int $i, float|int $frequency = 1, float|int $time = 1, int $direction = \Math::CLOCKWISE): float {
+    public static function eulersFormula(float|int $i, float|int $frequency = 1, float|int $time = 1, int $direction = \Math::E_CLOCKWISE): float {
         return exp($direction  * 2 * pi() * $i * $frequency * $time);
     }
 
@@ -474,38 +368,7 @@ abstract class Math {
     public static function jump(int|float $number, int|float $anchor): int|float {
         $division = $number / $anchor;
 
-        return (\Math::mod($division, 1.0) !== 0.0 ? \Math::ceil($division) : $division) * $anchor;
-    }
-
-    //TODO: review purpose
-    public static function droop(array $array, callable $callback): array {
-        $floating = 0;
-        $size     = count($array)-1;
-        $last     = &$array[$size];
-    
-        for($index = 0; $index < $size; $index++) {
-            $before = $array[$index];
-            $after  = $callback($before);
-            $delta  = $before - $after;
-    
-            $floating += $delta;
-    
-            $array[$index] = $after;
-        }
-    
-        $last += $floating;
-    
-        return $array;
-    }
-
-    //TODO: review removal
-    public static function distribute($number, $divisor): array {
-        $distribution = $number / $divisor;
-        $decimal      = fmod((float)$distribution, 1.0);
-        $remainder    = $divisor * $decimal;
-        $integer      = (int)$distribution;
-    
-        return [...\Arr::repeat($divisor, $integer), $remainder];
+        return (\Math::mod($division, 1.0) !== 0.0 ? ceil($division) : $division) * $anchor;
     }
 
     /**
@@ -574,11 +437,6 @@ abstract class Math {
         return 1;
     }
 
-    //TODO: remove
-    public static function round($value, int $precision = 0, int $mode = PHP_ROUND_HALF_UP) {
-        return round($value, $precision, $mode);
-    }
-
     /**
      * Normalise a 1d dataset.
      * 
@@ -604,7 +462,7 @@ abstract class Math {
 
         list($normalValue) = \Math::normalise([$value, $minimum, $maximum]);
 
-        return (\Math::round($normalValue, 0, $mode) == 0) ? $minimum : $maximum;
+        return (round($normalValue, 0, $mode) == 0) ? $minimum : $maximum;
     }
 
     /**
@@ -637,27 +495,7 @@ abstract class Math {
      * @return float
      */
     public static function digits(int|float $number): int {
-        return \Math::ceil(\Math::log10((float)$number));
-    }
-
-    //TODO: remove
-    public static function log($value, $base): float|int {
-        return log($value, $base);
-    }
-
-    //TODO: remove
-    public static function log10($value): float|int {
-        return log10($value);
-    }
-
-    //TODO: remove
-    public static function ceil($value): int {
-        return ceil($value);
-    }
-
-    //TODO: remove
-    public static function floor($value): int {
-        return floor($value);
+        return ceil(log10((float)$number));
     }
 
     /**

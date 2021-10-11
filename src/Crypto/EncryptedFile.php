@@ -26,13 +26,13 @@ namespace Slate\Crypto {
             $this->blocksize = $this->cipher->ivlen;
         }
 
-        public function open(string $mode = null): void {
+        public function open(string $mode = null, bool $lock = true): void {
             $exists    = \Path::exists($this->path);
             
-            parent::open($mode);
+            parent::open($mode, $lock);
 
-            $truncates = \Arr::contains(File::TRUNCATES, $this->currentMode);
-            $reads     = \Arr::contains(File::READS, $this->currentMode);
+            $truncates = $this->isTruncatable();
+            $reads     = $this->isReadable();
 
             if($truncates) {
                 parent::write($this->iv = openssl_random_pseudo_bytes($this->cipher->ivlen));
@@ -79,18 +79,12 @@ namespace Slate\Crypto {
                 $plaintext = $this->cipher->decrypt($block, iv: $this->iv);
 
                 if($plaintext === false)
-                    throw new \Error(\Str::format(
-                        "Unable to decrypt cipher block at position {}.",
-                        $this->tell()
-                    ));
+                    throw new \Error("Unable to decrypt cipher block at position {$this->tell()}.");
 
                 return $plaintext;
             }
             else {
-                throw new \Error(\Str::format(
-                    "Unable to read cipher block at position {}.",
-                    $this->tell()
-                ));
+                throw new \Error("Unable to read cipher block at position {$this->tell()}.");
             }
 
             return null;

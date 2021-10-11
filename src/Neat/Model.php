@@ -54,7 +54,6 @@ namespace Slate\Neat {
             $this->fromArray($array);
         }
 
-
         public function fromArray(array $properties): void {
             foreach($properties as $propertyName => $propertyValue) {
                 if(static::design()->getAttrInstance(Fillable::class, $propertyName, subclasses: true)) {

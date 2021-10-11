@@ -101,10 +101,7 @@ namespace Slate\Foundation {
                             $command = $_command;
                         }
                         else {
-                            throw new \Error(\Str::format(
-                                "Unknown command or option '{}'.",
-                                $arg
-                            ));
+                            throw new \Error("Unknown command or option '{$arg}'.");
                         }
                     }
                     else {

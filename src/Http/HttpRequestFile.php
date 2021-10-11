@@ -20,6 +20,14 @@ namespace Slate\Http {
             $this->httpMime = $mime;
             $this->httpError = $error;
         }
+
+        public function getHttpError(): int {
+            return $this->httpError;
+        }
+
+        public function getFileName(): int {
+            return $this->httpFileName;
+        }
     }
 }
 

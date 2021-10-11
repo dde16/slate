@@ -11,9 +11,8 @@ class Base64 {
      * @return string
      */
     public static function tryparse(string $base64): string {
-        if(($plaintext = base64_decode($base64, true)) === false) {
+        if(($plaintext = base64_decode($base64, true)) === false)
             throw new Slate\Exception\ParseException("Unknown error while parsing base64 string.");
-        }
 
         return $plaintext;
     }

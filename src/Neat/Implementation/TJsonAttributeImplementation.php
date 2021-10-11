@@ -3,12 +3,21 @@
 namespace Slate\Neat\Implementation {
 
     use Slate\Exception\ParseException;
-    use Slate\Neat\Implementation\Json as JsonAttribute;
+    use Slate\Neat\Attribute\Alias;
+    use Slate\Neat\Attribute\Json as JsonAttribute;
     use Slate\Neat\Model;
 
     trait TJsonAttributeImplementation {
-        
-        public function fromJson(string|array|object $json): void {
+        #[Alias("fromJson")]
+        public static function staticFromJson(string|array|object $json): static {
+            $object = new static();
+            $object->objectFromJson($json);
+
+            return $object;
+        }
+
+        #[Alias("fromJson")]
+        public function objectFromJson(string|array|object $json): void {
             $design = static::design();
 
             if(is_string($json))

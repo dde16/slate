@@ -4,16 +4,16 @@ namespace Slate\Sql\Statement {
     use Slate\Sql\SqlConstruct;
     use Slate\Sql\SqlStatement;
 
-    use Slate\Sql\Modifier\TSqlUniquenessModifiers;
+    
 
-    use Slate\Sql\Modifier\TSqlHighPriorityModifier;
+    
 
-    use Slate\Sql\Modifier\TSqlStraightJoinModifier;
+    
 
-    use Slate\Sql\Modifier\TSqlResultModifiers;
+    
 
-    use Slate\Sql\Modifier\TSqlNoCacheModifier;
-    use Slate\Sql\Modifier\TSqlCalcFoundRowsModifier;
+    
+    
 
     use Slate\Sql\Expression\TSqlColumnsExpression;
 
@@ -27,17 +27,23 @@ namespace Slate\Sql\Statement {
     use Slate\Facade\DB;
 
     use Slate\Sql\ISqlResultProvider;
+    use Slate\Sql\SqlModifier;
 
-    class SqlSelectStatement extends SqlStatement implements ISqlResultProvider {
-        use TSqlUniquenessModifiers;
+class SqlSelectStatement extends SqlStatement implements ISqlResultProvider {
+        public const MODIFIERS =
+            SqlModifier::ALL
+            | SqlModifier::DISTINCT
+            | SqlModifier::DISTINCT_ROW
+            
+            | SqlModifier::HIGH_PRIORITY
+            | SqlModifier::STRAIGHT_JOIN
+            
+            | SqlModifier::BIG_RESULT
+            | SqlModifier::SMALL_RESULT
+            | SqlModifier::BUFFER_RESULT
 
-        use TSqlHighPriorityModifier;
-        use TSqlStraightJoinModifier;
-
-        use TSqlResultModifiers;
-
-        use TSqlNoCacheModifier;
-        use TSqlCalcFoundRowsModifier;
+            | SqlModifier::CALC_FOUND_ROWS
+            | SqlModifier::NO_CACHE;
 
         use TSqlColumnsExpression;
 
@@ -67,11 +73,18 @@ namespace Slate\Sql\Statement {
         public function build(): array {
             return [
                 "SELECT",
-                $this->buildUniquenessModifiers(),
-                $this->buildHighPriorityModifier(),
-                $this->buildStraightJoinModifier(),
-                $this->buildResultModifiers(),
-                $this->buildNoCacheModifier(),
+                ...$this->buildModifiers([
+                    SqlModifier::ALL,
+                    SqlModifier::DISTINCT,
+                    SqlModifier::DISTINCT_ROW,
+
+                    SqlModifier::HIGH_PRIORITY,
+                    SqlModifier::STRAIGHT_JOIN,
+                    SqlModifier::BIG_RESULT,
+                    SqlModifier::SMALL_RESULT,
+                    SqlModifier::BUFFER_RESULT,
+                    SqlModifier::NO_CACHE
+                ]),
                 $this->buildColumnsExpression(),
                 $this->buildFromClause(),
                 $this->buildJoinClause(),

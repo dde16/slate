@@ -60,9 +60,7 @@ class Boolean extends ScalarType implements Slate\Data\ISizeStaticallyAttainable
         $value = \Boolean::parse($value);
 
         if($value === NULL) {
-            throw new Slate\Exception\ParseException([
-                "type" => "boolean"
-            ]);
+            throw new Slate\Exception\ParseException("Unable to parse boolean value.");
         }
 
         return $value;

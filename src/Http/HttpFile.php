@@ -18,6 +18,14 @@ namespace Slate\Http {
 
             $this->httpMime = $mime ?: "application/octet-stream";
         }
+
+        public function getHttpField(): string {
+            return $this->httpField;
+        }
+
+        public function getHttpMime(): string {
+            return $this->httpMime;
+        }
     }
 }
 

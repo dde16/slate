@@ -6,19 +6,20 @@ namespace Slate\Sql\Expression {
     use Slate\Sql\Clause\TSqlEngineAttributeClause;
     use Slate\Sql\Clause\TSqlReferencesClause;
     use Slate\Sql\Clause\TSqlWithParserClause;
-    use Slate\Sql\Modifier\TSqlCascadeModifier;
-    use Slate\Sql\Modifier\TSqlNoActionModifier;
-    use Slate\Sql\Modifier\TSqlRestrictModifier;
-    use Slate\Sql\Modifier\TSqlSetDefaultModifier;
-    use Slate\Sql\Modifier\TSqlSetNullModifier;
-    use Slate\Sql\Modifier\TSqlVisibilityModifiers;
     use Slate\Sql\SqlConstruct;
+    use Slate\Sql\SqlModifier;
+    use Slate\Sql\TSqlModifierMiddleware;
+    use Slate\Sql\TSqlModifiers;
 
-    class SqlConstraintBlueprint extends SqlConstruct {
+class SqlConstraintBlueprint extends SqlConstruct {
+        use TSqlModifiers;
+        use TSqlModifierMiddleware;
+        
         use TSqlEngineAttributeClause;
-        use TSqlVisibilityModifiers;
         use TSqlWithParserClause;
         use TSqlCommentClause;
+        
+        public const MODIFIERS = SqlModifier::VISIBILITY;
 
         use TSqlReferencesClause;
 

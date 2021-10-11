@@ -68,78 +68,10 @@ abstract class Fnc {
         return is_string($function) ? function_exists($function) : method_exists(...$function);
     }
 
-    //TODO: review usage and remove
-    public static function true(): bool {
-        return true;
-    }
-
-    //TODO: review usage and remove
-    public static function false(): bool {
-        return false;
-    }
-
-    //TODO: review usage and remove
-    public static function return(): mixed {
-        return function($any) { return $any; }; 
-    }
-
-    //TODO: review usage and change to 'bind'
-    public static function inject(callable $function, array $additionals = []): Closure {
-        return function (/* ...arguments */) use ($function, $additionals) {
-            return \call_user_func_array(
-                $function,
-                [...\func_get_args(), ...$additionals]
-            );
-        };
-    }
-
-    //TODO: review usage and remove
-    public static function alias(callable $function, int|array $pass = null): Closure {
-        return function (/* ...arguments */) use ($function, $pass) {
-            $arguments = \func_get_args();
-
-            if(is_int($pass)) {
-                $arguments = \Arr::slice($arguments, 0, $pass);
-            }
-
-            return \call_user_func_array(
-                $function,
-                $arguments
-            );
-        };
-    }
-
     public static function call(string|array|object $function, array $arguments = []): mixed {
         return call_user_func_array(
             $function,
             $arguments
         );
-    }
-
-    //TODO: review usage and remove
-    public static function not(callable|string $function): Closure {
-        return function($argument) use($function) {
-            return !\Fnc::call($function, [$argument]);
-        };
-    }
-
-    //TODO: review usage and remove
-    public static function equals($value, bool $strict = false): Closure {
-        return function($argument) use($value, $strict) {
-            return(($strict) ? ($value == $argument) : ($value === $argument));
-        };
-    }
-
-    public static function cast(string $typeName): mixed {
-        $typeClass = type($typeName);
-
-        if(\Cls::isSubclassOf($typeClass, \ScalarType::class)) {
-            return function($value) use ($typeClass) {
-                return $typeClass::parse($value);
-            };
-        }
-        else {
-            throw new \UnexpectedValueException(Str::format("Type {}<{}> is not scalar, thus not supported.", $typeClass, $typeName));
-        }
     }
 }

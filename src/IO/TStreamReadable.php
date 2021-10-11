@@ -7,7 +7,7 @@ namespace Slate\IO {
     use Slate\Data\Iterator\TMatchingIterator;
     use Slate\Exception\ParseException;
 
-trait TStreamReadable {
+    trait TStreamReadable {
         use TStreamIterable;
         use TMatchingIterator;
         use TAnchoredIterator;

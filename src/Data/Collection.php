@@ -171,7 +171,7 @@ namespace Slate\Data {
                 if(!\Fnc::exists($method)) {
                     throw new \Error(\Str::format(
                         "Collection middleware function {} doesnt exist.",
-                        is_array($method) ? \Arr::join($method, "::") : $method
+                        (is_array($method) ? \Arr::join($method, "::") : $method)
                     ));
                 }
 
@@ -189,7 +189,7 @@ namespace Slate\Data {
                         throw new \BadFunctionCallException(
                             \Str::format(
                                 "Standard PHP Library function {} for the Collection middleware requires returning a value.",
-                                is_array($method) ? \Arr::join($method, "::") : $method
+                                (is_array($method) ? \Arr::join($method, "::") : $method)
                             )
                         );
                     }

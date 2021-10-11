@@ -15,7 +15,11 @@ namespace Slate\Data {
             $existingOffset = \Arr::find($this->{static::$container}, $value);
 
             if($existingOffset === false) {
-                throw new \Error(\Str::format("Value '{}' already exists at offset '{}'.", \Str::val($value), $existingOffset));
+                throw new \Error(
+                    \Str::format("Value '{}' already exists at offset '{}'.",
+                    \Str::val($value),
+                    $existingOffset
+                ));
             }
 
             parent::offsetAssign($offset, $value);

@@ -9,6 +9,7 @@ namespace Slate\Data {
         protected mixed  $current = null;
         protected int    $depth = 0;
 
+        //TODO: reverse
         public function toArray(): array {
             $root   = [];
             $refs   = [&$root];

@@ -4,8 +4,8 @@ namespace Slate\Sql\Statement {
     use Slate\Sql\SqlConstruct;
     use Slate\Sql\SqlStatement;
 
-    use Slate\Sql\Modifier\TSqlPriorityModifiers;
-    use Slate\Sql\Modifier\TSqlIgnoreModifier;
+    
+    
 
     use Slate\Sql\Clause\TSqlIntoClause;
     use Slate\Sql\Clause\TSqlOnDuplicateKeyUpdateClause;
@@ -16,24 +16,24 @@ namespace Slate\Sql\Statement {
     use Slate\Sql\ISqlResultProvider;
 
     use Slate\Sql\Expression\TSqlColumnsExpression;
+    use Slate\Sql\SqlModifier;
 
-
-    class SqlInsertStatement extends SqlStatement  {
-        use TSqlPriorityModifiers;
-        use TSqlIgnoreModifier;
-
+class SqlInsertStatement extends SqlStatement  {
         use TSqlIntoClause;
         use TSqlOnDuplicateKeyUpdateClause;
 
         public array $columns = [];
         public array $rows    = [];
+
+        public const MODIFIERS = SqlModifier::LOW_PRIORITY | SqlModifier::HIGH_PRIORITY | SqlModifier::IGNORE;
     
     
         public function build(): array {
             return [
                 "INSERT",
-                $this->buildPriorityModifiers(),
-                $this->buildIgnoreModifier(),
+                ($this->buildModifier(SqlModifier::LOW_PRIORITY)
+                ?: $this->buildModifier(SqlModifier::HIGH_PRIORITY)),
+                $this->buildModifier(SqlModifier::IGNORE),
                 $this->buildIntoClause(),
                 $this->buildColumns(),
                 $this->buildValuesClause(),

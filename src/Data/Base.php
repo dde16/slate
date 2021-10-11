@@ -1,6 +1,10 @@
 <?php
 
 namespace Slate\Data {
+    /**
+     * A class that can convert integers to/from strings 
+     * using a base.
+     */
     class Base {
         protected array $base;
 

@@ -7,7 +7,7 @@ namespace Slate\Data\Repository {
          *
          * @param  mixed $key
          * @param  mixed $derived
-         * @return mixed
+         * @return mixed On miss return this value
          */
         function miss(string $key, string $derived): mixed;
     }

@@ -17,6 +17,7 @@ namespace Slate\Metalang {
          * This will toggle whether the getter and setter will raise an error on
          * eg. protected property, uninitialised property etc
          */
+        /** To be implemented */
         protected bool $safe = false;
 
         public function __construct() {
@@ -28,16 +29,24 @@ namespace Slate\Metalang {
             return MetalangDesign::of(static::class);
         }
 
+        /** To be implemented */
         public function setSafeMode(bool $safeMode): void {
             $this->safe = $safeMode;
         }
 
+        /** To be implemented */
         public function toggleSafeMode(): void {
             $this->safe = !$this->safe;
         }
 
         public function __call(string $name, array $arguments): mixed {
             $design = static::design();
+
+            // If a string starts with an underscore, remove it as
+            // this indicates the function is called from within - 
+            // thus maintain attribute functionality.
+            if(\Str::startswith($name, "_"))
+                $name = \Str::removePrefix($name, "_");
 
             $attributes  = $design->getAttrInstances(AttributeCallImplementor::class);
             $entrypoints = $design->getImplementorCache(AttributeCallImplementor::class);

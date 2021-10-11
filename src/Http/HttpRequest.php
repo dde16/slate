@@ -5,6 +5,7 @@ namespace Slate\Http {
     use Closure;
     use Slate\IO\StreamReader;
     use Slate\Data\Collection;
+    use Slate\Data\FieldPrepped;
     use Slate\Facade\Security;
     use Slate\Media\Uri;
     use Slate\Neat\Attribute\Getter;
@@ -108,6 +109,9 @@ class HttpRequest extends HttpPacket {
             ], $schema, multisource: true);
         }
 
+        public function var(string $name): mixed {
+            return (new FieldPrepped($name))->from($this->parameters, $this->uri->query, $this->query);
+        }
 
         #[Getter("body")]
         public function getBody(): StreamReader {
@@ -134,6 +138,8 @@ class HttpRequest extends HttpPacket {
                         $query,
                         env("mvc.security.auto-sanitise.escapes", ["fallback" => ["\"", "'", "`"], "validator" => Closure::fromCallable('is_array')])
                     );
+
+                
             }
 
             $uri->setPath(HttpEnvironment::getPath());

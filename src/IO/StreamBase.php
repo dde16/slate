@@ -4,13 +4,17 @@ namespace Slate\IO {
     use Slate\Exception\PathNotFoundException;
     use Slate\Exception\IOException;
 
-    class StreamBase {
+    class StreamBase implements IStreamBase {
         const BUFFER_SIZE = 8192;
 
         protected $resource;
 
         public function __construct($resource) {
             $this->resource = $resource;
+        }
+
+        public function __destruct() {
+            $this->close();
         }
 
         public  function getResource(): mixed {
@@ -58,10 +62,8 @@ namespace Slate\IO {
         public function close(): bool {
             $status = true;
 
-            if($this->resource !== NULL) {
-                $status = fclose($this->resource);
+            if($this->resource !== NULL ? ($status = fclose($this->resource)) : false)
                 $this->resource = null;
-            }
 
             return $status;
         }

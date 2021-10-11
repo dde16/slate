@@ -9,8 +9,9 @@ namespace Slate\IO {
     use Slate\Http\HttpEnvironment;
 
     use Slate\IO\Mime;
+    use SplFileInfo;
 
-    class File extends Stream {
+class File extends Stream {
         /** Contains all file modes which truncate. */
         const TRUNCATES = [
             File::WRITE_ONLY,
@@ -29,6 +30,15 @@ namespace Slate\IO {
             File::APPEND_SEEKABLE
         ];
 
+        /** Contains all file modes which write */
+        const WRITES = [
+            File::WRITE_EXCLUSIVE,
+            File::WRITE_ONLY,
+            File::WRITE_PLUS,
+            File::READ_WRITE_EXCLUSIVE,
+            File::READ_WRITE
+        ];
+
         const READ_ONLY            = "r";
         const READ_WRITE           = "r+";
         const READ_WRITE_EXCLUSIVE = "x+";
@@ -40,29 +50,36 @@ namespace Slate\IO {
         const APPEND               = "a";
         const APPEND_SEEKABLE      = "a+";
 
-        // 10 Mebibytes
-        const MAX_SIZE = ((1024 ** 3) * 2);
+        //TODO: use SplFileInfo
+        public SplFileInfo $path;
+        public string $basename;
+        public string $filename;
+        public string $directory;
 
-        // File
-        public string $path;
-        public    string $basename;
-        public    string $filename;
-        public    string $directory;
+        protected bool $lock;
+
         protected ?string $predefinedMode = null;
-        protected ?string $currentMode = null;
+        protected ?string $currentMode    = null;
 
-        public function __construct(string $path, string $mode = null) {
-            $this->path = $path;
-            $info = \Path::info($path);
-
-            $this->basename = $info["basename"];
-            $this->filename = $info["filename"];
+        public function __construct(string|SplFileInfo $path, string $mode = null) {
+            $this->path = is_string($path) ? (new SplFileInfo($path)) : $path;
             $this->predefinedMode = $mode;
-            $this->directory = $info["directory"];
         }
 
-        public function __destruct() {
-            $this->close();
+        public function isWritable(bool $physically = false): bool {
+            return $physically ? $this->path->isWritable() : \Arr::contains(static::WRITES, $this->currentMode ?: $this->predefinedMode);
+        }
+
+        public function isTruncatable(bool $physically = false): bool {
+            return $physically
+                ? $this->isWritable(true)
+                : \Arr::contains(static::TRUNCATES, $this->currentMode ?: $this->predefinedMode);
+        }
+
+        public function isReadable(bool $physically = false): bool {
+            return $physically
+                ? $this->path->isReadable()
+                : \Arr::contains(static::TRUNCATES, $this->currentMode ?: $this->predefinedMode);
         }
 
         public function isEof(): bool {
@@ -71,7 +88,14 @@ namespace Slate\IO {
             return is_bool($pointer) ? ($pointer ? ($this->tell() >= ($this->getSize())) : feof($this->resource)) : $pointer >= ($this->getSize());
         }
 
-        public function open(string $mode = null): void {
+        public function getMode(): string {
+            return $this->currentMode ?: $this->predefinedMode;
+        }
+
+        public function open(string $mode = null, bool $lock = false): void {
+            if($this->resource !== NULL)
+                throw new IOException("File is already open.");
+
             if($this->predefinedMode !== null && $mode !== null)
                 throw new IOException("Cannot set a mode for a file with the mode predefined on its creation.");
 
@@ -80,66 +104,24 @@ namespace Slate\IO {
 
             $this->currentMode = $mode = $this->predefinedMode ?: $mode;
 
-            if($this->resource !== NULL)
-                throw new IOException("File is already open.");
-
             $read = $mode !== "r" && $mode !== "r+";
-            $exists = \Path::exists($this->path);
+            $exists = $this->path->isFile();
             
             if($read && !$exists) {
-                File::touch($this->path);
+                \Path::touch($this->path);
             }
-            else if (\Path::isDir($this->path)) {
-                throw new \Exception(
-                    \Str::format(
-                        "Path '{path}' is a directory.", $this->path
-                    )
-                );
+            else if($this->path->isDir()) {
+                throw new IOException([$this->path->__toString()], IOException::ERROR_FILE_IS_DIR_MISMATCH);
             }
-            // else if(!$read) {
-            //     $this->size = File::getSizeOf($this->path);
-            // }
 
-            // if($this->size >= File::MAX_SIZE) {
-            //     throw new \Exception(
-            //         \Str::format(
-            //             "File at '{path}' is larger than the maximum size limit.", $path
-            //         )
-            //     );
-            // }
+            $resource = fopen($this->path, $this->currentMode);
 
-            $this->mode = $mode;
-
-            $resource = fopen($this->path, $this->mode);
-
-            if($resource === FALSE) {
-                throw new IOException(
-                    \Str::format(
-                        "Unable to open file at '{}'.",
-                        $this->path
-                    )
-                );
-            }
+            if($resource === FALSE)
+                throw new IOException([$this->path->__toString()], IOException::ERROR_FILE_OPEN_FAILURE);
 
             $this->resource = $resource;
-
-            // if(!flock($fp, LOCK_EX|LOCK_NB, $isLocked)) {
-            //     if($isLocked) {
-            //         throw new IOException(
-            //             \Str::format("Unable to lock file '{}' as another process holds to lock.", $this->path)
-            //         );
-
-            //         $this->close();
-            //     }
-            //     else {
-            //         throw new IOException(
-            //             \Str::format(
-            //                 "An unkown error occured while obtaining the lock for file '{}'.",
-            //                 $this->path
-            //             )
-            //         );
-            //     }
-            // }
+            
+            if($this->lock = $lock) $this->lock();
         }
 
         public function delete(): bool {
@@ -148,13 +130,43 @@ namespace Slate\IO {
             return unlink($this->path);
         }
 
-        // public function close(): bool {
-        //     parent::close();
+        public function isLocked(): bool {
+            $isLocked = 0;
 
-        //     // flock($this->resource, LOCK_UN);
+            if(flock($this->resource, LOCK_EX|LOCK_NB, $isLocked))
+                $this->unlock();
 
-        //     $this->resource = null;
-        // }
+            return intval($isLocked);
+        }
+
+        public function lock(int $operation = LOCK_EX|LOCK_NB): void {
+            $isLocked = 0;
+
+            if(!flock($this->resource, $operation, $isLocked)) {
+                if($isLocked)
+                    throw new IOException([$this->path->__toString()], IOException::ERROR_LOCK_CONFLICT);
+                
+                throw new IOException([$this->path->__toString()], IOException::ERROR_LOCK_FAILURE);
+            }
+        }
+
+        public function unlock(): void {
+            $this->assertOpen();
+
+            if(!flock($this->resource, LOCK_UN))
+                throw new IOException([$this->path->__toString()], IOException::ERROR_UNLOCK_FAILURE);
+        }
+
+        public function close(): bool {
+            $closed = parent::close();
+
+            if($this->resource && $this->lock)
+                $this->unlock();
+
+            $this->resource = null;
+
+            return $closed;
+        }
 
         public function getSize(): int {
             $this->assertOpen();
@@ -183,8 +195,8 @@ namespace Slate\IO {
         }
 
         public function split(string $delimiter = "\r\n"): Generator {
-            while(!$this->isEof() ? ($data = $this->readUntil($delimiter) ?: $this->read()) : false) {
-                yield $data;
+            while(!$this->isEof()) {
+                yield $this->readUntil($delimiter);
             }
         }
 
@@ -218,7 +230,7 @@ namespace Slate\IO {
 
             if(copy($sourcePath, $destinationPath)) {
                 if($follow) {
-                    $this->path = $destinationPath;
+                    $this->path = new SplFileInfo($destinationPath);
                 }
                 else {
                     return (new File($destinationPath));
@@ -226,14 +238,12 @@ namespace Slate\IO {
             }
             else {
                 throw new IOException(
-                    \Str::format("Unable to copy file '{}' to '{}'.", $sourcePath, $destinationPath, $this->path)
+                    \Str::format("Unable to copy file '{}' to '{}'.", $sourcePath, $destinationPath, $this->path->__toString())
                 );
             }
 
             return null;
         }
-
-        
 
         public function rename(string $destination, bool $follow = true): void {
             if($this->isOpen()) {
@@ -259,16 +269,12 @@ namespace Slate\IO {
             }
         }
 
-        public function getPath(): string {
-            return $this->path;
-        }
-
         public function getExtensionMime(): string|null  {
-            return static::getExtensionMimeOf($this->path);
+            return static::getExtensionMimeOf($this->path->__toString());
         }
 
         public function getSignatureMime(): string|null {
-            return static::getSignatureMimeOf($this->path);
+            return static::getSignatureMimeOf($this->path->__toString());
         }
 
         /** Static */
@@ -295,7 +301,7 @@ namespace Slate\IO {
                 throw new \BadFunctionCallException("You are not on a Linux system thereby the 'file' binary doesn't exist.");
             }
 
-            if(\Path::isFile($path)) {
+            if(is_file($path)) {
                 $proc = new Process(dirname($path));
                 $proc->open("file", "-b", "--mime-type", $path);
 
@@ -306,46 +312,23 @@ namespace Slate\IO {
                 return $mime;
             }
             else {
-                throw new IOException(["path" => $path], IOException::ERROR_FILE_NOT_FOUND);
+                throw new IOException([$path], IOException::ERROR_FILE_NOT_FOUND);
             }
 
             return null;
         }
 
-        public static function exists(string $path): bool {
-            return file_exists($path);
-        }
-
-        public static function touch(string $path): void {
-            $resource = fopen($path, File::WRITE_ONLY);
-
-            if($resource === FALSE) {
-                throw new IOException(\Str::format(
-                    "Unable to open to touch file at '{}'.",
-                    $path
-                ));
-            }
-
-            fclose($resource);
-        }
-
         public static function getSizeOf(string $path): int|false {
-            if(!File::exists($path))
-                throw new IOException(["path" => $path], IOException::ERROR_FILE_NOT_FOUND);
+            \Path::assertFileExists($path);
 
             return filesize($path);
         }
 
         public static function getContentsOf(string $path): string {
-            if(!\Path::exists($path)) {
-                throw new IOException(["path" => $path], IOException::ERROR_FILE_NOT_FOUND);
-            }
+            \Path::assertFileExists($path);
 
             if(($contents = file_get_contents($path)) === FALSE)
-                throw new IOException(\Str::format(
-                    "Unable to get contents for file at path '{}'.",
-                    $path
-                ), IOException::ERROR_FILE_OPEN_FAILURE);
+                throw new IOException("Unable to get contents for file at path '{$path}'.", IOException::ERROR_FILE_OPEN_FAILURE);
 
             return $contents;
         }

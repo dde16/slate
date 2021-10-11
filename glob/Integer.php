@@ -9,11 +9,28 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
     const MIN              = PHP_INT_MIN;
     const MAX              = PHP_INT_MAX;
 
+    const BYTESIZE         = PHP_INT_SIZE;
     const BITSIZE          = PHP_INT_SIZE*8;
 
-    const AUXILIARY        = [
-        [\DateTime::class, "setTimestamp"]
-    ];
+    public const OR  = (1<<0);
+    public const XOR = (1<<1);
+    public const AND = (1<<2);
+
+    public static function fromBinary(string $binary) {
+        $bytes = Integer::BYTESIZE;
+
+        $binary = mb_convert_encoding($binary, "utf-8");
+        $length = strlen($binary);
+
+        if($length > $bytes)
+            throw new \Error("Binary string must be of length {$bytes}.");
+
+        $binary = \Str::padRight($binary, "\0", $bytes);
+
+        for($sum = $index = 0; $index < $length; $sum |= ord($binary[$index]) << ($index++ * Integer::BYTESIZE));
+
+        return $sum;
+    }
 
     /**
      * Parse a string into an integer by a given radix.
@@ -37,12 +54,7 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
                     $ord = \Arr::find($radix, $char);
 
                     if($ord === -1)
-                        throw new Slate\Exception\ParseException(
-                            \Str::format(
-                                "Invalid character '{}' at position {}",
-                                $char, $index
-                            )
-                        );
+                        throw new Slate\Exception\ParseException("Invalid character '{$char}' at position {$index}");
 
                     return [$index, ($base**$index) * $ord];
                 }
@@ -150,17 +162,31 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
     /**
      * Generate an integer with its bits filled in a given range.
      * 
-     * @param int $from
-     * @param int $to
+     * @param int $from Starting at zero, what bit to start from (from the right)
+     * @param int $to   Starting at zero, what bit to end at (from the right)
      * 
      * @return int
      */
     public static function fillAt(int $from, int $to): int {
-        return ~(~0 & -(1 << ($to - $from + 1)))<< $from;
+        /**
+         * Works by taking advantage of how bits are assigned when bit shifted, depending on the
+         * sign. Eg. 1 right shift when negative, 0 when positive.
+         * 
+         * Eg.
+         * From : 7
+         * To   : 5
+         * 
+         * 1) 00000001 (1)
+         * 2) 00001000 (1 << ((7 - 5) + 1 = 3))
+         * 3) 10001000 (change sign)
+         * 4) 01110111 (not)
+         * 5) 11100000 (<<7)
+        */
+        return ~(-(1 << ($to - $from + 1))) << $from;
     }
 
     /**
-     * Get only the integers in a given range.
+     * Generate a bitmask to only the integers in a given range.
      * 
      * @param int $integer 
      * @param int $from
@@ -173,7 +199,7 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
     }
 
     /**
-     * Get only the integers outside of a given range.
+     * Generate a bitmask to only the integers outside of a given range.
      * 
      * @param int $integer
      * @param int $from
@@ -222,7 +248,7 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
     }
 
     /**
-     * And integer operator with more failsafe steps.
+     * And integer operator with more utils.
      * 
      * @param int       $bitpack
      * @param int|array $orpack
@@ -230,7 +256,7 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
      * @return int
      */
     public static function hasBits(int $bitpack, int|array $orpack): bool {
-        $orpack = \Any::isArray($orpack) ? array_sum($orpack) : $orpack;
+        $orpack = \Any::isArray($orpack) ? \Arr::or($orpack) : $orpack;
 
         return ($bitpack !== 0 && $orpack === 0) ?: (($bitpack & $orpack) === $orpack);
     }

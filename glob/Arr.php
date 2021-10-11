@@ -1,6 +1,7 @@
 <?php
 
-abstract class Arr extends CompoundType {
+//TODO: implement ArrayAccess, Iterator versions of native functions
+final class Arr extends CompoundType {
     public const NAMES            = ["array"];
     public const VALIDATOR        = "is_array";
     public const CONVERT_FORWARD  = [ \Slate\Data\IArrayForwardConvertable::class, "toArray" ];
@@ -289,10 +290,10 @@ abstract class Arr extends CompoundType {
      * Checks whether all of the array's elements matches a given condition callback.
      * 
      * @param array    $array
-     * @param callable $callback
+     * @param Closure $callback
      * @return bool
      */
-    public static function all($array, callable $callback = null): bool {
+    public static function all($array, Closure $callback = null): bool {
         if ($callback === NULL) {
             $callback = fn($value) => $value == true;
         }
@@ -309,10 +310,10 @@ abstract class Arr extends CompoundType {
      * Checks whether any of the array's elements matches a given condition callback.
      * 
      * @param array    $array
-     * @param callable $callback
+     * @param Closure $callback
      * @return bool
      */
-    public static function any($array, callable $callback = null): bool {
+    public static function any($array, Closure $callback = null): bool {
         if ($callback === NULL)
             $callback = function ($value) { return($value == true); };
 
@@ -323,6 +324,18 @@ abstract class Arr extends CompoundType {
         }
 
         return $any;
+    }
+
+    /**
+     * Checks whether none of the values match the condition.
+     *
+     * @param mixed $array
+     * @param Closure|null $callback
+     *
+     * @return boolean
+     */
+    public static function none($array, Closure $callback = null): bool {
+        return !\Arr::any($array, $callback);
     }
 
     /**
@@ -383,12 +396,12 @@ abstract class Arr extends CompoundType {
      * @see count
      * 
      * @param array           $array
-     * @param string|callable $filter
+     * @param string|Closure $filter
      * @param int             $mode
      * 
      * @return int
      */
-    public static function count($array, string|callable $filter = null, int $mode = COUNT_NORMAL): int {
+    public static function count($array, string|Closure $filter = null, int $mode = COUNT_NORMAL): int {
         if(\Any::isString($filter))
             $filter = fn($value) => \Any::traverse($value, $filter);
 
@@ -507,11 +520,11 @@ abstract class Arr extends CompoundType {
      * Gets the last entry of a given array by reference, optionally by a given filter.
      * 
      * @param array           $array
-     * @param callable|string $filter
+     * @param Closure|string $filter
      * 
      * @return array
      */
-    public static function endEntry (array|ArrayAccess $array, callable|string $filter = null): array {
+    public static function endEntry (array|ArrayAccess $array, Closure|string $filter = null): array {
         if($filter === NULL) {
             $lastKey = array_key_last($array);
             $lastValue = &$array[$lastKey];
@@ -532,11 +545,11 @@ abstract class Arr extends CompoundType {
      * Gets the last value of a given array by reference, optionally by a given filter.
      * 
      * @param array           $array
-     * @param callable|string $filter
+     * @param Closure|string $filter
      * 
      * @return mixed
      */
-    public static function &end(array $array, callable|string $filter = null): mixed {
+    public static function &end(array $array, Closure|string $filter = null): mixed {
         return \Arr::endEntry($array, $filter)[1];
     }
 
@@ -627,7 +640,7 @@ abstract class Arr extends CompoundType {
      * Gets the first entry of a given array, optionally by a given filter.
      * 
      * @param array           $array
-     * @param callable|string $filter
+     * @param Closure|string $filter
      * 
      * @return array
      */
@@ -653,7 +666,7 @@ abstract class Arr extends CompoundType {
      * Gets the first value of a given array, optionally by a given filter.
      * 
      * @param array           $array
-     * @param callable|string $filter
+     * @param Closure|string $filter
      * 
      * @return mixed
      */
@@ -724,7 +737,7 @@ abstract class Arr extends CompoundType {
         return range($start, $end, 1);
     }
 
-        /**
+    /**
      * Check whether an array has a given key(s)
      * 
      * @param array            $array
@@ -765,12 +778,7 @@ abstract class Arr extends CompoundType {
                 $converter = $cast."::parse";
             }
             else if(\Cls::isSubclassOf($cast, \CompoundType::class)) {
-                throw new Error(
-                    \Str::format(
-                        "Compound type {type} cannot be casted.", 
-                        [ "type" => $cast ]
-                    )
-                );
+                throw new Error("Compound type {$cast} cannot be cast.");
             }
         }
 
@@ -807,6 +815,46 @@ abstract class Arr extends CompoundType {
         return $fallback;
     }
 
+ 
+    /**
+     * Get the given offsets from an array and pass as arguments into the callback.
+     *
+     * @param  mixed $array
+     * @param  mixed $offsets
+     * @param  mixed $callback
+     * @param  mixed $options
+     * 
+     * @return array|null
+     */
+    public static function use (array|ArrayAccess $array, string|array $offsets, callable $callback = null, array $options = []): array|null {
+        if(\Any::isString($offsets)) {
+            $offsets = [$offsets];
+        }
+
+        if(\Arr::isEmpty($offsets)) {
+            $offsets = \Arr::keys($array);
+        }
+
+        $offsets = \Arr::mapAssoc(
+            $offsets,
+            function($offset, $value) use(&$array, &$options) {
+                return [$value, \Arr::get($array, $value, $options)];
+            }
+        );
+
+        if(\Any::isCallable($callback)) {
+            \Fnc::call(
+                $callback,
+                \Arr::values($offsets)
+            );
+        }
+        else {
+            return $offsets;
+        }
+
+        return null;
+    }
+
     public static function getMultiSource (array|ArrayAccess $arrays, string $key, array $options = []): mixed {
         $important = @$options["important"];
         $fallback  = @$options["fallback"];
@@ -827,9 +875,7 @@ abstract class Arr extends CompoundType {
                 }
             }
             else {
-                throw new \InvalidArgumentException(
-                    \Str::format("Value at offset {} is not an array.", $offset)
-                );
+                throw new \InvalidArgumentException("Value at offset {$offset} is not an array.");
             }
         }
 
@@ -845,20 +891,33 @@ abstract class Arr extends CompoundType {
         return $fallback;
     }
 
-    public static function xor (array|ArrayAccess $array): int {
-        return \Arr::reduce(
-            $array,
-            fn($value, $accumulator) => $accumulator ^ $value,
-            0
-        );
+    /**
+     * Reduce an array using a bitwise operator.
+     *
+     * @param array $array
+     * @param integer $operator 
+     * @return integer
+     */
+    public static function compute(array $array, int $operator): int {
+        list($closure, $default) = match($operator) {
+            \Integer::XOR => [fn($val, $acc) => $acc ^ $val, 0],
+            \Integer::OR  => [fn($val, $acc) => $acc | $val, 0],
+            \Integer::AND => [fn($val, $acc) => $acc & $val, 1],
+            default => [null, 0]
+        };
+
+        if($closure === null)
+            throw new BadFunctionCallException("Unknown bitwise operator.");
+
+        return \Arr::reduce($array, $closure, $default);
     }
 
-    public static function or (array|ArrayAccess $array): int {
-        return \Arr::reduce(
-            $array,
-            fn($value, $accumulator) => $accumulator | $value,
-            0
-        );
+    public static function xor(array|ArrayAccess $array): int {
+        return \Arr::compute($array, \Integer::XOR);
+    }
+
+    public static function or(array|ArrayAccess $array): int {
+        return \Arr::compute($array, \Integer::OR);
     }
 
     public static function get (array|ArrayAccess $array, string $key, array $options = [], bool $multisource = false): mixed {
@@ -902,82 +961,7 @@ abstract class Arr extends CompoundType {
      * @return mixed
      */
     public static function middle (array|ArrayAccess $array, int $round = \Math::ROUND_HALF_UP): mixed {
-        $count = count($array);
-
-        if($round === \Math::ROUND_HALF_DOWN) $count--;
-
-        $mid = \Math::ceil($count / 2);
-
-        return $mid;
-    }
- 
-    /**
-     * Get the given offsets from an array and pass as arguments into the callback.
-     *
-     * @param  mixed $array
-     * @param  mixed $offsets
-     * @param  mixed $callback
-     * @param  mixed $options
-     * 
-     * @return array|null
-     */
-    public static function use (array|ArrayAccess $array, string|array $offsets, callable $callback = null, array $options = []): array|null {
-        if(\Any::isString($offsets)) {
-            $offsets = [$offsets];
-        }
-
-        if(\Arr::isEmpty($offsets)) {
-            $offsets = \Arr::keys($array);
-        }
-
-        $offsets = \Arr::mapAssoc(
-            $offsets,
-            function($offset, $value) use(&$array, &$options) {
-                return [$value, \Arr::get($array, $value, $options)];
-            }
-        );
-
-        if(\Any::isCallable($callback)) {
-            \Fnc::call(
-                $callback,
-                \Arr::values($offsets)
-            );
-        }
-        else {
-            return $offsets;
-        }
-
-        return null;
-    }
-
-    /**
-     * Modify entries witin an array using a given callback.
-     * 
-     * @param array        &$array 
-     * @param string|array $offsets
-     * @param callable     $callback
-     * 
-     * @return void
-     */
-    public static function modifyEntries (array|ArrayAccess &$array, string|array $offsets, callable $callback): void {
-        if(!\Any::isArray($offsets)) {
-            $offsets = [$offsets];
-        }
-
-        foreach($offsets as $index => $offset) {
-            $value = $array[$offset];
-            $entry = [$offset, $value];
-            
-            $entry = $callback($value, $offset);
-
-            list($newOffset, $newValue) = $entry;
-
-            if($offset !== $newOffset) {
-                unset($array[$offset]);
-            }
-
-            $array[$newOffset] = $value;
-        }
+        return intval(round((count($array)-1) / 2, 0, $round));
     }
 
     /**
@@ -985,16 +969,15 @@ abstract class Arr extends CompoundType {
      * 
      * @param array        &$array 
      * @param string|array $offsets
-     * @param callable     $callback
+     * @param Closure     $callback
      * 
      * @return void
      */
-    public static function modify (array|ArrayAccess &$array, string|array $offsets, callable $callback): void {
-        if(!\Any::isArray($offsets)) {
+    public static function modify (array|ArrayAccess &$array, string|array $offsets, Closure $callback): void {
+        if(!is_array($offsets))
             $offsets = [$offsets];
-        }
 
-        foreach($offsets as $index => $offset) {
+        foreach($offsets as $offset) {
             $value = &$array[$offset];
             $value = $callback($value, $offset);
         }
@@ -1010,9 +993,7 @@ abstract class Arr extends CompoundType {
      * @return mixed
      */
     public static function centre (array|ArrayAccess $array, int $round = \Math::ROUND_HALF_UP): mixed {
-        $mid = \Arr::middle($array, $round);
-
-        return $array[$mid];
+        return $array[\Arr::middle($array, $round)];
     }
 
     /**
@@ -1029,45 +1010,12 @@ abstract class Arr extends CompoundType {
     public static function slice (array|ArrayAccess $array, int $offset, int $length = null): array {
         return array_slice($array, $offset, $length);
     }
-    
-    /**
-     * An extended version of slice which allows for roll over and inverse slicing (if the start index is greater than the end, it will get all values except in the range)
-     * 
-     * @param array $array 
-     * @param int   $start
-     * @param ?int  $end    Unlike slice, there isn't use of lengths but a start and an end.
-     * 
-     * @return array
-     */
-    public static function subset (array|ArrayAccess $array, int $start, int $end = null): array {
-        $length = \Arr::count($array);
-
-        if($end === NULL) {
-            return array_slice($array, $start, $length-$start);
-        }
-        else {
-            if($start > $end) {
-
-                $startToEnd = $length - $start;
-
-                return \Arr::merge(
-                    array_slice($array, $start, $startToEnd),
-                    array_slice($array, 0, $end)
-                );
-            }
-            else {
-                $length = ($end - $start) + 1;
-
-                return array_slice($array, $start, $length);
-            }
-        }
-    }
 
     /**
      * Gets the last entry of a given array, optionally by a given filter.
      * 
      * @param array           $array
-     * @param callable|string $filter
+     * @param Closure|string $filter
      * 
      * @return array
      */
@@ -1094,11 +1042,11 @@ abstract class Arr extends CompoundType {
      * Gets the last key of a given array, optionally by a given filter.
      * 
      * @param array           $array
-     * @param callable|string $filter
+     * @param Closure|string $filter
      * 
      * @return string|int
      */
-    public static function lastKey (array|ArrayAccess $array, callable|string $filter = null): string|int|null {
+    public static function lastKey (array|ArrayAccess $array, Closure|string $filter = null): string|int|null {
         return ($entry = \Arr::lastEntry($array, $filter)) !== null ? $entry[0] : null;
     }
     
@@ -1106,11 +1054,11 @@ abstract class Arr extends CompoundType {
      * Gets the last value of a given array, optionally by a given filter.
      * 
      * @param array           $array
-     * @param callable|string $filter
+     * @param Closure|string $filter
      * 
      * @return mixed
      */
-    public static function last (array|ArrayAccess $array, callable|string $filter = null): mixed {
+    public static function last (array|ArrayAccess $array, Closure|string $filter = null): mixed {
         return ($entry = \Arr::lastEntry($array, $filter)) !== null ? $entry[1] : null;
     }
 
@@ -1124,24 +1072,26 @@ abstract class Arr extends CompoundType {
     public static function dive(mixed &$value, int $required, int $depth = 0): array|null {
         if($depth === $required) return[$value];
         
-        
         $depth++;
         $levels = [];
         
-        foreach($value as $subkey => $subvalue) {
-            
-            if(($level = \Arr::dive($subvalue, $required, $depth)) !== null) {
-                if(\Any::isArray($level)) {
-                    $levels = [...$levels, ...$level];
-                }
-                else {
-                    $levels[] = $level;
+        if(is_array($value)) {
+
+            foreach($value as $subkey => $subvalue) {
+                
+                if(($level = \Arr::dive($subvalue, $required, $depth)) !== null) {
+                    if(is_array($level)) {
+                        $levels = [...$levels, ...$level];
+                    }
+                    else {
+                        $levels[] = $level;
+                    }
                 }
             }
+        
+            if(count($levels) > 0)
+                return $levels;
         }
-    
-        if(count($levels) > 0)
-            return $levels;
 
         return null;
     }
@@ -1167,6 +1117,9 @@ abstract class Arr extends CompoundType {
             for($index = 0; $index < $length-1; $index++) {
                 $value = $array[$index];
 
+                if(!\Arr::isValidOffset($value))
+                    throw new \Error("Invalid drill path, all offsets must be strings or integers.");
+
                 if(!\Arr::hasKey($last, $value)) {
                     $last[$value] = [];
 
@@ -1178,24 +1131,6 @@ abstract class Arr extends CompoundType {
         }
 
         return $aggregate;
-    }
-    
-    /**
-     * Flip an array of rows in the Y-axis.
-     * 
-     * @param array $rows
-     * 
-     * @return array
-     */
-    public static function flipy (array|ArrayAccess $rows): array {
-        return \Arr::map(
-            $rows,
-            function($row) {
-                if(!\Any::isArray($row)) throw new \UnexpectedValueException("FlipY must be provided with a 2d array (rows).");
-
-                return \Arr::flipx($row);
-            }
-        );
     }
     
     /**
@@ -1313,9 +1248,9 @@ abstract class Arr extends CompoundType {
         $element = $array[$from];
 
         $array = \Arr::splice($array, $from, $to - 1);
-        $start = \Arr::subset($array, $from, $to);
+        $start = \Arr::slice($array, $from, $to);
         $start[] = $element;
-        $end = \Arr::subset($array, $to);
+        $end = \Arr::slice($array, $to);
 
         return \Arr::merge($start, $end);
     }
@@ -1345,7 +1280,7 @@ abstract class Arr extends CompoundType {
      * 
      * @return array
      */
-    public static function cluster (array|ArrayAccess $array, callable $callback, bool $preserve = true): array {
+    public static function cluster (array|ArrayAccess $array, Closure $callback, bool $preserve = true): array {
         $clusters = [];
 
         foreach($array as $key => $value) {
@@ -1416,11 +1351,11 @@ abstract class Arr extends CompoundType {
      * Map an array by its entries
      * 
      * @param array    $array
-     * @param callable $callback
+     * @param Closure $callback
      * 
      * @return array
      */
-    public static function mapAssoc (array|ArrayAccess $array, callable $callback): array {
+    public static function mapAssoc (array|ArrayAccess $array, Closure $callback): array {
         return \Arr::column(
             array_map(
                 $callback,
@@ -1460,7 +1395,7 @@ abstract class Arr extends CompoundType {
      * Alias of 'array_map' with reordered parameters.
      * 
      * @param array    ...$arrays
-     * @param callable $callback
+     * @param Closure $callback
      */
     public static function map(): array {
         $arguments = \func_get_args();
@@ -1646,11 +1581,11 @@ abstract class Arr extends CompoundType {
      * Gets the first entry of a given array by reference, optionally by a given filter.
      * 
      * @param array           $array
-     * @param callable|string $filter
+     * @param Closure|string $filter
      * 
      * @return array
      */
-    public static function startEntry (array|ArrayAccess $array, callable|string $filter = null): array {
+    public static function startEntry (array|ArrayAccess $array, Closure|string $filter = null): array {
         if($filter === NULL) {
             $firstKey = array_key_first($array);
             $firstValue = &$array[$firstKey];
@@ -1672,11 +1607,11 @@ abstract class Arr extends CompoundType {
      * Gets the first value of a given array by reference, optionally by a given filter.
      * 
      * @param array           $array
-     * @param callable|string $filter
+     * @param Closure|string $filter
      * 
      * @return array
      */
-    public static function &start(array $array, callable|string $filter = null) {
+    public static function &start(array $array, Closure|string $filter = null) {
         return \Arr::startEntry($array, $filter)[1];
     }
 
@@ -1990,7 +1925,7 @@ abstract class Arr extends CompoundType {
     /**
      * @see array_reduce
      */
-    public static function reduce (array|ArrayAccess $array, callable $callback, $initial = NULL): mixed {
+    public static function reduce (array|ArrayAccess $array, Closure $callback, $initial = NULL): mixed {
         return array_reduce($array, $callback, $initial);
     }
 
@@ -2172,12 +2107,12 @@ abstract class Arr extends CompoundType {
      * Map all the values (not including arrays) at a given depth.
      * 
      * @param array        $array
-     * @param callable     $callback
-     * @param callable|int $required The depth that values should be mapped at.
+     * @param Closure     $callback
+     * @param Closure|int $required The depth that values should be mapped at.
      * 
      * @return void
      */
-    public static function mapDepth (array|ArrayAccess &$array, callable $callback, int|callable $required, int $depth = 0): void {
+    public static function mapDepth (array|ArrayAccess &$array, Closure $callback, int|Closure $required, int $depth = 0): void {
         if(is_int($required)) {
             $required = function($key, $value, $depth) use($required) {
                 return $depth === $required;
@@ -2198,12 +2133,12 @@ abstract class Arr extends CompoundType {
      * Map the values of an array recursively (by reference).
      * 
      * @param array    $array
-     * @param callable $callback 
+     * @param Closure $callback 
      * @param int      $depth Used for internal usage, no not set.
      * 
      * @return void
      */
-    public static function mapRecursive (array|ArrayAccess &$array, callable $callback, int $depth = 0): void {
+    public static function mapRecursive (array|ArrayAccess &$array, Closure $callback, int $depth = 0): void {
         foreach($array as $key => $value) {
             if(is_array($value)) {
                 \Arr::mapRecursive($array[$key], $callback, $depth+1);
@@ -2221,12 +2156,12 @@ abstract class Arr extends CompoundType {
      * Map the values of an array recursively (by reference).
      * 
      * @param array    $array
-     * @param callable $callback 
+     * @param Closure $callback 
      * @param int      $depth Used for internal usage, no not set.
      * 
      * @return void
      */
-    public static function mapRecursiveOnly (array|ArrayAccess &$array, callable $callback, callable $filter, int $type = \Arr::RECURSIVE_TOP_DOWN, int $depth = 0): void {
+    public static function mapRecursiveOnly (array|ArrayAccess &$array, Closure $callback, Closure $filter, int $type = \Arr::RECURSIVE_TOP_DOWN, int $depth = 0): void {
         foreach($array as $key => $value) {
             $map = $filter($key, $value);
 
@@ -2252,12 +2187,12 @@ abstract class Arr extends CompoundType {
      * Walking the values of an array recursively
      * 
      * @param array    $array
-     * @param callable $callback 
+     * @param Closure $callback 
      * @param int      $depth Used for internal usage, no not set.
      * 
      * @return void
      */
-    public static function walkRecursive (array|ArrayAccess $array, callable $callback, int $depth = 0): void {
+    public static function walkRecursive (array|ArrayAccess $array, Closure $callback, int $depth = 0): void {
         foreach($array as $key => $value) {
             if(is_array($value)) {
                 \Arr::walkRecursive($value, $callback, $depth+1);

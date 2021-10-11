@@ -6,10 +6,12 @@ abstract class ScalarType extends DataType {
             $converter = \Cls::getConstant(static::class, "CONVERTER");
 
             if($converter === FALSE) {
-                throw new Error(\Str::format("Type {} does not have a converter/parser function.", $value));
+                throw new Error("Type {$value} does not have a converter/parser function.");
             }
 
-            return \Fnc::call($converter, [ $value ]);
+            $converter = Closure::fromCallable($converter);
+
+            return $converter($value);
         }
 
         return $value;

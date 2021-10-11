@@ -36,15 +36,16 @@ namespace Slate\IO {
          * @param  mixed $mode
          * @return void
          */
-        public function openFile(string $path, string $mode = File::WRITE_ONLY): File {
+        public function openFile(string $path, ?string $mode = null): File {
             $path = $this->path . \Path::normalise($path);
 
             $dir =  dirname($path);
 
+            // If the file's directory doesn't exist.
             if(!\Path::isDir($dir) && !\Path::exists($path))
                 mkdir($dir, \Path::getPermissions($this->path), true);
 
-            return (new File($path));
+            return (new File($path, $mode));
         }
   
         /**
@@ -68,7 +69,7 @@ namespace Slate\IO {
                 }
             }
 
-            File::touch($path);
+            \Path::touch($path);
         }
         
         /**
@@ -165,16 +166,16 @@ namespace Slate\IO {
                     $this->create();
                 }
                 else {
-                    throw new IOException(["path" => $this->path], IOException::ERROR_DIR_NOT_FOUND);
+                    throw new IOException([$this->path], IOException::ERROR_DIR_NOT_FOUND);
                 }
             }
             else if(\Path::isDirectory($this->path)) {
                 if(($this->resource = opendir($this->path)) === false) {
-                    throw new IOException(["path" => $this->path], IOException::ERROR_DIR_OPEN_FAILURE);
+                    throw new IOException([$this->path], IOException::ERROR_DIR_OPEN_FAILURE);
                 }
             }
             else {
-                throw new IOException(["path" => $this->path], IOException::ERROR_DIR_NOT_FOUND);
+                throw new IOException([$this->path], IOException::ERROR_DIR_NOT_FOUND);
             }
         }
 
@@ -225,15 +226,11 @@ namespace Slate\IO {
                 $destinationPath = $this->path . "/" . $destination;
 
                 if(!rename($sourcePath, $destinationPath)) {
-                    throw new IOException(
-                        \Str::format("Unable to rename file '{}' to '{}' in directory '{}'.", $source, $destination, $this->path)
-                    );
+                    throw new IOException(["from" => $source, "to" => $destination], IOException::ERROR_RENAME_FAILURE);
                 }
             }
             else {
-                throw new IOException(
-                    "Directory '{}' has not yet been opened."
-                );
+                throw new IOException([$this->path], IOException::ERROR_DIR_OPEN_ASSERTION);
             }
         }
 

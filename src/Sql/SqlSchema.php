@@ -4,7 +4,7 @@ namespace Slate\Sql {
     use Slate\Facade\DB;
     use Slate\Sql\Statement\SqlDropStatement;
 
-    final class SqlSchema {
+    final class SqlSchema implements ISqlStorageMedium {
         protected static array $schemas = [ ];
 
         protected string $name;
@@ -15,6 +15,7 @@ namespace Slate\Sql {
 
         protected function __construct(string $name) {
             $this->name = $name;
+            $this->tables = [];
         }
 
         public static function named(string $name): static {
@@ -25,6 +26,8 @@ namespace Slate\Sql {
 
             return $schema;
         }
+
+        public function load(array $options = []): void { }
 
         public function name(): string {
             return $this->name;

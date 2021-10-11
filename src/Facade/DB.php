@@ -66,6 +66,7 @@ final class DB extends Facade {
             return null;
         }
 
+        //TODO: remove functions as they are now stored in the App
         public static function add(string $name, SqlConnection $connection, bool $default = false): void {
             if(\Arr::hasKey(static::$connections, $name))
                 throw new \Error("This connection is already in use.");

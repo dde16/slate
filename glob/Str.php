@@ -16,6 +16,9 @@ abstract class Str extends ScalarType {
 
     public const DIGITS   = "0123456789";
 
+    public const HEX_LOWERCASE = \Str::DIGITS."abcdef";
+    public const HEX_UPPERCASE = \Str::DIGITS."ABCDEF";
+
     public const FORMAT_ESCAPE_PATTERN =  "(?<!\\\\)";
     public const FORMAT_KEY_PATTERN = "[\w\d\-\_\=\+\:\.]*";
 
@@ -32,6 +35,16 @@ abstract class Str extends ScalarType {
 
     public const PAD_LEFT = STR_PAD_LEFT;
     public const PAD_RIGHT = STR_PAD_RIGHT;
+
+    
+    public const CONTROL_CHARS_ESCAPE = [
+        "\n" => "\\n",
+        "\r" => "\\r",
+        "\t" => "\\t",
+        "\f" => "\\f",
+        "\v" => "\\v",
+        "\0" => "\\0"
+    ];
 
     public static function replaceManyAt(string $string, array $withs): string {
         $mod = 0;
@@ -240,12 +253,7 @@ abstract class Str extends ScalarType {
      * @return bool
      */
     public static function isBase64(string $source): bool {
-        return (bool)\Str::match("/^[a-zA-Z0-9\/\r\n+]*={0,2}$/", $source);
-    }
-
-    //TODO: review use and remove
-    public static function match(string $pattern, string $source, array &$matches = null): bool {
-        return preg_match($pattern, $source, $matches);
+        return preg_match("/^[a-zA-Z0-9\/\r\n+]*={0,2}$/", $source);
     }
 
     public static function isChar($char): bool {
@@ -260,7 +268,7 @@ abstract class Str extends ScalarType {
      */
     public static function isHex(string $source): bool {
         if ($source !== NULL) {
-            return ((\Str::len($source) % 2 === 0) ? (bool)\Str::match("/^[a-fA-F0-9]+$/", $source) : false);
+            return ((\Str::len($source) % 2 === 0) ? (bool)preg_match("/^[a-fA-F0-9]+$/", $source) : false);
         }
 
         return false;
@@ -318,17 +326,11 @@ abstract class Str extends ScalarType {
         );
     }
 
-    //TODO: review usage and remove
     public static function explode(string $string, string $delimiter = " ", int $limit = PHP_INT_MAX): array {
         return explode($delimiter, $string, $limit);
     }
 
     public static function join(array $pieces, string $glue = ""): string {
-        return \Str::implode($pieces, $glue);
-    }
-
-    //TODO: review usage and remove
-    public static function implode(array $pieces, string $glue = ""): string {
         return implode($glue, $pieces);
     }
 
@@ -628,12 +630,14 @@ abstract class Str extends ScalarType {
         return trim($source);
     }
 
+    /**
+     * Replace control characters to their printable versions, if they have them.
+     *
+     * @param string $string
+     * @return string
+     */
     public static function controls(string $string): string {
-        return 
-            Str::swap(
-                $string,
-                ["\r" => "\\r", "\f" => "\\f", "\n" => "\\n", "\t" => "\\t", "\0" => "\\0"],
-            );
+        return Str::swap($string, \Str::CONTROL_CHARS_ESCAPE);
     }
 
     public static function repr($any): string {
@@ -648,7 +652,7 @@ abstract class Str extends ScalarType {
                     if(is_object($any) ? \Cls::hasInterface($any, \Slate\Data\IStringForwardConvertable::class) : false) {
                         $value = $any->toString();
                     }
-                    else if(($json = \Json::encode($any, JSON_PRETTY_PRINT)) !== false) {
+                    else if(($json = json_encode($any, JSON_PRETTY_PRINT)) !== false) {
                         $value = $json;
                     }
                     else {
@@ -753,21 +757,12 @@ abstract class Str extends ScalarType {
         ));
     }
 
-    //TODO: review usage and remove
-    public static function encode(string $source, string $method): string {
-        switch($method) {
-            case "hex":
-                return \Hex::encode($source);
-                break;
-            case "base64":
-                return base64_encode($source);
-                break;
-            default:
-                throw new \Error();
-                break;
-        }
-    }
-
+    /**
+     * Determine a common prefix amongst a collection of strings.
+     *
+     * @param array $strings
+     * @return array
+     */
     public static function getPrefix(array $strings): array {
         $length = \Arr::min(\Arr::map($strings, Closure::fromCallable('strlen')));
         $prefix = "";
@@ -833,6 +828,12 @@ abstract class Str extends ScalarType {
         return $last;
     }
 
+    /**
+     * Conert a string to snake case.
+     *
+     * @param string $source
+     * @return string
+     */
     public static function snake(string $source): string {
         return \Str::join(
             \Arr::map(
@@ -848,6 +849,12 @@ abstract class Str extends ScalarType {
         );
     }
 
+    /**
+     * Convert a string to title case.
+     *
+     * @param string $source
+     * @return string
+     */
     public static function title(string $source): string {
         return \Str::join(
             \Arr::map(

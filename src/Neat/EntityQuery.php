@@ -43,7 +43,7 @@ namespace Slate\Neat {
             /** Convert the path into branches so they dont require recursion. */
             $branches = \Arr::map(
                 \Arr::branches(
-                    \Arr::associate($plan, null, \Fnc::return(), deep: true),
+                    \Arr::associate($plan, null, fn($v) => $v, deep: true),
                     \Arr::DOTS_EVAL_ARRAY
                 ),
                 function($branch) {

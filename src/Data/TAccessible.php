@@ -1,6 +1,7 @@
 <?php
 
 namespace Slate\Data {
+    //TODO: replace static::$container with constant
     /**
      * A trait used to provide the code to allow array access.
      */

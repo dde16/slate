@@ -1,6 +1,8 @@
 <?php
 
 namespace Slate\Mvc {
+
+    use Closure;
     use Slate\Media\Uri;
 
     class RouteUri extends Uri {
@@ -85,7 +87,7 @@ namespace Slate\Mvc {
                 foreach($matches as $match) {
                     if($match["param"] !== null) {
                         if(\Arr::hasKey($this->params, $match["param_name"][0]))
-                            throw new Error("Duplicate parameter '{$match['param_name'][0]}' detected.");
+                            throw new \Error("Duplicate parameter '{$match['param_name'][0]}' detected.");
 
                         
                         // throw new Error("Parameter {$match["param_name"][0]} cannot have another parameter directy after it.");
@@ -155,6 +157,7 @@ namespace Slate\Mvc {
                     )
                 ));
 
+
             $pattern = \Str::replaceManyAt(
                 $this->getPath(),
                 \Arr::mapAssoc(
@@ -187,7 +190,7 @@ namespace Slate\Mvc {
                 $values = [];
 
                 foreach($this->params as $param) {
-                    $values[$param["name"]] = $match["param_".$param["name"]];
+                    $values[$param["name"]] = urldecode($match["param_".$param["name"]]);
                 }
 
                 return $values;

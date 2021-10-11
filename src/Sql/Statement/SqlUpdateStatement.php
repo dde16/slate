@@ -4,9 +4,9 @@ namespace Slate\Sql\Statement {
     use Slate\Sql\SqlConstruct;
     use Slate\Sql\SqlStatement;
 
-    use Slate\Sql\Modifier\TSqlLowPriorityModifier;
-    use Slate\Sql\Modifier\TSqlQuickModifier;
-    use Slate\Sql\Modifier\TSqlIgnoreModifier;
+    
+    
+    
 
     use Slate\Sql\Clause\TSqlFromClause;
     use Slate\Sql\Clause\TSqlSetClause;
@@ -17,10 +17,10 @@ namespace Slate\Sql\Statement {
     use Slate\Facade\DB;
     use Slate\Mvc\App;
     use Slate\Sql\ISqlResultProvider;
+    use Slate\Sql\SqlModifier;
 
     class SqlUpdateStatement extends SqlStatement  {
-        use TSqlLowPriorityModifier;
-        use TSqlIgnoreModifier;
+        public const MODIFIERS = SqlModifier::LOW_PRIORITY | SqlModifier::IGNORE;
 
         use TSqlWhereClause;
         use TSqlFromClause;
@@ -29,7 +29,15 @@ namespace Slate\Sql\Statement {
         use TSqlSetClause;
     
         public function build(): array {
-            return ["UPDATE", $this->buildFroms(), $this->buildLowPriorityModifier(), $this->buildIgnoreModifier(), $this->buildSetClause(), $this->buildWhereClause(), $this->buildLimitClause()];
+            return [
+                "UPDATE",
+                $this->buildFroms(),
+                $this->buildModifier(SqlModifier::LOW_PRIORITY),
+                $this->buildModifier(SqlModifier::IGNORE),
+                $this->buildSetClause(),
+                $this->buildWhereClause(),
+                $this->buildLimitClause()
+            ];
         }
     }
 }

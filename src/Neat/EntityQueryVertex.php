@@ -14,17 +14,19 @@ namespace Slate\Neat {
     use Slate\Sql\Clause\TSqlOrderByClause;
     use Slate\Sql\Clause\TSqlWhereClause;
     use Slate\Sql\Expression\TSqlColumnsExpression;
-    use Slate\Sql\Modifier\TSqlHighPriorityModifier;
-    use Slate\Sql\Modifier\TSqlNoCacheModifier;
-    use Slate\Sql\Modifier\TSqlResultModifiers;
-    use Slate\Sql\SqlReference;
+    use Slate\Sql\SqlModifier;
     use Slate\Sql\SqlStatement;
     use Slate\Sql\Statement\SqlSelectStatement;
 
-class EntityQueryVertex extends SqlStatement implements IAnyForwardConvertable {
-        use TSqlHighPriorityModifier;
-        use TSqlResultModifiers;
-        use TSqlNoCacheModifier;
+    class EntityQueryVertex extends SqlStatement implements IAnyForwardConvertable {
+        public const MODIFIERS =
+            SqlModifier::HIGH_PRIORITY
+            | SqlModifier::NO_CACHE
+            | SqlModifier::BIG_RESULT
+            | SqlModifier::SMALL_RESULT
+            | SqlModifier::BUFFER_RESULT
+        ;
+
         use TSqlColumnsExpression;
         use TSqlFromClause;
         use TSqlWhereClause;
@@ -155,9 +157,13 @@ class EntityQueryVertex extends SqlStatement implements IAnyForwardConvertable {
 
             $build = [
                 "SELECT",
-                $this->buildHighPriorityModifier(),
-                $this->buildResultModifiers(),
-                $this->buildNoCacheModifier(),
+                ...$this->buildModifiers([
+                    SqlModifier::HIGH_PRIORITY,
+                    SqlModifier::BIG_RESULT,
+                    SqlModifier::SMALL_RESULT,
+                    SqlModifier::BUFFER_RESULT,
+                    SqlModifier::NO_CACHE,
+                ]),
                 $this->buildColumnsExpression(),
                 $this->buildFromClause(),
                 $this->buildWhereClause(),

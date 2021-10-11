@@ -17,7 +17,6 @@ namespace Slate\Exception {
 
             $this->httpCode    = $httpCode;
             $this->httpMessage = HttpCode::message($httpCode);
-
         }
     }
 }
