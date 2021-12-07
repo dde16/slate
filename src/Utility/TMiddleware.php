@@ -24,7 +24,7 @@ namespace Slate\Utility {
             if($class === null) {
                 $class = $name;
 
-                if(\Cls::exists($class)) {
+                if(\class_exists($class)) {
                     $names = \Arr::keys(
                         \Arr::filter(
                             static::$middleware,
@@ -57,7 +57,7 @@ namespace Slate\Utility {
             }
 
             if(static::usable($name)) {                
-                if(\Cls::exists($class)) {
+                if(\class_exists($class)) {
                     static::$using[$name] = $class;
                 }
                 else {

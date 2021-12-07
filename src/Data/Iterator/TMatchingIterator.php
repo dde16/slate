@@ -1,7 +1,10 @@
 <?php
 
 namespace Slate\Data\Iterator {
-    /**
+
+use Generator;
+
+/**
      * Provides simple (optionally high-efficiency) matching for iterators.
      */
     trait TMatchingIterator {
@@ -51,6 +54,36 @@ namespace Slate\Data\Iterator {
             $this->revert();
 
             return false;
+        }
+
+        public function search(string $search): Generator {
+            $line    = 0;
+
+            while(!$this->isEof()) {
+                if($this->current() === "\n")
+                    $line++;
+
+                if($this->match($search))
+                    yield [
+                        "pointer" => $this->tell(),
+                        "line"    => $line
+                    ];
+
+                $this->next();
+            }
+        }
+
+        public function count(string $search): int {
+            $count = 0;
+
+            while(!$this->isEof()) {
+                if($this->match($search))
+                    $count++;
+
+                $this->next();
+            }
+
+            return $count;
         }
     }
 }

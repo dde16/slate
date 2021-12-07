@@ -1,23 +1,45 @@
 <?php
 
 namespace Slate\Sql\Type {
-    class SqlCharacterType extends SqlType implements ISqlTypeForwardConvertable, ISqlTypeBackwardConvertable {
+    use Slate\Sql\Clause\TSqlCharacterSetClause;
+    use Slate\Sql\Clause\TSqlCollateClause;
 
-        protected int    $octetLength;
-        protected int    $charLength;
-        protected int    $bytesPerChar;
+    class SqlCharacterType extends SqlType implements ISqlTypeForwardConvertable, ISqlTypeBackwardConvertable {
+        
+        use TSqlCharacterSetClause;
+        use TSqlCollateClause;
+
+        protected ?int    $octetLength = null;
+        protected ?int    $charLength = null;
+        protected ?int    $bytesPerChar = null;
                 
         public function fromArray(array $array): void {
             parent::fromArray($array);
             
-            $this->charLength = \Integer::tryparse($array["charLength"]);
-            $this->octetLength = \Integer::tryparse($array["octetLength"]);
+            if($array["charLength"] !== null) {
+                $this->charLength = \Integer::tryparse($array["charLength"]);
+                $this->size = $this->charLength;
+            }
+            
+            if($array["octetLength"] !== null) {
+                $this->octetLength = \Integer::tryparse($array["octetLength"]);
+            }
 
-            $this->bytesPerChar = (int)($this->octetLength / $this->charLength);
+            if($this->charLength !== null && $this->octetLength !== null) {
 
-            $this->size = $this->charLength;
+                $this->bytesPerChar = (int)($this->octetLength / $this->charLength);
+            }
+
+
 
             $this->default = $array["default"];
+        }
+
+        public function len(int $charLength): static {
+            $this->charLength = $charLength;
+            $this->size = $charLength;
+
+            return $this;
         }
 
         public function getDefault(string $target): mixed {
@@ -79,6 +101,12 @@ namespace Slate\Sql\Type {
 
         public function getBytesPerChar(): int {
             return $this->bytesPerChar;
+        }
+
+        public function build(): array {
+            return [
+                $this->datatype . ($this->charLength !== null ? "({$this->charLength})" : ""),
+            ];
         }
     }
 }

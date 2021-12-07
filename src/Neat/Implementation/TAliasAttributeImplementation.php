@@ -3,13 +3,13 @@
 namespace Slate\Neat\Implementation {
 
     use Closure;
-    use Slate\Metalang\Attribute\AttributeCallStatic;
-    use Slate\Metalang\Attribute\AttributeCall;
+    use Slate\Metalang\Attribute\HookCallStatic;
+    use Slate\Metalang\Attribute\HookCall;
     use Slate\Neat\Attribute\Alias;
     use Slate\Neat\Attribute\Benchmark;
 
 trait TAliasAttributeImplementation {
-        #[AttributeCallStatic(Alias::class, [Benchmark::class])]
+        #[HookCallStatic(Alias::class, [Benchmark::class])]
         public static function aliasStaticImplementor(string $name, array $arguments, object $next): mixed {
             return static::aliasSharedImplementor(
                 $name,
@@ -22,7 +22,7 @@ trait TAliasAttributeImplementation {
             );
         }
 
-        #[AttributeCall(Alias::class, [Benchmark::class])]
+        #[HookCall(Alias::class, [Benchmark::class])]
         public function aliasImplementor(string $name, array $arguments, object $next): mixed {
             return static::aliasSharedImplementor(
                 $name,

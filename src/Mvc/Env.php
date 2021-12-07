@@ -4,16 +4,16 @@ namespace Slate\Mvc {
 
     use Slate\Data\Collection;
     use Slate\Http\HttpEnvironment;
-    use Slate\Utility\TImitate;
-    use Slate\Utility\TUninstantiable;
+    use Slate\Utility\Singleton;
 
-    final class Env {
-        use TImitate;
+    final class Env extends Singleton {
+        public const DEFAULT = Collection::class;
 
-        public static function createInstance(): object {
-            return(new Collection([
-                "env.host" => HttpEnvironment::getHost()
-            ], Collection::APPENDABLE));
+        public static function make(array $arguments = []): object {
+            return parent::make([
+                ["env.host" => HttpEnvironment::getHost()],
+                Collection::APPENDABLE
+            ]);
         }
 
         public static array $boundpaths = [

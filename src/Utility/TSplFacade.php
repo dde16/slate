@@ -1,7 +1,10 @@
 <?php
 
 namespace Slate\Utility {
-    /**
+
+use Slate\Exception\UndefinedRoutineException;
+
+/**
      * A trait that adapts facades to be able to call Standard PHP library functions.
      */
     trait TSplFacade {        
@@ -30,7 +33,7 @@ namespace Slate\Utility {
                     );
                 }
                 else {
-                    throw new \Error(
+                    throw new UndefinedRoutineException(
                         \Str::format(
                             "Call to undefined function {} from {}::{}()",
                             $endpoint,
@@ -41,13 +44,7 @@ namespace Slate\Utility {
                 }
             }
             else {
-                throw new \Error(
-                    \Str::format(
-                        "Call to undefined method {}::{}()",
-                        static::class,
-                        $method
-                    )
-                );
+                throw new UndefinedRoutineException([static::class, $method], UndefinedRoutineException::ERROR_UNDEFINED_METHOD);
             }
         }
     }

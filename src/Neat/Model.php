@@ -5,7 +5,7 @@ namespace Slate\Neat {
     use Closure;
     use Generator;
     use Slate\Metalang\MetalangTrackedClass;
-
+    use Slate\Neat\Implementation\TMacroableImplementation;
     use Slate\Neat\Implementation\TCacheAttributeImplementation;
     use Slate\Neat\Implementation\TGetterAttributeImplementation;
     use Slate\Neat\Implementation\TSetterAttributeImplementation;
@@ -15,11 +15,15 @@ namespace Slate\Neat {
     use Slate\Neat\Implementation\TCarryAttributeImplementation;
     use Slate\Neat\Implementation\TJsonAttributeImplementation;
     use Slate\Neat\Implementation\TThrottleAttributeImplementation;
+    use Slate\Neat\Implementation\TPropertyAttributeImplementation;
 
     use Slate\Neat\Attribute\Fillable;
     use Slate\Neat\Attribute\Initialiser;
 
     class Model extends MetalangTrackedClass {
+        public const DESIGN  = ModelDesign::class;
+
+        use TMacroableImplementation;
         use TCacheAttributeImplementation;
         use TGetterAttributeImplementation;
         use TSetterAttributeImplementation;
@@ -29,6 +33,7 @@ namespace Slate\Neat {
         use TAliasAttributeImplementation;
         use TCarryAttributeImplementation;
         use TJsonAttributeImplementation;
+        use TPropertyAttributeImplementation;
 
         /**
          * @var string $context
@@ -56,7 +61,7 @@ namespace Slate\Neat {
 
         public function fromArray(array $properties): void {
             foreach($properties as $propertyName => $propertyValue) {
-                if(static::design()->getAttrInstance(Fillable::class, $propertyName, subclasses: true)) {
+                if(static::design()->getAttrInstance(Fillable::class, $propertyName)) {
                     $this->__set($propertyName, $propertyValue);
                 }
             }
@@ -83,9 +88,7 @@ namespace Slate\Neat {
 
         public function toArray(array $properties): array {
             return \Arr::mapAssoc(
-                \Arr::associate($properties, null, function(mixed $collision): Closure|string|null {
-                    return (is_array($collision) || is_string($collision) || ($collision instanceof Closure)) ? $collision : null;
-                }),
+                \Arr::associate($properties, null),
                 function($fromKey, $toKey) use($properties) {
                     if($toKey === null)
                         $toKey = $fromKey;
@@ -93,11 +96,9 @@ namespace Slate\Neat {
                     if(\Str::startswith($fromKey, "@")) {
                         $fromKey = \Str::removePrefix($fromKey, "@");
 
-                        $toValue = $this->__getx($toKey);
-
                         return [
                             $this->__getx($fromKey),
-                            $toKey instanceof Closure ? $toKey($toValue) : $toValue
+                            $toKey instanceof Closure ? $toKey($this) : $this->__getx($toKey)
                         ];
                     }
                     else {

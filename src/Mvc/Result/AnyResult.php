@@ -9,7 +9,7 @@ namespace Slate\Mvc\Result {
         protected DataResult $result;
 
         public function __construct(mixed $data, bool $bypass = false) {
-            $this->result = ResultFactory::create(\Any::getType($data, tokenise: true), [$data]);
+            $this->result = $data !== null ? ResultFactory::create(\Any::getType($data, tokenise: true), [$data]) : (new ScalarResult(""));
 
             parent::__construct($bypass);
         }

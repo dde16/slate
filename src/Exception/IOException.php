@@ -62,6 +62,7 @@ class IOException extends SlateException {
             IOException::ERROR_FILE_OPEN_ASSERTION    => "File '{path}' has not yet been opened or has closed prematurely.",
             IOException::ERROR_DIR_OPEN_ASSERTION     => "Directory '{path}' has not yet been opened or has closed prematurely.",
         ];
+        
         public function __construct(string|array $argument = null, int $code = 0, ?Throwable $previous = null) {
             if(is_array($argument))
                 $argument = \Arr::map($argument, fn($v) => $v instanceof SplFileInfo ? $v->__toString() : $v);

@@ -12,13 +12,15 @@ namespace Slate\IO {
         use TMatchingIterator;
         use TAnchoredIterator;
 
-        public function hash(string $algorithm, int $blocksize = 32768): Hash { 
+        
+
+        public function hash(string $algorithm, int $bufferSize = 32768): Hash { 
             $this->assertOpen();
             
             $hash = new Hash($algorithm);
 
             do {
-                if(($data = $this->read($blocksize)) !== null)
+                if(($data = $this->read($bufferSize)) !== null)
                     $hash->update($data);
                 
             } while(!$this->isEof());
@@ -59,7 +61,7 @@ namespace Slate\IO {
             return feof($this->resource);
         }
 
-        public function readAll(int $blocksize = Stream::BUFFER_SIZE): string|null {
+        public function readAll(int $bufferSize = Stream::BUFFER_SIZE): string|null {
             $this->assertOpen();
 
             if($this->isEof())
@@ -69,7 +71,7 @@ namespace Slate\IO {
             $currentPosition = ftell($this->resource);
 
             while(!feof($this->resource)) {
-                $data .= fread($this->resource, $blocksize);
+                $data .= fread($this->resource, $bufferSize);
             }
 
             if($data === null)
@@ -141,32 +143,6 @@ namespace Slate\IO {
 
             return ($found || ($eof ? $this->isEof() : false)) ? $buffer : null;
         }
-
-        // public function readUntil(string $until, bool $eof = true): string|null {
-        //     $this->assertOpen();
-
-        //     $buffer = "";
-        //     $this->anchor();
-        //     $untilLength = strlen($until);
-        //     $found = false;
-
-
-        //     while(($frame = $this->read($untilLength)) !== null && !$found) {
-        //         if(!($found = ($frame == $until))) {
-        //             $buffer .= substr($frame, 0, 1);
-        //         }
-                
-        //         if(($this->isEof())) {
-        //             $found = $eof;
-        //         }
-
-        //         $this->relseek($untilLength - (strlen($frame) + 1));
-        //     }
-
-        //     if($found) return $buffer;
-
-        //     $this->revert();
-        // }
     }
 }
 

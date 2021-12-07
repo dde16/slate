@@ -3,16 +3,13 @@
 namespace Slate\Metalang {
     use Closure;
     
-    class MetalangFunctionGraph {
+    class MetalangFunctionGraph extends MetalangFunctionStructure {
         public ?string $next;
-        public Closure $fallback;
-        public array   $closures;
         public array   $called;
     
-        public function __construct(array $closures, Closure $fallback) {
+        public function __construct(array $closures, Closure $finally) {
+            parent::__construct($closures, $finally);
             $this->next = \Arr::firstEntry($closures)[0];
-            $this->closures = $closures;
-            $this->fallback = $fallback;
             $this->called   = [];
         }
     
@@ -40,7 +37,7 @@ namespace Slate\Metalang {
             $this->called[] = $next;
             $this->next = null;
     
-            return ($this->closures[$next] ?: $this->fallback)(
+            return ($this->closures[$next] ?? $this->finally)(
                 ...[...$arguments, $this]
             );
         }

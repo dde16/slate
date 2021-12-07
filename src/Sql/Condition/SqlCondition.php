@@ -88,14 +88,14 @@ namespace Slate\Sql\Condition {
                         \Arr::map(
                             $this->conditions,
                             function($condition){
-                                if(\Any::isObject($condition[0])) {
+                                if(is_object($condition[0])) {
                                     $condition[0] = "(".$condition[0]->toString().")";
                                 }
 
-                                if(\Any::isObject($condition[1])) {
+                                if(is_object($condition[1])) {
                                     $condition[1] = "(".$condition[1]->toString().")";
                                 }
-                                else if(\Any::isArray($condition[1])) {
+                                else if(is_array($condition[1])) {
                                     $condition[1] = \Arr::join(
                                         \Arr::map(
                                             $condition[1],

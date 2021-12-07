@@ -1,40 +1,23 @@
 <?php
-abstract class Any {
-    use \Slate\Utility\TSplFacade;
-    
+
+class Any extends \Slate\Utility\Facade {
     /**
-     * The function mapping for this
-     * facade to its standard php library
-     * equivalent.
+     * Convert a value, if empty, to null.
+     * 
+     * @param mixed $value
+     * 
+     * @return mixed
      */
-    public const SPL = [
-        // "getType"      => "gettype",
-        "isEmpty"      => "empty",
-        "isString"     => "is_string",
-        "isObject"     => "is_object",
-        "isInt"        => "is_int",
-        "isInteger"    => "is_int",
-        "isNumeric"    => "is_numeric",
-        "isBool"       => "is_bool",
-        "isFloat"      => "is_float",
-        "isCountable"  => "is_countable",
-        "isDouble"     => "is_double",
-        "isLong"       => "is_long",
-        "isFinite"     => "is_finite",
-        "isCallable"   => "is_callable",
-        "isScalar"     => "is_scalar",
-        "isArray"      => "is_array",
-        "isResource"   => "is_resource",
-        "isWritable"   => "is_writable",
-        "isIterable"   => "is_iterable",
-        "isInfinite"   => "is_infinite",
-        "isNull"       => "is_null",
-        "isNaN"        => "is_nan",
-        "isExecutable" => "is_executable",
-        "isLink"       => "is_link",
-        "isReadable"   => "is_readable",
-        "isWriteable"  => "is_writeable"
-    ];
+    public static function emptyAsNull(mixed $value): mixed {
+        if(is_string($value)) {
+            $value = !empty(trim($value)) ? $value : null;
+        }
+        else {
+            $value = !empty($value) ? $value : null;
+        }
+
+        return $value;
+    }
 
     /**
      * Perform a shallow copy for values taken by reference.
@@ -99,36 +82,6 @@ abstract class Any {
      * @return bool
      */
     public static function isCompound(mixed $value): bool {
-        return \Arr::any(
-            \Cls::getSubclassesOf(\CompoundType::class),
-            function($class) use (&$value){
-                return $class::validate($value);
-            }
-        );
-    }
-
-    /**
-     * Convert a decimal number to binary, including real numbers.
-     * 
-     * @param int|float|double $number
-     * 
-     * @return string
-     */
-    public static function dec2bin(int|float $number): string {
-        $bytes = [];
-
-        while ($number >= 256) {
-            $bytes[] = (($number / 256) - (floor($number / 256))) * 256;
-            $number = floor($number / 256);
-        }
-
-        $bytes[] = $number;
-        $binstring = "";
-
-        for ($i = 0; $i < count($bytes); $i++) {
-            $binstring = (($i == count($bytes) - 1) ? decbin($bytes[$i]) : str_pad(decbin($bytes[$i]), 8, "0", STR_PAD_LEFT)).$binstring;
-        }
-
-        return $binstring;
+        return is_object($value) || is_array($value);
     }
 }

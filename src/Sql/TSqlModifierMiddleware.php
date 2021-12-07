@@ -1,7 +1,10 @@
 <?php
 
 namespace Slate\Sql {
-    trait TSqlModifierMiddleware {
+
+use Slate\Exception\UndefinedRoutineException;
+
+trait TSqlModifierMiddleware {
         public function __call(string $name, array $arguments): mixed {
             if(\Arr::hasKey(SqlModifier::TOGGLERS, $name)) {
                 $toggler = SqlModifier::TOGGLERS[$name];
@@ -17,10 +20,7 @@ namespace Slate\Sql {
                 return $this->setModifier($modifier, ...$arguments);
             }
     
-            throw new \Error(\Str::format(
-                "Call to undefined method {}::{}().",
-                static::class, $name
-            ));
+            throw new UndefinedRoutineException([static::class, $name], UndefinedRoutineException::ERROR_UNDEFINED_METHOD);
         }
     }
 }

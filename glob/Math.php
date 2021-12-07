@@ -473,6 +473,7 @@ abstract class Math {
      * @param float|int $value
      * @return float:int
      */
+    //TODO: remove
     public static function between($value, array $boundary, int $mode = \Math::EXCLUSIVE) {
         list($minimum, $maximum) = $boundary;
 
@@ -494,12 +495,12 @@ abstract class Math {
      * @param $number
      * @return float
      */
-    public static function digits(int|float $number): int {
-        return ceil(log10((float)$number));
+    public static function digits(int|float $number, int $base = 10): int {
+        return ceil(log((float)$number, $base));
     }
 
     /**
-     * Check if a value overflows bounaries of min/max, so; wrap it around by how much its exceeds these bounaries.
+     * Check if a value overflows boundaries of min/max, if so; wrap it around by how much its exceeds these bounaries.
      *
      * @param  int|float $minimum
      * @param  int|float $maximum
@@ -522,6 +523,82 @@ abstract class Math {
         }
 
         return $value;
+    }
+
+    public static function equalSet(array $array): bool {
+        return \Math::subtract($array) == 0;
+    }
+
+    public static function equaliseMatrices(array ...$matrices): array {
+        $size = \Arr::max(\Arr::map($matrices, Closure::fromCallable('count')));
+
+        return \Arr::map($matrices, fn(array $array): array => \Arr::padRight($array, 0, $size));
+    }
+
+    public static function subtract(array $array): int|float {
+        return \Arr::reduce(
+            \Arr::lead($array),
+            fn(int|null $prevLead, array $nextLead): int|float
+                => ($nextLead[1] - $nextLead[0] - $prevLead),
+            0
+        );
+    }
+
+    public static function term(array $originalSet, int $limit = 3) {
+        $exponent = 0;
+    
+        $deltaSet = $originalSet;
+    
+        do {
+            $deltaSet = \Arr::map(
+                \Arr::lead($deltaSet),
+                fn(array $lead): int|float => $lead[1] - $lead[0]
+            );
+    
+            $exponent++;
+        } while($exponent <= $limit && !($equalised = (\Math::subtract($deltaSet) === 0)));
+    
+        if($equalised) {
+            $product = $deltaSet[0];
+            $comparativeSet = [];
+    
+            for($index = 0; $index < count($originalSet); $index++)
+                $comparativeSet[] = $product * ($index + 1);
+    
+            debug($originalSet);
+            debug($comparativeSet);
+    
+            $deltaSet = \Math::subtractMatrices($originalSet, $comparativeSet);
+    
+            if(\Math::equalSet($deltaSet)) {
+                $expression = $product."n";
+    
+                if($exponent > 1)
+                    $expression .= " ^ ".$exponent;
+    
+                if($deltaSet[0] > 0)
+                    $expression .= " + " . $deltaSet[0];
+    
+                return $expression;
+            }
+    
+        }
+    
+        return null;
+    }
+
+    public static function subtractMatrices(array ...$matrices) {
+
+        $matrices = \Math::equaliseMatrices(...$matrices);
+
+        $deltas = $matrices[0];
+        $matrices = \Arr::slice($matrices, 1);
+
+        foreach($matrices as $matrix)
+            foreach($matrix as $index => $value) 
+                $deltas[$index] -= $value;
+
+        return $deltas;
     }
 }
 

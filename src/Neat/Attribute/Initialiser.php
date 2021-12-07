@@ -3,7 +3,10 @@
 namespace Slate\Neat\Attribute {
 
     use Attribute;
+    use ReflectionMethod;
+    use ReflectionProperty;
     use Slate\Metalang\MetalangAttribute;
+    use Slate\Metalang\MetalangDesign;
 
     #[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
     class Initialiser extends MetalangAttribute {

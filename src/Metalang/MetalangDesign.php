@@ -6,7 +6,7 @@ namespace Slate\Metalang {
     use ReflectionClass;
     use ReflectionException;
     use ReflectionMethod;
-    use Slate\Metalang\Attribute\AttributeCall;
+    use Slate\Metalang\Attribute\HookCall;
 
     class MetalangDesign extends ReflectionClass {
         public static array $designs = [];
@@ -23,8 +23,6 @@ namespace Slate\Metalang {
                 throw new \Error("Class Design cannot accept classes that are not derived from a " . \Str::afterLast(MetalangClass::class, "\\"));
             }
     
-            // $this->customAttributes = $this->getCustomAttributes();
-    
             foreach([[$this], $this->getConstants(), $this->getProperties(), $this->getMethods()] as $constructs) {
                 $this->customAttributeInstances = \Arr::merge(
                     $this->customAttributeInstances,
@@ -32,23 +30,33 @@ namespace Slate\Metalang {
                 );
             }
 
-            $this->getImplementorCache(AttributeCall::class);
-            $this->getImplementorCache(AttributeCallStatic::class);
-            $this->getImplementorCache(AttributeGet::class);
-            $this->getImplementorCache(AttributeSet::class);
+            $this->getHookCache(HookCall::class);
+            $this->getHookCache(HookCallStatic::class);
+            $this->getHookCache(HookGet::class);
+            $this->getHookCache(HookSet::class);
         }
 
-        public function getImplementorCache(string $implementorClass): array {
+        public function bootstrapAttributes(): void {
+            foreach($this->customAttributeInstances as $customAttributeClass => $customAttributeInstances) {
+                foreach($customAttributeInstances as $customAttributeInstance) {
+                    if(!$customAttributeInstance->isBootstrapped()) {
+                        $customAttributeInstance->bootstrap($this);
+                    }
+                }
+            }
+        }
+
+        public function getHookCache(string $implementorClass): array {
             $implementorCache = &$this->implementorCache[$implementorClass];
 
             if($implementorCache === null) {
-                $implementorCache = $this->generateImplementorCache($implementorClass);
+                $implementorCache = $this->generateHookCache($implementorClass);
             }
 
             return $implementorCache;
         }
 
-        public function generateImplementorCache(string $implementorClass): array {
+        public function generateHookCache(string $implementorClass): array {
             $allImplementors = $this->getAttrInstances(
                 $implementorClass
             );
@@ -59,8 +67,8 @@ namespace Slate\Metalang {
                 $lastImplementorReferenced = false;
             
                 foreach($allImplementors as $nextImplementor) {
-                    if($lastImplementor->getTargetAttribute() !== $nextImplementor->getTargetAttribute()) {
-                        if(\Arr::contains($nextImplementor->getTrailingAttributes(), $lastImplementor->getTargetAttribute())) {
+                    if($lastImplementor->getKeys() !== $nextImplementor->getKeys()) {
+                        if(\Arr::contains($nextImplementor->getNextKeys(), $lastImplementor->getNextKeys())) {
                             $lastImplementorReferenced = true;
                             break;
                         }
@@ -96,7 +104,8 @@ namespace Slate\Metalang {
                     foreach($constructAttributeInstanceKeys as $constructAttributeInstanceKey) {
                         if(\Arr::hasKey($customAttributeInstances[$constructAttributeType], $constructAttributeInstanceKey))
                             throw new \Error(\Str::format(
-                                "An attribute instance by the key '{}' is already taken.",
+                                "Attribute instance for {} already has key taken '{}'.",
+                                $constructAttributeType,
                                 $constructAttributeInstanceKey
                             ));
                         
@@ -169,7 +178,7 @@ namespace Slate\Metalang {
                 : false;
         }
     
-        public function getAttrInstances(string $class = null, bool $subclasses = false): array {
+        public function getAttrInstances(string $class = null, bool $subclasses = true): array {
             return array_merge(
                 (($subclasses)
                     ? array_merge(
@@ -190,26 +199,6 @@ namespace Slate\Metalang {
             );
         }
     
-        // public function getCustomAttributeFromName(string $name): string|null {
-        //     return ($attribute = \Arr::find($this->customAttributes, $name)) !== false
-        //         ? $attribute
-        //         : null;
-        // }
-    
-        // public function getCustomAttributes(): array {
-        //     $customAttributes = [];
-        //     $customProvidedAttributes = $this->getMethod("getAttributes")->invoke(null);
-    
-        //     foreach(\Arr::unique($customProvidedAttributes) as $customAttributeClass) {
-        //         $customAttributes[$customAttributeClass] = 
-        //             \Cls::hasConstant($customAttributeClass, "NAME")
-        //                 ? \Cls::getConstant($customAttributeClass, "NAME")
-        //                 : \Str::afterLast($customAttributeClass, "\\");
-        //     }
-    
-        //     return $customAttributes;
-        // }
-    
         public function hasMethod(string $name, int $flags = 0): bool {
             return parent::hasMethod($name)
                 ? ($flags !== 0 ? \Integer::hasBits(
@@ -227,7 +216,11 @@ namespace Slate\Metalang {
         public static function &of(string $class): object {
             $design = &self::$designs[$class];
     
-            if($design === null)  $design = new (\Cls::getConstant($class, "DESIGN") ?: static::class)($class);
+            if($design === null) {
+                $design = new (\Cls::getConstant($class, "DESIGN") ?: static::class)($class);
+                $design->bootstrapAttributes();
+            }
+
     
             return $design;
         }

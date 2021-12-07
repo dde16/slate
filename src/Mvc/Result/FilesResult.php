@@ -18,7 +18,7 @@ namespace Slate\Mvc\Result {
                 function($field, $file) {
                     return [
                         $field,
-                        \Any::isString($file)
+                        is_string($file)
                             ? new HttpResponseFile(basename($file), $file)
                             : $file
                     ];

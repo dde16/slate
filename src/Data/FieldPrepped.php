@@ -2,9 +2,9 @@
 
 namespace Slate\Data {
 
-use ArrayAccess;
+    use ArrayAccess;
 
-class FieldPrepped extends Field {
+    class FieldPrepped extends Field {
         protected array $sources = [];
     
         public function from(ArrayAccess|array ...$sources): static {
@@ -13,6 +13,31 @@ class FieldPrepped extends Field {
     
             return $this;
         }
+
+        public function object(string $errorMessage = null): mixed {
+            return parent::object($errorMessage)->get();
+        }
+
+        public function array(string $errorMessage = null): mixed {
+            return parent::array($errorMessage)->get();
+        }
+
+        public function bool(string $errorMessage = null): mixed {
+            return parent::bool($errorMessage)->get();
+        }
+
+        public function int(string $errorMessage = null): mixed {
+            return parent::int($errorMessage)->get();
+        }
+
+        public function string(string $errorMessage = null): mixed {
+            return parent::string($errorMessage)->get();
+        }
+
+        public function float(string $errorMessage = null): mixed {
+            return parent::float($errorMessage)->get();
+        }
+
     
         public function get(bool|string $assert = true): mixed {
             foreach(\Arr::describe($this->sources) as list($position, $source)) {

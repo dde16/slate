@@ -13,7 +13,7 @@ namespace Slate\Neat {
         }
     
         public static function fromArray(array $array): static {
-            return(new static($array["id"], $array["along"], $array["scope"]));
+            return(new static($array["id"], $array["along"]));
         } 
     }
 }

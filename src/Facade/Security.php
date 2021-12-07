@@ -6,20 +6,27 @@ namespace Slate\Facade {
     use Slate\Utility\Facade;
 
     final class Security extends Facade {
-        public static function sanitise(mixed $input, array $escape = ["\"", "'", "`"], bool|string $html = false): mixed {
+        public static function sanitise(mixed $input, array $escape = ["\"", "'", "`", "\\"], bool|string $html = false): mixed {
             $output = null;
     
             switch(\Any::getType($input)) {
                 case "string":
                     $output = $input;
-    
-                    if($escape) {
+
+                    if($escape !== null) {
                         $output = preg_replace_callback(
-                            "/(" . implode("|", $escape) . ")/",
+                            "/(\\\\)*(" . \Arr::join(\Arr::map($escape, Closure::fromCallable('preg_quote')), "|") . ")/",
                             function($matches) use($escape) {
-                                $match = $matches[0];
+                                $match = $matches[2];
+                                $escapes = $matches[1];
+
+                                if(empty($escapes))
+                                    $escapes = "\\";
+
+                                if(strlen($escapes) % 2 === 0)
+                                    $escapes .= "\\";
     
-                                return "\\".$match;
+                                return $escapes.$match;
                             },
                             $input
                         );

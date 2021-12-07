@@ -4,15 +4,6 @@
  * A facade to contain all class related functions.
  */
 abstract class Cls {
-    use \Slate\Utility\TSplFacade;
-
-    public const SPL = [
-        "getClass"      => "get_class",
-        "getParent"     => "get_parent_class",
-        "exists"        => "class_exists",
-        "hasProperty"   => "property_exists"
-    ];
-
     /**
      * Check whether a given class or object is the subclass or
      * the instance of a/multiple parent classes.
@@ -85,7 +76,7 @@ abstract class Cls {
      * @return bool
      */
     public static function hasConstant(string|object $class, string $constant): bool {
-        if(\Any::isObject($class))
+        if(is_object($class))
             $class = $class::class;
 
         return defined($class."::".$constant);
@@ -99,7 +90,7 @@ abstract class Cls {
      * @return bool
      */
     public static function hasInterfaces($class, array|string $interfaces): bool {
-        if(\Any::isString($interfaces))
+        if(is_string($interfaces))
             $interfaces = [$interfaces];
 
         $classInterfaces =  \Cls::getInterfaces($class);
@@ -156,7 +147,7 @@ abstract class Cls {
      * @return bool
      */
     public static function isSubclassOf(string|object $class, string|array $parent): bool {
-        if(\Any::isArray($parent)) {
+        if(is_array($parent)) {
             return \Arr::any($parent, function($parent) use($class) {
                 return is_subclass_of($class, $parent);
             });
@@ -200,7 +191,7 @@ abstract class Cls {
      * @return mixed
      */
     public static function callMethod(string|object $class, string $method, array $arguments = []): mixed {
-        if(!\Any::isString($class)) {
+        if(!is_string($class)) {
             return \Fnc::call([$class, $method], $arguments);
         }
 
@@ -257,12 +248,12 @@ abstract class Cls {
                     \Cls::getTraits($class, false, $autoload),
                     $traits
                 );
-            } while ($class = \Cls::getParent($class));
+            } while ($class = get_parent_class($class));
         
             // Get traits of all parent traits
             $traitsToSearch = $traits;
 
-            while (!\Any::isEmpty($traitsToSearch)) {
+            while (!empty($traitsToSearch)) {
                 $newTraits = \Cls::getTraits(\Arr::pop($traitsToSearch), false, $autoload);
                 $traits = \Arr::merge($newTraits, $traits);
                 $traitsToSearch = \Arr::merge($newTraits, $traitsToSearch);
@@ -313,6 +304,6 @@ abstract class Cls {
      * @return bool
      */
     public static function hasParent(string $class, string $parent, bool $immediate = false): bool {
-        return \Cls::getParents($class)[$parent] !== NULL;
+        return get_parent_classs($class)[$parent] !== NULL;
     }
 }

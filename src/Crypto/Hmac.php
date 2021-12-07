@@ -11,7 +11,7 @@ namespace Slate\Crypto {
         ) {
             $this->setAlgorithm($algorithm);
 
-            $this->context = hash_init($this->algorithm, HASH_HMAC, $key);
+            $this->hashContext = hash_init($this->algorithm, HASH_HMAC, $key);
 
             if($data) $this->update($data);
             

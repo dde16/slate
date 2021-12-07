@@ -1,7 +1,7 @@
 <?php
 
 namespace Slate\IO {
-    interface IStreamReadable {
+    interface IStreamReadable extends IStreamSeekable {
         public function isEof(): bool;
         public function readAll(): ?string;
         public function pipe(IStreamWriteable $stream, int $bufferSize = 8096): void;

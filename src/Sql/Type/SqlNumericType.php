@@ -3,18 +3,43 @@
 namespace Slate\Sql\Type {
 
     use DateTime;
+    use Fnc;
 
     abstract class SqlNumericType extends SqlType implements ISqlTypeBackwardConvertable, ISqlTypeForwardConvertable {
         protected ?int $precision = null;
         protected ?int $scale = null;
-        protected bool $unsigned;
+        protected bool $unsigned = false;
+        protected int $size = 8;
 
         public function fromArray(array $array): void {
             parent::fromArray($array);
             
             $this->scale     = $array["scale"] !== null     ? \Integer::tryparse($array["scale"])     : null;
-            $this->precision = $array["precision"] !== null ? \Integer::tryparse($array["precision"]) : 0;
-            $this->size      = 8;
+            $this->precision = $array["precision"] !== null ? \Integer::tryparse($array["precision"]) : null;
+        }
+
+        public function signed(): static {
+            $this->unsigned = false;
+
+            return $this;
+        }
+
+        public function unsigned(): static {
+            $this->unsigned = true;
+
+            return $this;
+        }
+
+        public function precision(int $precision): static {
+            $this->precision = $precision;
+
+            return $this;
+        }
+
+        public function scale(int $scale): static {
+            $this->scale = $scale;
+
+            return $this;
         }
 
         public function getPrecision(): int|null {
@@ -75,7 +100,7 @@ namespace Slate\Sql\Type {
                         throw new \Error(\Str::format(
                             "Cannot convert {} sql type to {}",
                             $this->datatype,
-                            !\Cls::exists($target) ? $target::NAMES[0] : $target
+                            !\class_exists($target) ? $target::NAMES[0] : $target
                         ));
                     }
                     
@@ -83,6 +108,26 @@ namespace Slate\Sql\Type {
             }
 
             return $value;
+        }
+
+        public function build(): array {
+            $options = [$this->scale, $this->precision];
+            
+            if($options[0] === 0)
+                $options[0] = null;
+
+            $options = \Arr::filter($options);
+
+
+            return [
+                $this->datatype
+                . (
+                    !\Arr::isEmpty($options)
+                        ? \Str::wrapc(\Arr::join($options, ","), "()")
+                        : ""
+                ),
+                $this->unsigned ? "UNSIGNED" : null
+            ];
         }
     }
 }

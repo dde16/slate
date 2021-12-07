@@ -3,16 +3,12 @@
 namespace Slate\Neat\Attribute {
 
     use Attribute;
+    use ReflectionProperty;
     use Slate\Metalang\MetalangAttribute;
+    use Slate\Metalang\MetalangDesign;
 
     #[Attribute(Attribute::TARGET_PROPERTY)]
-    class Fillable extends MetalangAttribute {
-        use TContextualisedAttribute;
-
-        public function __construct(?string $ctx = null) {
-            $this->context = $ctx;
-        }
-    }
+    class Fillable extends MetalangAttribute {    }
 }
 
 ?>

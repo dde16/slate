@@ -2,6 +2,11 @@
 
 namespace Slate\Media {
     //TODO: replace file path properties with SplFileInfo
+    /**
+     * A class for handling and extending URIs and Filepaths.
+     * Note; when handling dotlinks and noslash paths, it will not resolve them
+     * to real paths and only provides combinational path logic.
+     */
     class Uri {
         const SCHEME   = (1<<0);
         const HOST     = (1<<1);
@@ -23,8 +28,8 @@ namespace Slate\Media {
             Uri::FRAGMENT
         ;
 
-        const RELATIVE_DOT     = 1;
-        const RELATIVE_NOSLASH = 2;
+        public const RELATIVE         = (1<<0);
+        public const RELATIVE_DOTLINK = (1<<1);
 
         public ?string $scheme   = null;
         public ?string $host     = null;
@@ -33,15 +38,9 @@ namespace Slate\Media {
         public ?string $pass     = null;
         public array   $query    = [];
         public ?string $fragment = null;
-        public ?string $path     = null;
+        public ?UriPath $path     = null;
 
-        public ?string $extension = null;
-        public ?string $directory = null;
-        public ?string $filename  = null;
-
-        
-
-        protected int     $relative = 0;
+        protected int  $relative = 0;
 
         public function __construct(string $uri = null) {
             if($uri !== null) {
@@ -61,40 +60,39 @@ namespace Slate\Media {
                 if(!empty($parsed["query"]))
                     parse_str($parsed["query"], $query);
                 
-                $this->query    = $query;
+                $this->query    = is_array($query) ? $query : [];
                 $this->fragment = $parsed["fragment"];
             }
+        }
+
+        public function __clone() {
+            if($this->path !== null)
+                $this->path = clone $this->path;
         }
 
         public function __invoke(): string {
             return $this->toString();
         }
         
-        public function extend(string|Uri $uri): static {
-            if(is_object($uri)) {
-                $uri = clone $uri;
+        public function apply(string|Uri $uri): static {
+            $uri = is_string($uri) ? (new static($uri)) : (clone $uri); 
+            
+            if(!$this->host && $uri->host) {
+                $this->scheme = $uri->scheme;
+                $this->host   = $uri->host;
+                $this->user   = $uri->user;
+                $this->pass   = $uri->pass;
+                $this->port   = $uri->port;
+            }
+
+            if($this->path !== null) {
+                $this->path->apply($uri->path);
             }
             else {
-                $uri = new static($uri);
-            }
-            
-            if(!$uri->host) {
-                $uri->scheme = $this->scheme;
-                $uri->host   = $this->host;
-                $uri->user   = $this->user;
-                $uri->pass   = $this->pass;
-                $uri->port   = $this->port;
-            }
-            
-            if($uri->relative) {
-                $split = \Str::split(\Str::trimAffix($this->getPath(), "/"), "/");
-
-                $uri->setPath(
-                    "/".\Arr::join(count($split) === 1 ? $split : \Arr::slice($split, 0, -1), "/") . \Path::normalise($uri->getPath())
-                );
+                $this->path = $uri->path;
             }
 
-            $uri->relative = 0;
+            $this->query = \Arr::merge($this->query, $uri->query);
 
             return $uri;
         }
@@ -119,12 +117,8 @@ namespace Slate\Media {
             return $this->pass;
         }
 
-        public function getPath(): ?string {
-            $parts = [$this->directory !== null ? \Str::trimAffix($this->directory, "/") : null, $this->getBasename()];
-
-            $path = \Arr::join(\Arr::filter($parts), "/");
-
-            return "/$path";
+        public function getPath(): ?UriPath {
+            return $this->path;
         }
 
         public function getQuery(): ?string {
@@ -135,54 +129,11 @@ namespace Slate\Media {
             return $this->fragment;
         }
 
-        public function getExtension(): ?string {
-            return $this->extension;
-        }
-
-        public function getDirectory(): ?string {
-            return $this->directory;
-        }
-
-        public function getFilename(): ?string {
-            return $this->filename;
-        }
-
-        public function getBasename(): string {
-            return $this->filename.($this->extension ? ("." . $this->extension) : "");
-        }
-
         public function setPath(string $path): void {
-            $dotRelative     =  \Str::startswith($path, ".");
-            $noSlashRelative = !\Str::startswith($path, "/");
-
-            if($dotRelative)
-                $this->relative = self::RELATIVE_DOT;
-            
-            if($noSlashRelative)
-                $this->relative = self::RELATIVE_NOSLASH;
-
-            if($this->relative !== 0)
-                $path = \Str::trimPrefix($path, ".");
-
-            $pathinfo = pathinfo($path);
-
-            $directory = $pathinfo["dirname"];
-
-            if($directory !== null) {
-                if($directory === "/" || $directory === "." || \Str::isEmpty($directory)) {
-                    $directory = null;
-                }
-                else {
-                    $directory = \Str::removeAffix($pathinfo["dirname"], "/");
-                }
-            }
-            
-            $this->extension = $pathinfo["extension"];
-            $this->directory = $directory;
-            $this->filename  = $pathinfo["filename"] !== null ? \Str::removeAffix($pathinfo["filename"], "/") : $pathinfo["filename"];
+            $this->path = new UriPath($path);
         }
 
-        public function toString(int $flags = Uri::ALL, bool $html = true): ?string {
+        public function toString(int $flags = Uri::ALL, string $delimiter = "/", bool $html = true): ?string {
             $url = "";
             
             if($this->host && \Integer::hasBits($flags, static::HOST)) {
@@ -205,17 +156,8 @@ namespace Slate\Media {
             }
 
             if($this->getPath() && \Integer::hasBits($flags, static::PATH)) {
-                if($this->relative) {
-                    if($html) {
-                        $url .= ".".\Str::addPrefix($this->getPath(), "/");
-                    }
-                    else {
-                        $url .= \Str::removePrefix($this->getPath(), "/");
-                    }
-                }
-                else {
-                    $url .= $this->getPath();
-                }
+                $path = $this->path->toString($delimiter);
+                $url .= !\Str::isEmpty($url) ? \Path::normalise($path) : $path;
             }
             
             if(!\Arr::isEmpty($this->query) && \Integer::hasBits($flags, static::QUERY)) {
@@ -251,7 +193,7 @@ namespace Slate\Media {
                 "port"      => $this->port,
                 "user"      => $this->user,
                 "pass"      => $this->pass,
-                "path"      => $this->getPath(),
+                "path"      => $this->getPath()->toString(),
                 "query"     => $this->getQuery(),
                 "fragment"  => $this->fragment,
 

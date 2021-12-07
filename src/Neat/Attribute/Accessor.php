@@ -2,18 +2,18 @@
 
 namespace Slate\Neat\Attribute {
     use Attribute;
+    use ReflectionMethod;
     use Slate\Metalang\Prefab\MetalangNamedAttribute;
+    use Slate\Metalang\MetalangDesign;
 
     #[Attribute(Attribute::TARGET_METHOD)]
     abstract class Accessor extends MetalangNamedAttribute {
-        use TContextualisedAttribute;
-
         protected ?string $for;
 
-        public function __construct(string $property, ?string $for = null, ?string $ctx = null) {
-            $this->name    = $property;
+        public function __construct(string $property, ?string $for = null) {
+            parent::__construct($property);
+
             $this->for     = $for;
-            $this->context = $ctx;
         }
     
         public function getProperty(): string {

@@ -46,8 +46,12 @@ namespace Slate\Sql\Clause {
                     ? \Arr::join(
                         \Arr::map(
                             $this->drops,
-                            fn($entry) => \Arr::join(\Arr::filter($entry),  "")
-                        )
+                            fn($entry) => "DROP " . \Arr::join(
+                                [$entry[0], $entry[1] ? $this->conn()->wrap($entry[1]) : null],
+                                " "
+                            )
+                        ),
+                        ", "
                     )
                     : null;
         }

@@ -35,7 +35,7 @@ abstract class Hex {
         ));
     }
     
-    public static function toBinary(string $hex): string {
+    public static function toBytes(string $hex): string {
         return hex2bin($hex);
     }
 
@@ -59,7 +59,7 @@ abstract class Hex {
         ));
     }
 
-    public static function fromBinary(string $binary): string {
+    public static function fromBytes(string $binary): string {
         return bin2hex($binary);
     }
 
@@ -68,11 +68,11 @@ abstract class Hex {
     }
 
     public static function decode(string $hex): string {
-        return static::toBinary($hex);
+        return static::toBytes($hex);
     }
 
     public static function encode(string $binary): string{
-        return static::fromBinary($binary);
+        return static::fromBytes($binary);
     }
 }
 

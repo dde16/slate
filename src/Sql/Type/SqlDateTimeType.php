@@ -94,6 +94,12 @@ namespace Slate\Sql\Type {
             
             return $value;
         }
+
+        public function build(): array {
+            return [
+                $this->datatype
+            ];
+        }
     }
 }
 

@@ -4,7 +4,7 @@ namespace Slate\Neat {
     use Slate\Data\Graph;
     use Slate\Data\IStringForwardConvertable;
     use Slate\Facade\DB;
-    use Slate\Mvc\App;
+    use Slate\Facade\App;
     use Slate\Neat\Attribute\Column;
     use Slate\Neat\Attribute\OneToAny;
     use Slate\Neat\Attribute\OneToMany;
@@ -43,7 +43,7 @@ namespace Slate\Neat {
             /** Convert the path into branches so they dont require recursion. */
             $branches = \Arr::map(
                 \Arr::branches(
-                    \Arr::associate($plan, null, fn($v) => $v, deep: true),
+                    \Arr::associate($plan, null, deep: true),
                     \Arr::DOTS_EVAL_ARRAY
                 ),
                 function($branch) {
@@ -101,7 +101,7 @@ namespace Slate\Neat {
                             OneToOne::class,
                             OneToMany::class,
                             Column::class
-                        ], $twig, subclasses: true);
+                        ], $twig);
     
                         $callback = $value;
     
@@ -112,21 +112,7 @@ namespace Slate\Neat {
                         }
     
                         if($joinColumn !== null) {
-                            if(($joinColumn instanceof OneToMany || $joinColumn instanceof OneToOne) ? $joinColumn->hasForeignChainingProperties() : false) {
-                                if(\Integer::hasBits($position, \Arr::POS_END)) {
-                                    throw new \Error(
-                                        "This feature has not been implemented."
-                                    );
-                                }
-                                else {
-                                    throw new \Error(\Str::format(
-                                        "Twig {} is an attribute with chaining foreign properties, thus is required to be at the end of the branch",
-                                        \Arr::join(["root", ...\Arr::slice($branch, 0, $twigIndex+1)], ".")
-                                    ));
-                                }
-                            }
-                            // Check if the column is a foreign key
-                            else if($joinColumn->isForeignKey()) {
+                            if($joinColumn->isForeignKey()) {
                                 $nextClass    = $branchClass = $joinColumn->getForeignClass();
                                 $nextClassKey = \Hex::encode(
                                     crc32($currentClass::ref($joinColumn->parent->getName())->toString(Entity::REF_RESOLVED | Entity::REF_NO_WRAP))
@@ -232,7 +218,7 @@ namespace Slate\Neat {
         }
 
         public function scope(string $name, array $arguments): static {
-            $this->vertex()->scopes[] = [$this->entity::design()->getAttrInstance(Scope::class, $name, subclasses: true), $arguments];
+            $this->vertex()->scopes[] = [$this->entity::design()->getAttrInstance(Scope::class, $name), $arguments];
 
 
             return $this;
@@ -249,7 +235,7 @@ namespace Slate\Neat {
                 $branch = [
                     $vertex->entity,
                     \Arr::mapAssoc(
-                        $vertex->entity::design()->getAttrInstances(Column::class, subclasses: true),
+                        $vertex->entity::design()->getAttrInstances(Column::class),
                         function($index, $column) use($vertex) {
                             return [
                                 $vertex->entity::ref($column->getColumnName(), Entity::REF_NO_WRAP | Entity::REF_RESOLVED)->toString(),
@@ -291,7 +277,7 @@ namespace Slate\Neat {
     
             foreach($rows as $row) {
                 $guide = $this->guide($row);
-    
+
                 unset($lastInstance);
     
                 foreach(\Arr::lead([null, ...$guide]) as list($lastBranch, $nextBranch)) {
@@ -301,9 +287,7 @@ namespace Slate\Neat {
     
                     $rowSlice = \Arr::mapAssoc(
                         $columns,
-                        function($column, $property) use($row) {
-                            return [$property, $row[$column]];
-                        }
+                        fn($column, $property): array => [$property, $row[$column]]
                     );
     
                     $primaryKey = $entity::design()->getPrimaryKey();
@@ -373,7 +357,7 @@ namespace Slate\Neat {
     
         public function get(): array {
             $raw = $this->toString();
-            $conn = $this->conn ?: App::conn();
+            $conn = $this->conn ?? App::conn();
     
             return $this->load($conn->multiquery($raw, aggr: true, rows: true));
         }

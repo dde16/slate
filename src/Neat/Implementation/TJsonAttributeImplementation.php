@@ -83,6 +83,8 @@ namespace Slate\Neat\Implementation {
                     }
                 }
                 
+                if($attribute->flagEmptyAsNull()) 
+                    $value = !empty($value) ? $value : null;
 
                 $this->{$property->getName()} = $value;
             }

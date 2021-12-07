@@ -19,8 +19,11 @@ namespace Slate\Sql\Type {
     use Slate\Sql\Type\MsSql\MsSqlSmalldatetimeType;
     use Slate\Sql\Type\MsSql\MsSqlDateTimeType;
     use Slate\Sql\Type\MsSql\MsSqlTimeType;
+    use Slate\Sql\Type\MySql\MySqlLongTextType;
+    use Slate\Sql\Type\MySql\MySqlMediumTextType;
+    use Slate\Sql\Type\MySql\MySqlSmallTextType;
 
-    class SqlTypeFactory extends Factory {
+class SqlTypeFactory extends Factory {
         public const MAP = [
             /** Integers */
             "mysql.tinyint"          => SqlNumericIntType::class,
@@ -88,10 +91,13 @@ namespace Slate\Sql\Type {
             "mysql.blob"             => SqlCharacterType::class,
             "mysql.mediumblob"       => SqlCharacterType::class,
             "mysql.longblob"         => SqlCharacterType::class,
-            "mysql.tinytext"         => SqlCharacterType::class,
-            "mysql.text"             => SqlCharacterType::class,
-            "mysql.mediumtext"       => SqlCharacterType::class,
-            "mysql.longtext"         => SqlCharacterType::class,
+
+            "mysql.tinytext"         => MySqlTinyTextType::class,
+            "mysql.text"             => MySqlSmallTextType::class,
+            "mysql.smalltext"        => MySqlSmallTextType::class,
+            "mysql.mediumtext"       => MySqlMediumTextType::class,
+            "mysql.longtext"         => MySqlLongTextType::class,
+            
             "mysql.enum"             => SqlCharacterType::class,
             "mysql.set"              => SqlCharacterType::class,
             

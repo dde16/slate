@@ -10,14 +10,16 @@ namespace Slate\Facade {
     use Slate\Sql\Statement\TSqlInsertStatement;
     use Slate\Sql\Statement\TSqlUpdateStatement;
     use Slate\Sql\Statement\TSqlDropStatement;
-
-    use Slate\Sql\MySqlConnection;
-    use Slate\Sql\SqlConnection;
-    use Slate\Sql\SqlRaw;
     use Slate\Sql\Statement\TSqlAlterStatement;
     use Slate\Sql\Statement\TSqlCreateStatement;
+    use Slate\Sql\Statement\TSqlLockTablesStatement;
 
-final class DB extends Facade {
+    use Slate\Sql\Connection\MySqlConnection;
+    use Slate\Sql\SqlConnection;
+    use Slate\Sql\SqlConnectionFactory;
+    use Slate\Sql\SqlRaw;
+    
+    final class DB extends Facade {
         use TMiddleware;
 
         use TSqlSelectStatement;
@@ -27,6 +29,7 @@ final class DB extends Facade {
         use TSqlDropStatement;
         use TSqlAlterStatement;
         use TSqlCreateStatement;
+        use TSqlLockTablesStatement;
 
         public const SUPPORTED = ["mysql"];
 
@@ -71,7 +74,8 @@ final class DB extends Facade {
             if(\Arr::hasKey(static::$connections, $name))
                 throw new \Error("This connection is already in use.");
 
-            if($default) static::default($name);
+            if($default)
+                static::default($name);
 
             static::$connections[$name] = $connection;
         }
@@ -91,17 +95,15 @@ final class DB extends Facade {
             if(!\Arr::contains(DB::SUPPORTED, $driver))
                 throw new \Error("SQL server '$driver' is unsupported.");
 
-            $connectionClass = DB::use("mysql");
-            
             static::add(
                 $driver,
-                new $connectionClass(
-                    Env::get("$driver.hostname", [ "important" => true ]),
-                    Env::get("$driver.username", [ "important" => true ]),
-                    Env::get("$driver.password", [ "important" => true ]),
-                    Env::get("$driver.port"),
-                    Env::get("$driver.database")
-                ),
+                SqlConnectionFactory::create($driver, [
+                    Env::string("$driver.hostname", assert: true),
+                    Env::string("$driver.username", assert: true),
+                    Env::string("$driver.password", assert: true),
+                    Env::string("$driver.port"),
+                    Env::string("$driver.database")
+                ]),
                 $default
             );
         }

@@ -8,7 +8,7 @@ namespace Slate\IO {
         public function writebyte(int $data): void {
             $this->assertOpen();
 
-            if(\Any::isInt($data)) {
+            if(is_int($data)) {
                 if($data > 0xFF) {
                     throw new IOException("Writing to files by integer must be an 8-bit integer.");
                 }

@@ -2,10 +2,12 @@
 
 namespace Slate\Neat\Attribute {
     use Attribute;
+    use ReflectionMethod;
     use Slate\Metalang\MetalangAttribute;
     use Slate\Neat\InstanceCarry;
     use Slate\Neat\StaticCarry;
     use Slate\Utility\TMiddleware;
+    use Slate\Metalang\MetalangDesign;
 
     #[Attribute(Attribute::TARGET_METHOD)]
     class Carry extends MetalangAttribute {
@@ -21,16 +23,10 @@ namespace Slate\Neat\Attribute {
             "static.carry"   => StaticCarry::class,
         ];
 
-        public const NAME = "Carry";
-
         protected string $carrying;
 
         public function __construct(string $class) {
             $this->carrying = $class;
-        }
-
-        public function consume($method): void {
-            parent::consume($method);
 
             if(!class_exists($this->carrying))
                 throw new \Error(\Str::format(

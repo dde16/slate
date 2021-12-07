@@ -9,12 +9,6 @@ namespace Slate\Lang\Interpreter\Attribute {
 
     #[Attribute(Attribute::TARGET_METHOD)]
     class Evaluator extends MetalangNamedAttribute {
-        protected string $name;
-
-        public function __construct(string $name) {
-            $this->name = $name;
-        }
-
         public function getKeys(): string|array {
             return $this->name;
         }

@@ -3,6 +3,7 @@
 namespace Slate\Mvc {
 
     use Closure;
+    use Slate\Exception\PregException;
     use Slate\Media\Uri;
 
     class RouteUri extends Uri {
@@ -14,11 +15,11 @@ namespace Slate\Mvc {
                         \{
                             (?'param_name'[^\}\/]+)
                         \}
-                        (?'param_optional'\?|)
+                        (?'param_optional'\?)?
                     )
                     (?'param_trailing_slash'\/)?
                 )
-            )/xU";
+            )/x";
 
         public function __construct(string $uri = null) {
             if($uri !== null) {
@@ -29,8 +30,10 @@ namespace Slate\Mvc {
                 $this->port     = $parsed["port"];
                 $this->user     = $parsed["user"];
                 $this->pass     = $parsed["pass"];
+
+                $prefix = $this->toString();
                 
-                $this->setPath(\Path::normalise(\Str::removePrefix($uri, $this->toString())));
+                $this->setPath(\Path::normalise($prefix ? \Str::removePrefix($uri, $prefix) : $uri));
                 
                 if(!empty($parsed["fragment"]))
                     throw new \Error("Rest URIs are not allowed fragments.");
@@ -38,6 +41,7 @@ namespace Slate\Mvc {
         }
 
         public array $params    = [];
+        public ?string $prefix = null;
 
         public function setPath(string $path): void {
             parent::setPath($path);
@@ -83,11 +87,10 @@ namespace Slate\Mvc {
                     }
                 );
 
-
                 foreach($matches as $match) {
                     if($match["param"] !== null) {
                         if(\Arr::hasKey($this->params, $match["param_name"][0]))
-                            throw new \Error("Duplicate parameter '{$match['param_name'][0]}' detected.");
+                            throw new \Error("Duplicate parameter '{$match['param_name'][0]}' detected in '{$path}'.");
 
                         
                         // throw new Error("Parameter {$match["param_name"][0]} cannot have another parameter directy after it.");
@@ -98,6 +101,8 @@ namespace Slate\Mvc {
                             "to"        => $match["param_body"][2],
                             "soft"      => $match["param_leading_slash"] !== null && $match["match"][4]["param_leading_slash"] !== null && $match["param_optional"] !== null,
                             "optional"  => $match["param_optional"] !== null,
+                            "leading_slash"     => $match["param_leading_slash"] !== null,
+                            "trailing_slash"     => $match["param_leading_slash"] !== null,
                             "ambiguous" => (
                                 (
                                     !$match["param_leading_slash"]
@@ -120,6 +125,19 @@ namespace Slate\Mvc {
                     }
                 }
             }
+            else {
+                PregException::last();
+            }
+
+            [$minParamName, $minParam] = \Arr::minEntry(
+                $this->params,
+                fn(array $param): int => $param["from"]
+            );
+
+            if($minParam !== null) {
+                $this->prefix = \Str::removeSuffix(substr($this->toString(), 0, $minParam["from"]), "/");
+            }
+                
 
             // Perform paramter and wildcard match
             // When invoked; if a where regex is provided for a parameter, whether two ambiguous parameters are directly touching 
@@ -127,12 +145,42 @@ namespace Slate\Mvc {
         }
 
         public function slashes(): int {
-            return
+            $slashes = 
                 \Str::count($this->getPath(), "/")
                 - \Arr::count(\Arr::filter(
                     $this->params,
-                    fn($param) => $param["soft"] 
+                    fn($param) => !(!$param["optional"] && $param["leading_slash"] )
                 ));
+
+            return $slashes;
+        }
+
+        public function pattern(array $wheres = []): string {
+            return \Str::replaceManyAt(
+                $this->getPath(),
+                \Arr::mapAssoc(
+                    $this->params,
+                    function($paramName, $paramOptions) use($wheres) {
+                        return [
+                            null,
+                            [
+                                "(?:"
+                                    . ($paramOptions["optional"]  && $paramOptions["leading_slash"] ? "/" : "")
+                                    . "(?'param_$paramName'"
+                                        . (@$wheres[$paramName] ?: "[^/]+")
+                                    . ")"
+                                . ")"
+                                . (
+                                    $paramOptions["optional"]
+                                        ? "?"
+                                        : ""
+                                ),
+                                $paramOptions["from"] - intval($paramOptions["optional"] && $paramOptions["leading_slash"]), $paramOptions["to"]
+                            ]
+                        ];
+                    }
+                )
+            );
         }
 
         public function match(string|Uri $uri, array $wheres = []): ?array {
@@ -158,45 +206,41 @@ namespace Slate\Mvc {
                 ));
 
 
-            $pattern = \Str::replaceManyAt(
-                $this->getPath(),
-                \Arr::mapAssoc(
-                    $this->params,
-                    function($paramName, $paramOptions) use($wheres) {
-                        return [
-                            null,
-                            [
-                                "(?:"
-                                    . ($paramOptions["soft"] ? "\/" : "")
-                                    . "(?'param_$paramName'"
-                                        . (@$wheres[$paramName] ?: "[^\/]+")
-                                    . ")"
-                                . ")"
-                                . (
-                                    $paramOptions["optional"]
-                                        ? "?"
-                                        : ""
-                                ),
-                                $paramOptions["from"] - ($paramOptions["soft"] ? 1 : 0), $paramOptions["to"]
-                            ]
-                        ];
-                    }
-                )
-            );
+            // if($this->prefix !== null ? \Str::startswith($uri->toString(), $this->prefix) : true) {
+
+            $pattern = $this->pattern($wheres);
 
             $match = [];
 
             if(preg_match("!^{$pattern}$!", $uri->getPath(), $match, PREG_UNMATCHED_AS_NULL)) {
                 $values = [];
 
-                foreach($this->params as $param) {
-                    $values[$param["name"]] = urldecode($match["param_".$param["name"]]);
-                }
+                foreach($this->params as $param)
+                    $values[$param["name"]] = ($value = $match["param_".$param["name"]]) !== null ? urldecode($value) : null;
 
                 return $values;
             }
+            // }
 
             return null;
+        }
+
+        public function withoutParams(): string {
+            return \Str::replaceManyAt(
+                $this->getPath(),
+                \Arr::mapAssoc(
+                    $this->params,
+                    function($paramName, $paramOptions) {
+                        return [
+                            null,
+                            [
+                                "",
+                                $paramOptions["from"] - intval($paramOptions["leading_slash"]), $paramOptions["to"]
+                            ]
+                        ];
+                    }
+                )
+            );
         }
 
         public function restformat(array $params): string {
@@ -205,8 +249,6 @@ namespace Slate\Mvc {
                 \Arr::mapAssoc(
                     $this->params,
                     function($paramName, $paramOptions) use($params) {
-
-
                         return [
                             null,
                             [

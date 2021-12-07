@@ -9,19 +9,14 @@ namespace Slate\Sql\Statement {
     use Slate\Sql\Clause\TSqlEngineAttributeClause;
     use Slate\Sql\Clause\TSqlLikeClause;
     use Slate\Sql\Clause\TSqlMediumClause;
-    use Slate\Sql\Expression\SqlColumnBlueprint;
     use Slate\Sql\Expression\SqlConstraintBlueprint;
-    
-    
-    
-    
-    
-    
-    
+    use Slate\Sql\SqlColumn;
     use Slate\Sql\SqlModifier;
     use Slate\Sql\SqlStatement;
+    use Slate\Sql\SqlConstraint;
+    use Slate\Sql\SqlIndex;
 
-    class SqlCreateTableStatement extends SqlStatement {
+class SqlCreateTableStatement extends SqlStatement {
         use TSqlCharacterSetClause;
         use TSqlCollateClause;
         use TSqlCommentClause;
@@ -45,7 +40,7 @@ namespace Slate\Sql\Statement {
 
         protected array  $columns = [];
         protected array  $constraints = [];
-
+        protected array  $indexes = [ ];
 
         protected ?int $autoExtendSize = null;
         protected ?int $autoIncrement = null;
@@ -73,21 +68,25 @@ namespace Slate\Sql\Statement {
             $this->name = $name;
         }
 
-        public function constraint(SqlConstraintBlueprint $constraint = null): SqlConstraintBlueprint {
+        public function constraint(SqlConstraint $constraint = null): SqlConstraint {
             if($constraint === null)
-                $constraint = new SqlConstraintBlueprint();
+                $constraint = new SqlConstraint();
 
             $this->constraints[] = $constraint;
 
             return $constraint;
         }
 
-        public function column(string|SqlColumnBlueprint $name = null): SqlColumnBlueprint {
-            $column = is_string($name) ? new SqlColumnBlueprint($name) : $name;
-
+        public function column(SqlColumn $column): static {
             $this->columns[$column->name()] = $column;
 
-            return $column;
+            return $this;
+        }
+
+        public function index(SqlIndex $index): static {
+            $this->indexes[$index->getIndexName()] = $index;
+
+            return $this;
         }
 
         public function buildColumns(): ?string {
@@ -98,22 +97,40 @@ namespace Slate\Sql\Statement {
                             $this->columns,
                             fn($column) => $column->toString()
                         ),
-                        ",",
-                        "",
-                        "()"
+                        ","
+                    )
+                    : null
+                ;
+        }
+
+        public function buildIndexes(): ?string {
+            return
+                !\Arr::isEmpty($this->indexes)
+                    ? \Arr::list(
+                        \Arr::map(
+                            $this->indexes,
+                            fn(SqlIndex $index): string => $index->toString()
+                        ),
+                        ","
                     )
                     : null
                 ;
         }
 
         public function build(): array {
+            $columns = $this->buildColumns();
+            $indexes = $this->buildIndexes();
+
             return [
                 "CREATE",
                 $this->buildModifier(SqlModifier::TEMPORARY),
                 "TABLE",
                 $this->buildModifier(SqlModifier::IF_NOT_EXISTS),
                 $this->name,
-                $this->buildColumns(),
+                (\Arr::any([$columns, $indexes])
+                    ? \Str::wrapc(\Arr::join([$columns, $indexes], ", "), "()")
+                    : null
+                ),
                 $this->buildLikeClause(),
                 ...$this->buildModifiers([
                     SqlModifier::CHECKSUM,

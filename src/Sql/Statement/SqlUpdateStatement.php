@@ -15,7 +15,7 @@ namespace Slate\Sql\Statement {
     use Slate\Sql\Clause\TSqlLimitClause;
 
     use Slate\Facade\DB;
-    use Slate\Mvc\App;
+    use Slate\Facade\App;
     use Slate\Sql\ISqlResultProvider;
     use Slate\Sql\SqlModifier;
 

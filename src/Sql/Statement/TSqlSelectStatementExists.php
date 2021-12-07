@@ -3,7 +3,7 @@
 namespace Slate\Sql\Statement {
     use Slate\Facade\DB;
     use Slate\Facade\Sql;
-    use Slate\Mvc\App;
+    use Slate\Facade\App;
     use Slate\Sql\SqlReference;
 
     trait TSqlSelectStatementExists {

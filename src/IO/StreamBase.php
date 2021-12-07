@@ -4,7 +4,7 @@ namespace Slate\IO {
     use Slate\Exception\PathNotFoundException;
     use Slate\Exception\IOException;
 
-    class StreamBase implements IStreamBase {
+    abstract class StreamBase implements IStreamAuditable, IStreamSeekable, IStreamIO {
         const BUFFER_SIZE = 8192;
 
         protected $resource;
@@ -70,7 +70,7 @@ namespace Slate\IO {
 
         public function assertOpen(string $message = null): void {
             if(!$this->isOpen())
-                throw new \Error($message ?: \Str::format(
+                throw new \Error($message ?? \Str::format(
                     "{} is required to be open.",
                     static::class
                 ));

@@ -8,6 +8,10 @@ namespace Slate\Mvc {
             $this->bypass = $bypass;
         }
 
+        public function bypass(bool $bypass): void {
+            $this->bypass = $bypass;
+        }
+
         public function bypasses(): bool {
             return $this->bypass;
         }

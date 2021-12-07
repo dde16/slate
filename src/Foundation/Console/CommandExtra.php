@@ -5,8 +5,9 @@ namespace Slate\Foundation\Console {
     use Attribute;
     use ReflectionType;
     use Slate\Metalang\MetalangAttribute;
+    use Slate\Metalang\MetalangDesign;
 
-    class CommandExtra extends MetalangAttribute {
+    abstract class CommandExtra extends MetalangAttribute {
         protected ?array  $names;
         protected ?string $help;
     
@@ -17,31 +18,26 @@ namespace Slate\Foundation\Console {
          */
         protected ?int    $nargs;
     
-        public function __construct(string|array $name = null, string $help = null, int $nargs = null) {
+        public function __construct(string|array $name = null, string $help = null, int $nargs = null, mixed $design = null) {
             $this->names    = $name !== null ? (is_string($name) ? [$name] : $name) : null;
             $this->help     = $help;
             $this->nargs    = $nargs;
         }
+
     
         public function getNames(): array {
-            return $this->names ?: [$this->parent->getName()];
+            return $this->names ?? [$this->parent->getName()];
         }
     
-        public function getHelp(): string {
+        public function getHelp(): ?string {
             return $this->help;
         }
     
         public function getNargs(): int {
-            return $this->nargs !== null ? $this->nargs : 1;
+            return $this->nargs ?? 1;
         }
     
-        public function isRequired(): bool {
-            return (
-                $this->parent->hasType()
-                    ? !$this->parent->getType()->allowsNull()
-                    : false
-            );
-        }
+        public abstract function isRequired(): bool;
     
         public function consume($construct): void {
             parent::consume($construct);

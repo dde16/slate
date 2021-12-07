@@ -2,17 +2,17 @@
 
 namespace Slate\Sql\Clause {
     trait TSqlReferencesClause {
-        protected ?string $ref = null;
-        protected ?string $col = null;
+        public ?string $foreignSchema = null;
+        public ?string $foreignTable = null;
+        public ?string $foreignColumn = null;
 
-        protected ?string $match = null;
+        public string $onDelete = "RESTRICT";
+        public string $onUpdate = "RESTRICT";
 
-        protected ?string $onDelete = null;
-        protected ?string $onUpdate = null;
-
-        public function references(string $ref, string $col): static {
-            $this->ref = $ref;
-            $this->col = $col;
+        public function references(string $schema, string $table, string $column): static {
+            $this->foreignSchema = $schema;
+            $this->foreignTable = $table;
+            $this->foreignColumn = $column;
 
             return $this;
         }
@@ -70,30 +70,11 @@ namespace Slate\Sql\Clause {
             return $this;
         }
 
-        public function match(string $match): static {
-            $this->match = $match;
-
-            return $this;
-        }
-
-        public function matchFull(): static {
-            return $this->match("FULL");
-        }
-
-        public function matchPartial(): static {
-            return $this->match("PARTIAL");
-        }
-
-        public function matchSimple(): static {
-            return $this->match("SIMPLE");
-        }
-
         public function buildReferencesClause(): ?string {
-            return $this->ref !== null ? \Arr::join(\Arr::filter([
+            return $this->foreignSchema !== null ? \Arr::join(\Arr::filter([
                 "REFERENCES",
-                $this->ref,
-                \Str::wrapc($this->col, "()"),
-                ($this->match ? "MATCH {$this->match}" : null),
+                $this->conn()->wrap($this->foreignSchema, $this->foreignTable),
+                \Str::wrapc($this->conn()->wrap($this->foreignColumn), "()"),
                 ($this->onDelete ? "ON DELETE {$this->onDelete}" : null),
                 ($this->onUpdate ? "ON UPDATE {$this->onUpdate}" : null)
             ]), " ") : null;

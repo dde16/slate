@@ -9,7 +9,7 @@ namespace Slate\Sql\Clause {
 trait TSqlFromClause {
         protected array $froms = [];
 
-        public function from(string|IStringForwardConvertable $reference, string $as = null): object {
+        public function from(string|IStringForwardConvertable $reference, string $as = null): static {
             $from = $this->froms[] = new SqlReference($reference);
 
             if($as) $from->as($as);

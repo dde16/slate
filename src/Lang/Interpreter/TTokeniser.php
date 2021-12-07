@@ -16,11 +16,10 @@ namespace Slate\Lang\Interpreter {
     use Generator;
     use Slate\Lang\Interpreter\ICodeable;
 
-trait TTokeniser {
+    trait TTokeniser {
         public object $code;
 
-        public function matchComplexToken(ComplexToken $definition): ?array {
-            
+        public function matchComplexToken(ComplexToken $definition): ?array {            
             return $this->{$definition->getImplementor()->parent->getName()}();
         }
 
@@ -90,7 +89,9 @@ trait TTokeniser {
             return null;
         }
 
-        public function matchToken(Token $definition): ?array {
+        public function matchToken(Token|int $definition): ?array {
+            if(is_int($definition)) $definition = static::design()->tokens[$definition];
+
             $match = null;
 
             switch($definition::class) {
@@ -118,7 +119,7 @@ trait TTokeniser {
             $design  = static::design();
 
             $counters = \Arr::merge(
-                [ "pointer" => 0 ],
+                [ "pointer" => $this->code->tell() ],
                 \Arr::mapAssoc(
                     \Arr::merge(
                         $design->countTrackedMap,

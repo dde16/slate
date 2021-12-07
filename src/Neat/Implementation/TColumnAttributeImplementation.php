@@ -3,13 +3,13 @@
 namespace Slate\Neat\Implementation {
 
     use Closure;
-    use Slate\Metalang\Attribute\AttributeCallStatic;
-    use Slate\Metalang\Attribute\AttributeCall;
+    use Slate\Metalang\Attribute\HookCallStatic;
+    use Slate\Metalang\Attribute\HookCall;
     use Slate\Neat\Attribute\Column;
     use Slate\Neat\Entity;
 
 trait TColumnAttributeImplementation {
-        #[AttributeCallStatic(Column::class)]
+        #[HookCallStatic(Column::class)]
         public static function columnStaticImplementor(string $name, array $arguments, object $next): mixed {
             $design = static::design();
 

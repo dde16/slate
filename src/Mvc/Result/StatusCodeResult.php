@@ -8,6 +8,7 @@ namespace Slate\Mvc\Result {
         protected int $code;
 
         public function __construct(int $code) {
+            parent::__construct();
             $this->code = $code;
         }
 

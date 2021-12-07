@@ -8,10 +8,6 @@ namespace Slate\Sql {
     abstract class SqlConstruct extends Model implements IStringForwardConvertable { 
         use TStringNativeForwardConvertable;
         
-        public function __invoke() {
-            return $this;
-        }
-
         public abstract function build(): array;
     
         public function toString(): string {

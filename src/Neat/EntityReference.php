@@ -4,7 +4,7 @@ namespace Slate\Neat {
 
     use Slate\Data\IStringForwardConvertable;
     use Slate\Data\TStringNativeForwardConvertable;
-    use Slate\Mvc\App;
+    use Slate\Facade\App;
 
     class EntityReference implements IStringForwardConvertable {
         use TStringNativeForwardConvertable;

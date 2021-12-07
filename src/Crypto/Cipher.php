@@ -3,6 +3,7 @@
 namespace Slate\Crypto {
 
     use Slate\Neat\Attribute\Getter;
+    use Slate\Neat\Attribute\ReadOnly;
     use Slate\Neat\Attribute\Setter;
     use Slate\Neat\Model;
 
@@ -19,6 +20,7 @@ namespace Slate\Crypto {
         /**
          * @var int
          */
+        #[ReadOnly]
         protected int       $ivlen;
         
         /**
@@ -30,11 +32,6 @@ namespace Slate\Crypto {
             parent::__construct();
             $this->setMethod($method);
             $this->key = $key;
-        }
-
-        #[Getter("ivlen")]
-        public function getIvLength(): int {
-            return $this->ivlen;
         }
         
         #[Setter("method")]

@@ -8,59 +8,161 @@ namespace Slate\Neat\Attribute {
     use Slate\Neat\EntityDesign;
     use ReflectionProperty;
     use ReflectionUnionType;
+    use Slate\Metalang\MetalangDesign;
+    use Slate\Mvc\Env;
+    use Slate\Sql\ISqlInferredType;
+    use Slate\Sql\ISqlValueConvertable;
+    use Slate\Sql\SqlTable;
+    use Slate\Sql\Type\ISqlTypeForwardConvertable;
+    use Slate\Sql\Type\SqlNativeTypeMap;
+    use Slate\Sql\Type\SqlType;
+    use Type;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
-    class Column extends MetalangAttribute {
-
-        public const NAME = "Column";
-    
+    class Column extends MetalangAttribute {    
         public ?SqlColumn $column = null;
     
-        protected ?string $columnName = null;
+        protected string  $columnName;
+        protected ?string $columnType;
+        protected ?string $columnIndex;
+        protected bool    $columnNullable;
+        protected bool    $columnIncremental;
+        protected bool    $columnPrimary;
+        protected bool    $columnUnique;
 
-        protected ?string $generator = null;
-
-        protected bool   $validate;
+        protected bool   $validate = true;
     
-        public function __construct(string $name = null, string $generator = null, bool $validate = true) {
-            $this->columnName = $name;
-            $this->validate   = $validate;
-            $this->generator   = $generator;
-        }
+        /**
+         * Constructor for a column.
+         *
+         * @param string|null $name
+         * @param string|null $type If null, it will automatically inferred by the property type (if present)
+         * @param string|null $index Whether the column will be indexed and what type
+         * @param bool|null   $incremental
+         * @param bool|null   $nullable
+         * 
+         */
+        public function __construct(
+            string $name = null,
+            string $type = null,
+            bool $incremental = null,
+            string $index = null
+        ) {
+            $parent = $this->parent;
 
-        public function consume($property): void {
-            parent::consume($property);
+            $nullable = false;
 
-            if($this->columnName === null)
-                $this->columnName = $property->getName();
+            if($name === null)
+                $name = $parent->getName();
 
-            $propertyIsUnion = $property->hasType() ? (\Cls::isSubclassInstanceOf($property->getType(), ReflectionUnionType::class)) : false;
+            $propertyIsUnion = $parent->hasType() ? (\Cls::isSubclassInstanceOf($parent->getType(), ReflectionUnionType::class)) : false;
 
             if($propertyIsUnion)    
                 throw new \Error(\Str::format(
-                    "Column property {}::\${} cannot have a union type.",
-                    $property->getDeclaringClass()->getName(),
-                    $property->getName()
+                    "Column {}::\${} cannot have a union type.",
+                    $parent->getDeclaringClass()->getName(),
+                    $parent->getName()
                 ));
 
-            // if($property->isPublic())
-            //     throw new \Error(\Str::format(
-            //         "Column {}::\${} must be protected.",
-            //         $property->getDeclaringClass()->getName(),
-            //         $property->getName()
-            //     ));
+            if($parent->hasType())
+                $nullable = $parent->getType()->allowsNull();
+            
+            $this->columnName        = $name;
+            $this->columnType        = $type;
+            $this->columnNullable    = $nullable ?? false;
+            $this->columnIncremental = $incremental ?? false;
+            $this->columnIndex       = $index;
+            $this->columnPrimary     = false;
+            $this->columnUnique      = false;
         }
     
         public function getColumnName(): string {
-            return $this->columnName ?: $this->column->getName();
+            return $this->columnName;
         }
 
-        public function getColumn(): SqlColumn {
-            return $this->column;
+        public function getColumn(string $entity): SqlColumn {
+            $table = $entity::table();
+
+            if(!$table->has($this->columnName)) {
+                $parent = $this->parent;
+                $column = $table->column($this->columnName);
+                $conn   = $table->conn();
+
+                if($this->columnNullable)
+                    $column->nullable();
+
+                if($this->columnIncremental)
+                    $column->incremental();
+
+                if($this->columnIndex)
+                    $column->index($this->columnIndex);
+
+                if($this->columnPrimary)
+                    $column->primary();
+
+                if($this->columnUnique)
+                    $column->unique();
+
+                $type = $this->columnType;
+
+                if($type === null) {
+                    if(!$parent->hasType())
+                        throw new \Error(\Str::format(
+                            "Column {}::\${} cannot infer a sql type as the property itself has no type.",
+                            $parent->getDeclaringClass()->getName(),
+                            $parent->getName()
+                        ));
+    
+                    $propertyType = $parent->getType()->getName();
+                    $nativeMap = Env::get("orm.type.native-map") ?? SqlNativeTypeMap::MAP;
+    
+                    $type =
+                        $nativeMap["*"][$propertyType]
+                        ?? $nativeMap[$conn::NAME][$propertyType];
+    
+                    if(!$type) {
+                        if(!class_exists($propertyType))
+                            throw new \Error(\Str::format(
+                                "Column {}::\${} specifies an unknown class '{}'.",
+                                $parent->getDeclaringClass()->getName(),
+                                $parent->getName(),
+                                $propertyType
+                            ));
+    
+                        if(!\Cls::implements($propertyType, ISqlInferredType::class))
+                            throw new \Error(\Str::format(
+                                "Column {}::\${}: to infer a type from '{}', it must implement ISqlInferredType.",
+                                $parent->getDeclaringClass()->getName(),
+                                $parent->getName(),
+                                $propertyType
+                            ));
+    
+                        $type = $propertyType::inferSqlType($conn::NAME);
+                    }
+
+                    if(!$type) {
+                        throw new \Error("Unable to infer type for column {}::\${}.");
+                    }
+                }
+                else {
+                    $pseudoMap = Env::get("orm.type.psuedo-type") ?? [];
+    
+                    if(($pseudoType = $pseudoMap[$type]) !== null) {
+                        $type = $pseudoType;
+                    }
+                }
+
+                $column->is($type);
+            }
+            else {
+                $column = $table->column($this->columnName);
+            }
+
+            return $column;
         }
 
         public function hasDefault(): bool {
-            return $this->parent->hasDefaultValue() || $this->column->getType()->hasDefault();
+            return $this->parent->hasDefaultValue();
         }
 
         public function getDefault(): mixed {
@@ -72,13 +174,13 @@ namespace Slate\Neat\Attribute {
 
             $sqlType = $this->column->getType();
 
-            if($sqlType->hasDefault()) {
+            if($this->column->hasDefault()) {
                 $phpType = $sqlType->getScalarType();
 
                 if($this->parent->hasType()) {
                     $phpType = $this->parent->getType()->getName();
 
-                    if(!\Cls::exists($phpType)) {
+                    if(!\class_exists($phpType)) {
                         if(($phpType = \Type::getByName($phpType)) === null) {
                             throw new \Error("Unknown type '{$phpType}'.");
                         }
@@ -93,133 +195,41 @@ namespace Slate\Neat\Attribute {
             //     ? $this->parent->getDefaultValue()
             //     : (
             //         $this->getColumn()->hasDefault()
-            //             ? \Cls::exists($type = ($this->parent->hasType() ? $this->parent->getType()->getName() : $this->column->getScalarType())) ? \Type::getByName()
+            //             ? \class_exists($type = ($this->parent->hasType() ? $this->parent->getType()->getName() : $this->column->getScalarType())) ? \Type::getByName()
             //             : false
             //     )
         }
 
-        public function setSqlColumn(SqlColumn $column): void {
-            $this->column = $column;
-            
-            $propertyAllowsNull = $this->parent->hasType() ? ($this->parent->getType()->allowsNull()) : true;
-            $columnAllowsNull = $column->isIncremental() ?: $column->isNullable();
-
-            // if($this->parent->getName() == "createdAt") {
-            //     debug($this->parent->getName(), "<br>");
-            //     debug($propertyAllowsNull, "<br>");
-            //     debug($columnAllowsNull, "<br>");
-            // }
-
-            if($columnAllowsNull === false && $propertyAllowsNull)
-                throw new \Error(\Str::format(
-                    "Column property {}::\${} must not allow null to match the database.",
-                    $this->parent->getDeclaringClass()->getName(),
-                    $this->parent->getName()
-                ));
-
-            if($columnAllowsNull && $propertyAllowsNull === false)
-                throw new \Error(\Str::format(
-                    "Column property {}::\${} must allow null to match the database.",
-                    $this->parent->getDeclaringClass()->getName(),
-                    $this->parent->getName()
-                ));
-        }
-
-        public function getForeignDesign(): EntityDesign|null {
-            $declarer = $this->parent->getDeclaringClass();
-            $schema = $declarer->getConstant("SCHEMA");
-            $table  = $declarer->getConstant("TABLE");
-
-            if($this->isForeignKey()) {
-                $designs = EntityDesign::byReference($schema, $table);
-                $count   = count($designs);
-
-                if($count > 1) {
-                    throw new \Error(\Str::format(
-                        "The column {}::\${} foreign key resolves to multiple classes, explicit clarification is required.",
-                        $this->parent->getDeclaringClass()->getName(),
-                        $this->parent->getName()
-                    ));
-                }
-                
-                if($count === 1) {
-                    return $designs[0];
-                }
-                else {
-                    throw new \Error(\Str::format(
-                        "The column {}::\${} foreign key resolves to no classes, explicit clarification is required.",
-                        $this->parent->getDeclaringClass()->getName(),
-                        $this->parent->getName()
-                    ));
-                }
-            }
-            else {
-                throw new \Error(\Str::format(
-                    "Column {}::\${}({}) isnt a foreign key.",
-                    $declarer->getName(),
-                    $this->parent->getName(),
-                    $declarer->getMethod("ref")->invoke(null, $this->getColumnName())
-                ));
-            }
-        }
-
-        public function getForeignClass(): string|null {
-            $declarer = $this->parent->getDeclaringClass();
-
-            if(($foreignDesign = $this->getForeignDesign()) !== null) {
-                return $foreignDesign->getName();
-            }
-
-            throw new \Error(\Str::format(
-                "Column {}::\${}({}) isnt a foreign key.",
-                $declarer->getName(),
-                $this->parent->getName(),
-                $declarer->invokeMethod("ref", $this->getColumnName())
-            ));
-        }
-
-        public function getForeignPropertyAttribute(): static|null {
-            if(($foreignColumn = $this->column->getForeignColumn()) !== null ? ($foreignDesign = $this->getForeignDesign()) : false) {
-                return $foreignDesign->getAttrInstance(Column::class, $foreignColumn);
-            }
-
-            throw new \Error(\Str::format(
-                "Unable to get foreign property attribute for {}::\${}.",
-                $this->parent->getDeclaringClass()->getShortName(),
-                $this->parent->getName()
-            ));
-        }
-
-        public function getForeignProperty(): string|null {
-            if(($foreignPropertyAttribute = $this->getForeignPropertyAttribute()) !== null) {
-                return $foreignPropertyAttribute->parent->getName();
-            }
-
-            throw new \Error();
+        public function requiresValidation(): bool {
+            return false;
         }
 
         public function isForeignKey(): bool {
-            return $this->column->isForeignKey() ?: false;
-        }
-
-        public function requiresValidation(): bool {
-            return $this->validate ?: false;
+            return false;
         }
 
         public function isIncremental(): bool {
-            return $this->column->isIncremental() ?: false;
+            return $this->columnIncremental;
         }
 
         public function isNullable(): bool {
-            return $this->column->isNullable() ?: false;
+            return $this->columnNullable;
         }
 
         public function isGenerated(): bool {
-            return $this->column->isGenerated() ?: false;
+            return false;
+        }
+
+        public function isUniqueKey(): bool {
+            return $this->columnUnique;
         }
 
         public function isPrimaryKey(): bool {
-            return $this->column->isPrimaryKey() ?: false;
+            return $this->columnPrimary;
+        }
+
+        public function isKey(): bool {
+            return $this->columnUnique || $this->columnPrimary;
         }
     }
 }

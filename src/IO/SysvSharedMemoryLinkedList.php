@@ -18,31 +18,31 @@ namespace Slate\IO {
 
         use TOffsetExtended;
 
-        public int    $position = -1;
+        public int    $pointer = 0;
 
         /** @see Iterator::rewind() */
         public function rewind(): void {
-            $this->position = $this->pull(static::VAR_TAIL_POINTER);
+            $this->pointer = $this->pull(static::VAR_TAIL_POINTER);
         }
 
         /** @see Iterator::valid() */
         public function valid(): bool {
-            return $this->position !== -1;
+            return $this->pointer !== -1;
         }
 
         /** @see Iterator::key() */
         public function key(): mixed {
-            return $this->position - $this->pull(static::VAR_ROWS_START);
+            return $this->pointer - $this->pull(static::VAR_ROWS_START);
         }
 
         /** @see Iterator::prev() */
         public function prev(): void {
-            $this->position = $this->pull($this->position)[1];
+            $this->pointer = $this->pull($this->pointer)[1];
         }
 
         /** @see Iterator::next() */
         public function next(): void {
-            $this->position = $this->pull($this->position)[2] ?: -1;
+            $this->pointer = $this->pull($this->pointer)[2] ?: -1;
         }
 
         public function filter(Closure $fn, int $limit = 0, int $offset = 0): Generator {
@@ -50,10 +50,12 @@ namespace Slate\IO {
                 $limit = $offset + $limit;
 
             $index = 0;
-            foreach($this as $pointer => $row){
+
+            foreach($this as $row) {
                 if ($fn($row) && ($index >= $offset && ($limit > 0 ? $index < $limit : true))) {
                     yield [$index, $row];
                 }
+
                 $index++;
             }
         }
@@ -69,7 +71,7 @@ namespace Slate\IO {
         }
 
         public function where(string $key, $value, int $limit = 0, int $offset = 0, bool $strict = false): Generator {
-            return $this->filter(fn($row) => (($strict && $row[$key] === $value) || $row[$key] == $value), $limit, $offset);
+            return $this->filter(fn($row) => (($strict && \Compound::get($row, $key) === $value) || \Compound::get($row, $key) == $value), $limit, $offset);
         }
 
         public function first(string $key, $value, bool $strict = false): array|null {
@@ -88,7 +90,7 @@ namespace Slate\IO {
 
         /** @see Iterator::current() */
         public function current(): mixed {
-            return $this->pull($this->position)[0];
+            return $this->pull($this->pointer)[0];
         }
 
         public function acquire(): void {

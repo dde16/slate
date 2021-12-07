@@ -9,11 +9,13 @@ namespace Slate\Mvc {
     use Slate\Exception\SlateException;
     use Slate\Foundation\Kernel;
     use Slate\Foundation\Stager;
+    use Slate\IO\SysvSharedMemoryQueue;
+    use Slate\IO\SysvSharedMemoryTableQueue;
     use Slate\Sql\SqlConnection;
     use Slate\Sql\SqlConnectionFactory;
     use Throwable;
 
-class ConsoleKernel extends Kernel {
+    class ConsoleKernel extends Kernel {
         public const NONE          = Kernel::NONE;
         public const CONFIGURE     = (1<<0);
         public const VERIFY        = (1<<1);
@@ -201,7 +203,7 @@ class ConsoleKernel extends Kernel {
             }
         }
 
-        public function queue(string $name = null): object|null {
+        public function queue(string $name = null): SysvSharedMemoryTableQueue|SysvSharedMemoryQueue|null {
             return @$this->queues[$name ?: $this->primaryQueue];
         }
 

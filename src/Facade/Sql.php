@@ -5,7 +5,7 @@ namespace Slate\Facade {
     use Slate\Data\IStringForwardConvertable;
     use Slate\Sql\Clause\SqlPartitionByClause;
     use Slate\Sql\Condition\SqlCaseCondition;
-    use Slate\Sql\SqlExistsExpression;
+    use Slate\Sql\Expression\SqlExistsExpression;
     use Slate\Sql\SqlWindowFunction;
 
     /**
@@ -29,7 +29,7 @@ namespace Slate\Facade {
         }
 
         public static function sqlify(mixed $values, string $delimiter = ",", string $seat = "''", string $wrapper = "()"): string {
-            if(!\Any::isArray($values)) {
+            if(!is_array($values)) {
                 $values = [$values];
                 $wrapper = "";
             }

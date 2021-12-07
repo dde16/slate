@@ -21,6 +21,8 @@ namespace Slate\Sql {
         protected ?string $charset;
         protected PDO     $connection;
 
+        protected array   $schemas = [];
+
         public function __construct(
             string $hostname,
             string $username,
@@ -52,6 +54,15 @@ namespace Slate\Sql {
                 $username,
                 $password
             );
+        }
+
+        public function schema(string $name): SqlSchema {
+            $schema = &$this->schema[$name];
+
+            if($schema === null)
+                $schema = new SqlSchema($this, $name);
+
+            return $schema;
         }
         
 
@@ -103,14 +114,18 @@ namespace Slate\Sql {
                         } while($statement->nextRowset() === true);
                     }
                 }
-                catch(\Throwable $throwable) {
-                    throw $throwable;
+                catch(\PDOException $e) {
+                    $e->queryString = $statement->queryString;
+                    throw $e;
                 }
             }
         }
 
-        public function wrap(string $token): string {
-            return \Str::wrapc($token, static::TOKEN_IDENTIFIER_DELIMITER);
+        public function wrap(string ...$tokens): string {
+            return \Arr::join(\Arr::map(
+                $tokens,
+                fn($token) => \Str::wrapc($token, static::TOKEN_IDENTIFIER_DELIMITER)
+            ), ".");
         }
 
         public function multiquery(array|string $queries, bool $rows = false, bool $aggr = false): Generator {
@@ -158,8 +173,9 @@ namespace Slate\Sql {
                         } while($statement->nextRowset() === true);
                     }
                 }
-                catch(\Throwable $throwable) {
-                    throw $throwable;
+                catch(\PDOException $e) {
+                    $e->queryString = $statement->queryString;
+                    throw $e;
                 }
             }
         }

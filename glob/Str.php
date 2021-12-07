@@ -1,9 +1,12 @@
 <?php
 
+use Slate\Data\Iterator\StringIterator;
 use Slate\Interface\IStringForwardConvertable;
 use Slate\Interface\IStringBackwardConvertable;
 
 abstract class Str extends ScalarType {
+    use \Slate\Utility\TMacroable;
+
     public const NAMES            = ["string", "str"];
     public const VALIDATOR        = "is_string";
     public const CONVERTER        = "strval";
@@ -46,6 +49,83 @@ abstract class Str extends ScalarType {
         "\0" => "\\0"
     ];
 
+    public static function toIntegers(string $bytes, int $bitsize = 8): array {
+        return \Arr::map(
+            \Str::split($bytes, $bitsize / 8),
+            function(string $bytes): int {
+                return \Integer::fromBytes($bytes);
+            }
+        );
+    }
+
+    public static function toBinary(string $bytes, int $bitsize = 8, string $separator = " "): string {
+        return \Arr::join(
+            \Arr::map(
+                \Str::toIntegers($bytes, $bitsize),
+                fn(int $integer): string => \Str::padLeft(decbin($integer), "0", $bitsize)
+            ),
+            $separator
+        );
+    }
+
+    public static function escape(string $string, array $escape = ["\"", "'", "`", "\\"]): string {
+        return preg_replace_callback(
+            "/(\\\\)*(" . \Arr::join(\Arr::map($escape, Closure::fromCallable('preg_quote')), "|") . ")/",
+            function($matches) use($escape) {
+                $match = $matches[2];
+                $escapes = $matches[1];
+
+                if(empty($escapes))
+                    $escapes = "\\";
+
+                if(strlen($escapes) % 2 === 0)
+                    $escapes .= "\\";
+
+                return $escapes.$match;
+            },
+            $string
+        );
+    }
+
+    public static function fromSpaceTable(string $table) {
+        $rows = \Arr::map(\Str::split($table, "\n"), fn(string $row): string => \Str::removeSuffix($row, "\r"));
+
+        $header = $rows[0];
+        $rows = \Arr::slice($rows, 1);
+        $columns = [];
+
+        if(preg_match_all("/(?'column'[^\ ]+(?:\ [^\ ]+)*)+/", $header, $columns, PREG_OFFSET_CAPTURE)) {
+            $columns = $columns["column"];
+
+            return \Arr::map(
+                $rows,
+                function(string $rowString) use($columns) {
+                    $lastColumnName  = null;
+                    $lastColumnStart = null;
+
+                    $rowArray = [];
+
+                    foreach($columns as list($nextColumnName, $nextColumnStart)) {
+                        if($lastColumnName !== null && $lastColumnStart !== null) {
+                            $rowArray[$lastColumnName] = \Str::trimSuffix(substr(
+                                $rowString,
+                                $lastColumnStart,
+                                $nextColumnStart - $lastColumnStart
+                            ), " ");
+                        }
+
+                        $lastColumnName = $nextColumnName;
+                        $lastColumnStart = $nextColumnStart;
+                    }
+
+                    $rowArray[\Arr::last($columns)[0]] = \Str::trimSuffix(substr($rowString, \Arr::last($columns)[1]), " ");
+
+                    return $rowArray;
+                }
+            );
+        }
+    }
+
     public static function replaceManyAt(string $string, array $withs): string {
         $mod = 0;
 
@@ -54,12 +134,7 @@ abstract class Str extends ScalarType {
             $from += $mod;
             $to   += $mod;
 
-            $string = \Str::replaceAt(
-                $string,
-                $with,
-                $from,
-                $to
-            );
+            $string = \Str::replaceAt($string, $with, $from, $to);
 
             $substrLength = ($to - $from);
             $withLength   = strlen($with);
@@ -304,8 +379,8 @@ abstract class Str extends ScalarType {
      * @param value The value to check for in the source string.
      * @return bool
      */
-    public static function endswith(string $source, string $value): bool {
-        return (substr($source, strlen($source) - strlen($value), strlen($source)) === $value);
+    public static function endswith(string $source, string|array $values): bool {
+        return (substr($source, strlen($source) - strlen($values), strlen($source)) === $values);
     }
 
     public static function divide(string $source): array {
@@ -398,7 +473,7 @@ abstract class Str extends ScalarType {
     }
 
     public static function formatwith(string $format, string $with, array $arguments): string {
-        if(\Arr::count($arguments) === 1 && \Any::isArray($arguments[0])) {
+        if(\Arr::count($arguments) === 1 && is_array($arguments[0])) {
             $arguments      = $arguments[0];
         }
 
@@ -476,6 +551,10 @@ abstract class Str extends ScalarType {
         }
 
         return $extract;
+    }
+
+    public static function pluralise(string $string, string $suffix, int $count) {
+        return \Str::format($string, [ "i" => $count ]) . ($count > 1 || $count === 0 ? $suffix : "");
     }
 
     public static function find(string $haystack, string $needle, int $offset = 0): int|false {
@@ -770,7 +849,7 @@ abstract class Str extends ScalarType {
         for($index = 0; $index < $length; $index++) {
             $char = $strings[0][$index];
 
-            if(\Arr::all(\Arr::slice($strings, 1), function($string) use($index, $char) { return $string[$index] === $char; })) {
+            if(\Arr::all(\Arr::slice($strings, 1), fn(string $string): bool => $string[$index] === $char)) {
                 $prefix .= $char;
             }
             else {
@@ -782,9 +861,7 @@ abstract class Str extends ScalarType {
             $prefix,
             \Arr::map(
                 $strings,
-                function($string) use($prefix) {
-                    return !\Str::isEmpty($string) ? \Str::removePrefix($string, $prefix) : $string;
-                }
+                fn(string $string): string => (!\Str::isEmpty($string) ? \Str::removePrefix($string, $prefix) : $string)
             )
         ];
     }
@@ -867,6 +944,24 @@ abstract class Str extends ScalarType {
                 ),
                 \Closure::fromCallable('ucfirst')
             ), " "
+        );
+    }
+
+    /**
+     * Convert a string to kebab case.
+     *
+     * @param string $source
+     * @return string
+     */
+    public static function kebab(string $source): string {
+        preg_match_all("/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/", $source, $matches);
+
+        return \Arr::join(
+            \Arr::map(
+                $matches[0],
+                fn(string $s): string => \Str::lower($s)
+            ) ?? [],
+            "-"
         );
     }
 }

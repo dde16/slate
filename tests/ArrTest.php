@@ -451,7 +451,156 @@ final class ArrTest extends TestCase {
     }
 
     public function testArrayAssociate(): void {
-        $this->assertEquals(["zero" => true, "one" => true], \Arr::associate(["zero", "one"], true));
+        $this->assertEquals(
+            [
+                "zero" => true,
+                "one" => true
+            ],
+            \Arr::associate(["zero", "one"], true)
+        );
+
+        $this->assertEquals(
+            [
+                "zero" => true,
+                "one" => [
+                    "two" => true
+                ]
+            ],
+            \Arr::associate(["zero", "one" => ["two"]], true, deep: true)
+        );
+    }
+
+    public function testArrayBury(): void {
+        $this->assertEquals([[["buried"]]], \Arr::bury("buried", 3));
+    }
+
+    public function testArrayMove(): void {
+        $array = [1,2,3,4,5,6,7];
+
+        $this->assertEquals([2,3,4,1,5,6,7], \Arr::move($array, 0, 3));
+    }
+
+    public function testArrayCluster(): void {
+        $array = [1,2,3,4,5,6];
+
+        $this->assertEquals(
+            [
+                [1,3,5],
+                [2,4,6]
+            ],
+            \Arr::cluster(
+                $array,
+                fn(int $i): int => $i % 2,
+                preserve: false
+            )
+        );
+    }
+
+    public function testArrayMergeWithPreserveKeys(): void {
+        $this->assertEquals(
+            ["key0" => 1, "key1" => 2],
+            \Arr::mergePreserve(["key0" => 1], ["key1" => 2])
+        );
+    }
+
+    public function testArrayKey(): void {
+        $this->assertEquals(
+            ["key1" => 1, "key2" => 2],
+            \Arr::key([1,2], ["key1", "key2"])
+        );
+    }
+
+
+    public function testArrayMapAssoc(): void {
+        $this->assertEquals(
+            [
+                "2" => 1,
+                "4" => 2
+            ],
+            \Arr::mapAssoc(
+                [1, 2],
+                fn(string $key, int $value): array => [2*$value, $value]
+            )
+        );
+    }
+
+    public function testArrayColumn(): void {
+        $this->assertEquals(
+            [1, 3, "5" => 2],
+            \Arr::column(
+                [
+                    [null, 1],
+                    ["5", 2],
+                    [null, 3],
+                ],
+                0, 1
+            )
+        );
+    }
+
+    public function testArrayDuplicates(): void {
+        $this->assertEquals(
+            ["1" => 1, "3" => 2, "4" => 2],
+            \Arr::duplicates([1, 1, 2, 2, 2, 3])
+        );
+    }
+
+    public function testArrayOnly(): void {
+        $this->assertEquals(
+            ["v1" => 1, "v3" => 3],
+            \Arr::only(
+                [
+                    "v1" => 1,
+                    "v2" => 2,
+                    "v3" => 3,
+                    "v4" => 4
+                ],
+                ["v1", "v3"]
+            )
+        );
+    }
+
+    public function testArrayExcept(): void {
+        $this->assertEquals(
+            [
+                "v2" => 2,
+                "v3" => 3,
+                "v4" => 4
+            ],
+            \Arr::except(
+                [
+                    "v1" => 1,
+                    "v2" => 2,
+                    "v3" => 3,
+                    "v4" => 4
+                ],
+                "v1"
+            )
+        );
+
+        $this->assertEquals(
+            [
+                "v2" => 2,
+                "v3" => 3
+            ],
+            \Arr::except(
+                [
+                    "v1" => 1,
+                    "v2" => 2,
+                    "v3" => 3,
+                    "v4" => 4
+                ],
+                ["v1", "v4"]
+            )
+        );
+    }
+
+    public function testArrayMean(): void {
+        $this->assertEquals(2.1, \Arr::mean([1,2.3,3]));
+    }
+
+    public function testArrayUnKey(): void {
+
     }
 }
 

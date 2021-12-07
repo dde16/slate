@@ -136,11 +136,11 @@ namespace Slate\Neat {
             $build = $this->build();
     
             $buildRelative = $build;
-            unset($buildRelative[4]);
-            unset($buildRelative[5]);
+            unset($buildRelative[6]);
+            unset($buildRelative[7]);
     
             return
-                \Arr::any(\Arr::slice($buildRelative, 1), fn($v) => $v !== null) || $build[4] !== "*"
+                \Arr::any(\Arr::slice($buildRelative, 1)) || $build[6] !== "*"
                     ? \Str::wrapc(\Arr::join(\Arr::filter($build), " "), "()")
                     : $this->entity::ref();
         }

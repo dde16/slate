@@ -8,7 +8,7 @@ namespace Slate\IO {
     use Slate\Data\IArrayConvertable;
     use Slate\Data\IArrayForwardConvertable;
     use Slate\Facade\DB;
-    use Slate\Mvc\App;
+    use Slate\Facade\App;
     use Slate\Neat\Attribute\Column;
     use Slate\Neat\Entity;
     use Slate\Neat\Model;
@@ -17,30 +17,56 @@ namespace Slate\IO {
 
         
     /**
-     * A Memory Share which can be loaded and deposited from a sql table.
+     * A table that uses the SysvMemoryShare as its primary store,
+     * which can be loaded and unloaded from a sql table. Its faster
+     * than services like redis because there is no socket overhead.
+     * But as a primary storage option, this class' purpose isnt that.
+     * 
+     * A good use case would be storage for auxiliary services, such 
+     * as sessions.
      */
     class SysvSharedMemoryTable extends SysvSharedMemoryLinkedList {
-        public const OVERHEAD = .2;
-
         public const VAR_AUTO_INCREMENT  = 6;
 
+        /**
+         * Max number of rows in the table, calculates the size based on this.
+         *
+         * @var integer
+         */
         protected int    $rows;
 
+        /**
+         * The entity the table will be storing models for.
+         *
+         * @var string
+         */
         protected string $entity;
-        
-        protected string $repo;
 
+        /**
+         * Index store to increase filter speeds.
+         *
+         * @var array
+         */
         public array     $indexes;
 
+        /**
+         * Counters to count the number of unique values for a column if its not a key.
+         * This increases the speed of the count function.
+         *
+         * @var array
+         */
         public array     $counters;
 
+        /**
+         * A factory that creates entity models from rows.
+         *
+         * @var Closure|null
+         */
         protected ?Closure $factory;
 
-        public function __construct(int $key, int $permissions, int $rows, string $repo, string $entity, ?Closure $factory = null) {
+        public function __construct(int $key, int $permissions, int $rows, string $entity, ?Closure $factory = null) {
             $this->entity   = $entity;
             $this->rows     = $rows;
-
-            $this->repo     = $repo;
 
             $this->indexes  = [];
             $this->counters = [];
@@ -51,19 +77,44 @@ namespace Slate\IO {
             $this->prep();
         }
 
+        /**
+         * Entity getter.
+         *
+         * @return string
+         */
+        public function getEntity():string {
+            return $this->entity;
+        }
+
+        /**
+         * This function takes place after the table has been acquired.
+         * Here indexes and counters are registered as hashmaps.
+         *
+         * @return void
+         */
         public function prep(): void {
             $columns = $this->entity::design()->getColumns();
 
             foreach(\Arr::values($columns) as $index => $attr) {
-                $column = $attr->getColumn();
+                $column = $attr->getColumn($this->entity);
 
-                if($column->isKey()) {
+                if($attr->isKey()) {
                     $this->indexes[$attr->parent->getName()] =
-                        new SysvSharedMemoryHashmap($this->key + count($columns) + $index, $column->getType()->getSize() * $this->rows, $this->permissions);
+                        new SysvSharedMemoryHashmap(
+                            /** All of the key indexes are kept after the counters */
+                            $this->key + $index + count($columns),
+                            $column->getType()->getSize() * $this->rows,
+                            $this->permissions
+                        );
                 }
                 else {
                     $this->counters[$attr->parent->getName()] = 
-                        new SysvSharedMemoryHashmap($this->key + $index, $column->getType()->getSize() * $this->rows, $this->permissions);
+                        new SysvSharedMemoryHashmap(
+                            /** All of the counters are kept straight after the table */
+                            $this->key + $index,
+                            $column->getType()->getSize() * $this->rows,
+                            $this->permissions
+                        );
                 }
             }
             
@@ -71,6 +122,11 @@ namespace Slate\IO {
             $this->acquireCounters();
         }
 
+        /**
+         * @see SysvSharedMemory::reacquire()
+         *
+         * @return void
+         */
         public function reacquire(): void {
             parent::reacquire();
 
@@ -81,6 +137,11 @@ namespace Slate\IO {
                 $counter->reacquire();
         }
 
+        /**
+         * @see SysvSharedMemory::acquire()
+         *
+         * @return void
+         */
         public function acquire(): void {
             parent::acquire();
             
@@ -88,23 +149,45 @@ namespace Slate\IO {
             $this->acquireCounters();
         }
 
+        /**
+         * Acquires all indexes.
+         *
+         * @return void
+         */
         protected function acquireIndexes(): void {
             foreach($this->indexes as $index)
                 $index->acquire();
         }
 
+        /**
+         * Acquires all counters.
+         *
+         * @return void
+         */
         protected function acquireCounters(): void {
             foreach($this->counters as $counter)
                 $counter->acquire();
         }
 
-        public function where(string $key, $value, int $limit = 0, int $offset = 0, bool $strict = false): Generator {
+        /**
+         * Filter rows in the table by value.
+         * At the moment no complex filters are allowed.
+         *
+         * @param string  $key Property name
+         * @param mixed   $value Value to search for
+         * @param integer $limit Same functionality as sql
+         * @param integer $offset Same functionality as sql
+         * @param boolean $strict Whether strict matching is used
+         *
+         * @return Generator
+         * 
+         * TODO: use JIT structure or array for complex searching
+         */
+        public function where(string $key, mixed $value, int $limit = 0, int $offset = 0, bool $strict = false): Generator {
             if(($attr = $this->entity::design()->getColumnProperty($key)) === null)
                 throw new \Error("Unknown column '$key'.");
 
-            $column = $attr->getColumn();
-
-            if($column->isUniqueKey() && is_scalar($value)) {
+            if($attr->isUniqueKey() && is_scalar($value)) {
                 $index = $this->indexes[$attr->parent->getName()];
                 $offset = $index[$value];
 
@@ -113,24 +196,29 @@ namespace Slate\IO {
                 }
             }
             else {
-                foreach(parent::where($column->getName(), $value, $limit, $offset, $strict) as $entry) {
+                foreach(parent::where($attr->getColumnName(), $value, $limit, $offset, $strict) as $entry) {
                     yield $entry;
                 }
             }
         }
 
+        /**
+         * Count the number of rows which match a value or closure filter.
+         *
+         * @param Closure|string|null $filter
+         * @param string|integer|float|null $value
+         *
+         * @return integer
+         */
         public function count(Closure|string $filter = null, string|int|float $value = null): int {
             if(is_string($filter)) {
-
-
                 if(($attr = $this->entity::design()->getColumnProperty($filter)) !== null) {
-                    $column = $attr->getColumn();
-
                     return
-                        ($column->isKey())
+                        ($attr->isKey())
                             ? ($this->indexes[$filter]->offsetExists($value) ? 1 : 0)
                             : ($this->counters[$filter][$value] ?: 0);
                 }
+
                 else {
                     throw new \Error("Unknown count column filter '{$filter}'.");
                 }
@@ -143,6 +231,13 @@ namespace Slate\IO {
             return ($this->pull(static::VAR_ROWS_COUNT) === $this->rows);
         }
 
+        /**
+         * Unload the rows into the source sql table.
+         *
+         * @return void
+         * 
+         * TODO: add to commandline tool
+         */
         public function unload(): void {
             $conn = App::conn($this->entity::conn());
 
@@ -150,8 +245,8 @@ namespace Slate\IO {
 
             $insertQuery = DB::insert()->into($ref)->conflictMirror();
 
-            $incrementalColumn = \Arr::first($this->entity::design()->getColumns(), function($atttr) {
-                return $atttr->getColumn()->isIncremental();
+            $incrementalColumn = \Arr::first($this->entity::design()->getColumns(), function($attr) {
+                return $attr->isIncremental();
             });
 
             $incrementalColumnMax = 1;
@@ -184,14 +279,25 @@ namespace Slate\IO {
 
         }
 
+        /**
+         * Load the rows from the source sql table.
+         *
+         * @return void
+         * 
+         * TODO: add to commandline tool
+         */
         public function load(): void {
             $conn = $this->entity::conn();
             
-            $rows = DB::select(\Arr::map($this->entity::design()->getColumns(), function($attr) use($conn) {
-                return $conn->wrap($attr->getColumn()->getName());
-            }))->from(
-                $conn->wrap($this->entity::SCHEMA).".".$conn->wrap($this->entity::TABLE)
-            )->using($conn);
+            $rows =
+                DB::select(
+                    \Arr::map(
+                        $this->entity::design()->getColumns(),
+                        fn(Column $attr): string => $conn->wrap($attr->getColumnName())
+                    )
+                )
+                ->from($conn->wrap($this->entity::SCHEMA, $this->entity::TABLE))
+                ->using($conn);
             
             $rows = $rows->get();
 
@@ -202,11 +308,9 @@ namespace Slate\IO {
 
         public function toRow(int $pointer, Entity $model, bool $set = false): array {
             foreach($this->entity::design()->getColumns() as $index => $attribute) {
-                $column = $attribute->getColumn();
                 $value  = $model->{$attribute->parent->getName()};
                 
-                if($column->isIncremental()) {
-
+                if($attribute->isIncremental()) {
                     if($value === null) {
                         if($set)
                             throw new \Error(
@@ -220,7 +324,7 @@ namespace Slate\IO {
                             $model->{$attribute->parent->getName()}= $this->preIncrement(static::VAR_AUTO_INCREMENT);
                     }
                     else if(!$set) {
-                        if($column->isIncremental())
+                        if($attribute->isIncremental())
                             throw new \Error(
                                 \Str::format(
                                     "Incremental column {}::\${} must be null when appending rows.",
@@ -230,15 +334,13 @@ namespace Slate\IO {
                             );
                     }
                 }
-                else if($column->isKey() && !$set) {
-                    $index = $this->indexes[$column->getName()];
+                else if($attribute->isKey() && !$set) {
+                    $index = $this->indexes[$attribute->getColumnName()];
 
-                    if($index->offsetExists($value)) {
-                        throw new \Error("Unique value already exists.");
-                    }
-                    else {
-                        $index[$value] = $pointer;
-                    }
+                    if($index->offsetExists($value))
+                        throw new \Error("Unique value for column '{$attribute->getColumnName()}' already exists.");
+
+                    $index[$value] = $pointer;
                 }
             }
 
@@ -257,7 +359,6 @@ namespace Slate\IO {
                 if($entityClass === null)
                     throw new \Error("Entity factory didn't provide a class.");
 
-
                 if(is_object($entityClass) ? !\Cls::isSubclassInstanceOf($entityClass, $this->entity) : false)
                     throw new \Error("Entity factory class $entityClass must inherit from the Entity provided in the constructor.");
             }
@@ -274,14 +375,13 @@ namespace Slate\IO {
                 
                 if($row !== null) {
                     foreach($this->entity::design()->getColumns() as $attr) {
-                        $column = $attr->getColumn();
-                        $value = $row[$column->getName()];
+                        $value = $row[$attr->getColumnName()];
                         
-                        if($column->isKey()) {
-                            $this->indexes[$attr->parent->gettName()]->offsetUnset($value);
+                        if($attr->isKey()) {
+                            $this->indexes[$attr->parent->getName()]->offsetUnset($value);
                         }
                         else {
-                            $this->counters[$attr->parent->gettName()][$value] = $this->counters[$attr->parent->gettName()][$value] - 1;
+                            $this->counters[$attr->parent->getName()][$value] = $this->counters[$attr->parent->getName()][$value] - 1;
                         }
                     }
                 }
@@ -338,10 +438,8 @@ namespace Slate\IO {
             $this->postIncrement(static::VAR_ROWS_COUNT);
 
             foreach($this->entity::design()->getColumns() as $attr) {
-                $column = $attr->getColumn();
-                
-                if(!$column->isKey()) {
-                    $value = $row[$column->getName()];
+                if(!$attr->isKey()) {
+                    $value = $row[$attr->getColumnName()];
 
                     $counter = $this->counters[$attr->parent->getName()];
     
@@ -357,12 +455,16 @@ namespace Slate\IO {
             /**
              * Calculate the size by getting the max rows multiplied by the sum of the column storage sizes.
              */
-            $size = ($this->rows * \Arr::sum(\Arr::map(
-                $this->entity::design()->getAttrInstances(Column::class),
-                function($attribute) {
-                    return $attribute->getColumn()->getType()->getSize();
-                }
-            )));
+            $size = (
+                $this->rows * \Arr::sum(
+                    \Arr::map(
+                        $this->entity::design()->getAttrInstances(Column::class),
+                        function($attribute) {
+                            return $attribute->getColumn($this->entity)->getType()->getSize();
+                        }
+                    )
+                )
+            );
 
             $this->size = $size;
 
@@ -381,8 +483,8 @@ namespace Slate\IO {
             $this->put(static::VAR_TAIL_POINTER,  -1);
             $this->put(static::VAR_FREE_POINTER,  $rowsStart);
 
-            if(($incrementalColumnAttr = \Arr::first($this->entity::design()->getColumns(), fn($attr) => $attr->getColumn()->isIncremental())) !== null) {
-                $this->put(static::VAR_AUTO_INCREMENT, $incrementalColumnAttr->getColumn()->getAutoIncrement());
+            if(($incrementalColumnAttr = $this->entity::design()->getIncrementalColumn()) !== null) {
+                $this->put(static::VAR_AUTO_INCREMENT, $incrementalColumnAttr->getColumn($this->entity)->getAutoIncrement());
             }
         }
 
@@ -392,7 +494,7 @@ namespace Slate\IO {
 
         /** @see Iterator::current() */
         public function current(): mixed {
-            return $this->has($this->position) ? $this->fromRow($this->pull($this->position)[0]) : null;
+            return $this->has($this->pointer) ? $this->fromRow($this->pull($this->pointer)[0]) : null;
         }
 
         public function setAutoIncrement(int $value): void {

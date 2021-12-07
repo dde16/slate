@@ -56,6 +56,7 @@ namespace Slate\IO {
 
             if($this->has($variableKey)) {
                 $value = $this->pull($variableKey);
+
                 $this->put($variableKey, ($value+1));
 
                 return $value;

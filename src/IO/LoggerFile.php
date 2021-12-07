@@ -1,6 +1,8 @@
 <?php
 
 namespace Slate\IO {
+
+    use Closure;
     use Slate\Utility\Logger;
 
     class LoggerFile extends Logger {
@@ -12,10 +14,27 @@ namespace Slate\IO {
             ],
             array $context = [],
             int $level = Logger::ALL,
-            array $streams = []
+            array $streams = [],
+            // Closure $rotate = null
         ) { 
+            $path = \Path::normalise($path);
+            $file = new File($path);
+
+            // if($rotate) {
+
+            //     if($rotate($file)) {
+            //         $index = -1;
+
+            //         while(\Path::exists($freepath = ($path.(++$index))));
+
+            //         $path = $freepath;
+            //     }
+
+            //     $file = new File($path);
+            // }
+
             parent::__construct(
-                [new File($path), ...\Arr::values($streams)],
+                [$file, ...\Arr::values($streams)],
                 $formatter,
                 $context,
                 $level

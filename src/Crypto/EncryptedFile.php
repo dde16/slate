@@ -26,7 +26,7 @@ namespace Slate\Crypto {
             $this->blocksize = $this->cipher->ivlen;
         }
 
-        public function open(string $mode = null, bool $lock = true): void {
+        public function open(string $mode = null, int $lock = null): void {
             $exists    = \Path::exists($this->path);
             
             parent::open($mode, $lock);

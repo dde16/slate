@@ -118,17 +118,120 @@ namespace Slate\Data {
             
         ];
 
+        /**
+         * Storing items.
+         *
+         * @var array
+         */
         protected array $items;
+
+        /**
+         * Permissions given to the collection.
+         *
+         * @var integer
+         */
         protected int   $permissions;
+
+        /**
+         * Flag determines whether the collection
+         * can be written to or not.
+         *
+         * @var boolean
+         */
         protected bool  $lock;
+
+        /**
+         * Whether on a method not being found,
+         * try and call the method on each object
+         * in the collection. 
+         * 
+         * Do note, however, that this wont raise any 
+         * errors if a method isnt found. On the collection
+         * but will on an individual object.
+         * 
+         * @var bool
+         */
+        protected bool $passthru;
 
         public function __construct(array $values = null, int $permissions = Collection::UNRESTRICTED) {
             $this->lock        = false;
             $this->permissions = $permissions;
             $this->items       = [];
+            $this->passthru    = false;
             
             if($values !== NULL)
                 $this->fromArray($values);
+        }
+
+        /**
+         * Toggle passthru.
+         *
+         * @param boolean $passthru
+         *
+         * @return static
+         */
+        public function passthru(bool $passthru = true): static {
+            $this->passthru = $passthru;
+
+            return $this;
+        }
+
+        public function var(string $name): FieldPrepped {
+            return (new FieldPrepped($name))->from($this->items);
+        }
+        
+        public function object(string $name, string|bool $assert = false): object {
+            $var = $this->var($name);
+
+            if($assert === false) $var->fallback(null);
+            else if($assert === true) $assert = null;
+
+            return $this->var($name)->object($assert);
+        }
+        
+        public function array(string $name, string|bool $assert = false): array {
+            $var = $this->var($name);
+
+            if($assert === false) $var->fallback(null);
+            else if($assert === true) $assert = null;
+
+            return $this->var($name)->array($assert);
+        }
+        
+        public function bool(string $name, string|bool $assert = false): bool {
+            $var = $this->var($name);
+
+            if($assert === false) $var->fallback(null);
+            else if($assert === true) $assert = null;
+
+            return $this->var($name)->bool($assert);
+        }
+        
+        public function int(string $name, string|bool $assert = false): int {
+            $var = $this->var($name);
+
+            if($assert === false) $var->fallback(null);
+            else if($assert === true) $assert = null;
+
+            return $this->var($name)->int($assert);
+        }
+        
+        public function string(string $name, string|bool $assert = false): string {
+            $var = $this->var($name);
+
+            if($assert === false) $var->fallback(null);
+            else if($assert === true) $assert = null;
+
+            return $this->var($name)->string($assert);
+        }
+        
+        public function float(string $name, string|bool $assert = false): float {
+            $var = $this->var($name);
+
+            if($assert === false) $var->fallback(null);
+            else if($assert === true) $assert = null;
+
+            return $this->var($name)->float($assert);
         }
         
         /**
@@ -163,9 +266,9 @@ namespace Slate\Data {
          */
         public function __call(string $method, array $arguments): mixed {
             $container = &$this->items;
-            $arguments = array_merge([&$this->items], $arguments);
             
             if(\Arr::hasKey(static::SPL_FUNCTIONS_RETURN, $method)) {
+                $arguments = array_merge([&$this->items], $arguments);
                 $method = static::SPL_FUNCTIONS_RETURN[$method];
 
                 if(!\Fnc::exists($method)) {
@@ -180,6 +283,7 @@ namespace Slate\Data {
                 });
             }
             else if(\Arr::hasKey(static::SPL_FUNCTIONS_SET, $method)) {
+                $arguments = array_merge([&$this->items], $arguments);
                 $method = static::SPL_FUNCTIONS_SET[$method];
 
                 $callback = (function() use($method, $arguments): void {
@@ -201,10 +305,17 @@ namespace Slate\Data {
             if($callback !== NULL)
                 return $callback();
 
-            throw new \Error(\Str::format(
-                "Call to undefined method {}::{}().",
-                static::class, $method
-            ));
+            if(!$this->passthru)
+                throw new \Error(\Str::format(
+                    "Call to undefined method {}::{}().",
+                    static::class, $method
+                ));
+
+            foreach($this->items as $item)
+                if(is_object($item) ? \Cls::hasMethod($item, $method) : $item)
+                    $item->{$method}(...$arguments);
+
+            return $this;
         }
 
 

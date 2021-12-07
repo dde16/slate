@@ -10,7 +10,7 @@ namespace Slate\IO {
     /**
      * An OOP style directory handler.
      */
-    class Directory  {
+    class Directory {
         protected string $path;
         protected $resource;
 
@@ -47,7 +47,21 @@ namespace Slate\IO {
 
             return (new File($path, $mode));
         }
-  
+
+        /**
+         * Create a child direction within the parent directory.
+         *
+         * @param  mixed $path Must be relative to directory.
+         * @param  mixed $mode
+         * @return void
+         */
+        public function createDirectory(string $path, int $permissions = null, bool $recursive = true): void {
+            $fullpath = $this->path . \Path::normalise($path);
+
+            if(!mkdir($fullpath, $permissions ?? \Path::getPermissions($this->path), recursive: $recursive)) 
+                throw new IOException(["path" => $fullpath], IOException::ERROR_DIR_OPEN_FAILURE);
+        }
+
         /**
          * Create a file within the current directory.
          *
@@ -88,10 +102,6 @@ namespace Slate\IO {
                 mkdir($dir, \Path::getPermissions($dir), true);
 
             return (new Directory($path));
-        }
-
-        public function createDirectory(string $path, int $permissions = 0777, bool $recursive = true): bool {
-            return mkdir($this->path.\Path::normalise($path), permissions: $permissions, recursive: $recursive);
         }
 
         /**
@@ -242,7 +252,7 @@ namespace Slate\IO {
             }
         }
 
-        public function getFullpath(string $relativePath): string {
+        public function getFullPath(string $relativePath): string {
             return $this->path . \Path::normalise($relativePath);
         }
     }

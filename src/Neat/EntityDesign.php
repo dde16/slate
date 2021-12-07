@@ -1,14 +1,17 @@
 <?php
 
 namespace Slate\Neat {
+
+    use Generator;
     use Slate\Metalang\MetalangTrackedDesign;
-    use Slate\Mvc\App;
+    use Slate\Facade\App;
     use Slate\Mvc\Env;
     use Slate\Neat\Attribute\Column as ColumnAttribute;
+    use Slate\Neat\Attribute\OneToAny;
     use Slate\Neat\Attribute\OneToOne as OneToOneAttribute;
     use Slate\Sql\SqlColumn;
 
-class EntityDesign extends MetalangTrackedDesign {
+    class EntityDesign extends ModelDesign {
         public static array $mappers = [];
         public static array $mapped  = [];
 
@@ -55,40 +58,6 @@ class EntityDesign extends MetalangTrackedDesign {
 
                 if($schema !== null && $table !== null) {
                     $this->queryable = true;
-                    $conn = App::conn(\Cls::getConstant($class, "CONN"));
-
-                    $repo = App::repo(Env::get("orm.cache.repository", [ "important" => true ]));
-
-                    $ref = $class::ref()->toString();
-
-                    if($repo->has($ref)) {
-                        $columns = $repo->pull($ref);
-                    }
-                    else {
-                        $repo->put($ref, ($columns = $conn->schematic($schema, $table)));
-                    }
-
-                    $columns = \Arr::map(
-                        $columns,
-                        function($column) use($conn) {
-                            $inst = new SqlColumn($conn::PREFIX);
-                            $inst->fromArray($column);
-        
-                            return $inst;
-                        }
-                    );
-
-
-                    foreach($this->getAttrInstances(ColumnAttribute::class) as $key => $attribute) {
-                        $columnName = $attribute->getColumnName();
-
-                        if(\Arr::hasKey($columns, $columnName)) {
-                            $attribute->setSqlColumn($columns[$columnName]);
-                        }
-                        else {
-                            throw new \Error(\Str::format("Unknown column {}::\${}.", $this->getName(), $attribute->parent->getName()));
-                        }
-                    }
                 }
                 else if(!$this->isAbstract()) {
                     throw new \Error(\Str::format(
@@ -123,21 +92,39 @@ class EntityDesign extends MetalangTrackedDesign {
             );
         }
 
+        public function getColumnRelationships(string $localProperty): array {
+            $relationships = [];
+
+            /** @var OneToAny $oneToAny */
+            foreach($this->getAttrInstances(OneToAny::class, true) as $oneToAny) {
+                if($oneToAny->localProperty === $localProperty) {
+                    $relationships[] = $oneToAny;
+                }
+            }
+
+            return $relationships;
+        }
+
         public function isQueryable(): bool {
             return $this->queryable;
+        }
+
+        public function getIncrementalColumn(): ColumnAttribute|null {
+            return \Arr::first(
+                $this->getAttrInstances(ColumnAttribute::class),
+                fn(ColumnAttribute $attribute): bool => $attribute->isIncremental()
+            );
         }
 
         public function getPrimaryKey(): ColumnAttribute|null {
             return \Arr::first(
                 $this->getAttrInstances(ColumnAttribute::class),
-                function($attribute) {
-                    return $attribute->isPrimaryKey();
-                }
+                fn(ColumnAttribute $attribute): bool => $attribute->isPrimaryKey()
             );
         }
 
         public function getColumns(): array {
-            return $this->getAttrInstances(ColumnAttribute::class, subclasses: true);
+            return $this->getAttrInstances(ColumnAttribute::class);
         }
 
         public function getColumnProperty(string $name): ColumnAttribute|null {

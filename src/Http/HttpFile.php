@@ -4,8 +4,19 @@ namespace Slate\Http {
     use Slate\IO\File;
 
     abstract class HttpFile extends File {
-        public string $httpField;
-        public string $httpMime;
+        /**
+         * The field name in the post body for the file.
+         *
+         * @var string
+         */
+        protected string $httpField;
+
+        /**
+         * File mime type.
+         *
+         * @var string
+         */
+        protected string $httpMime;
 
         public function __construct(
             string $field,
@@ -16,7 +27,7 @@ namespace Slate\Http {
 
             $this->httpField = $field;
 
-            $this->httpMime = $mime ?: "application/octet-stream";
+            $this->httpMime = $mime ?? "application/octet-stream";
         }
 
         public function getHttpField(): string {

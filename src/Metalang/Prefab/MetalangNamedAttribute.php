@@ -2,6 +2,7 @@
 
 namespace Slate\Metalang\Prefab {
 
+    use Slate\Metalang\MetalangDesign;
     use Slate\Metalang\MetalangAttribute;
 
     class MetalangNamedAttribute extends MetalangAttribute {

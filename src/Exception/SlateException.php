@@ -43,7 +43,7 @@ namespace Slate\Exception {
          */
         public static function getHtml(\Throwable $throwable, int $httpCode = 500): string {
             $tab = "&nbsp;&nbsp;&nbsp;&nbsp;";
-            return \Str::val(\Cls::getClass($throwable)).": ".
+            return \Str::val(get_class($throwable)).": ".
                 "<br>".$tab."Http Code    : ".\Str::wrap(\Str::val(\Compound::get($throwable, "httpCode", 500)), "'").
                 "<br>".$tab."Http Message : ".\Str::wrap(HttpCode::message($httpCode), "'").
                 "<br>".$tab."Dev  Message : ".\Str::wrap($throwable->getMessage(), "'").

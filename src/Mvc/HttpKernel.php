@@ -1,8 +1,8 @@
 <?php
 
 namespace Slate\Mvc {
-
     use Slate\Exception\HttpException;
+    use Slate\Facade\Router;
     use Slate\Foundation\Kernel;
     use Slate\Foundation\Stager;
     use Slate\Http\HttpRequest;
@@ -55,18 +55,16 @@ namespace Slate\Mvc {
          */
         #[Stager(self::HTTP)]
         protected function register(): void {
-            $requestClass  = (App::use("http.request"));
-            $responseClass = (App::use("http.response"));
 
-            $this->request  =     $requestClass::capture();
-            $this->response = new $responseClass();
+            $this->request  = HttpRequest::capture();
+            $this->response = new HttpResponse();
         }
 
         #[Stager(self::ROUTE)]
         protected function route(): void {
             $this->response->elapsed("init");
             
-            /** Start a buffer to avoid premature response header sending. */
+            /** Start a buffer to avoid premature response sending */
             ob_start();
 
             $path = $this->request->uri->getPath();
@@ -75,7 +73,6 @@ namespace Slate\Mvc {
             $mvcPublicPath = Env::get("mvc.public.path", [ "important" => true ]);
 
             $mvcViewsPath = Env::get("mvc.view.path",       [ "important" => true ]);
-
 
             if(($match = Router::match($this->request)) !== null ? $match[1] !== null : false) {
                 list($routeInstance, $routeMatch) = $match;
@@ -88,9 +85,8 @@ namespace Slate\Mvc {
                 $routeResult = $routeInstance->go($this->request, $this->response, $routeMatch);
 
                 if($routeResult !== null) {
-                    if(!(is_object($routeResult) ? \Cls::isSubclassInstanceof($routeResult, Result::class) : false)) {
+                    if(!(is_object($routeResult) ? \Cls::isSubclassInstanceof($routeResult, Result::class) : false))
                         $routeResult = new AnyResult($routeResult);
-                    }
                 
                     if(\Cls::isSubclassInstanceof($routeResult, CommandResult::class)) {
                         $routeResult->modify($this->response);
@@ -100,7 +96,6 @@ namespace Slate\Mvc {
                         $this->response->headers["Content-Type"] = $routeResult->getMime();
                     }
                 }
-
 
                 $this->response->send();
 

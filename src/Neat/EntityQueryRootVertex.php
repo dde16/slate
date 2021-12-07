@@ -12,7 +12,7 @@ namespace Slate\Neat {
         public function modifyQuery(SqlSelectStatement $query, EntityQueryVertex $foreignVertex = null): void {
             parent::modifyQuery($query, $foreignVertex);
 
-            if($this->limit !== null || $this->offset !== null) {                
+            if($this->limit !== null || $this->offset !== null) {
                 if($this->hasEdges()) {
                     $query->var("rowCache", "NULL");
                     $query->var("rowNumber", "0");
@@ -39,13 +39,24 @@ namespace Slate\Neat {
                         $query->trailingWheres[] = ["and", [$rowVariable, ">=", $this->offset]];
                     }
                 }
-                else if(\Arr::isEmpty($this->orderBy)) {
+                else {
+                    $query->orderBy        = $this->orderBy;
+                    $query->orderDirection = $this->orderDirection;
+
                     if($this->limit !== null)
                         $query->limit = $this->limit;
                     
                     if($this->offset !== null)
                         $query->offset = $this->offset;
+
+                    $this->orderBy = [];
                 }
+            }
+            else if(!\Arr::isEmpty($this->orderBy)) {
+                $query->orderBy        = $this->orderBy;
+                $query->orderDirection = $this->orderDirection;
+
+                $this->orderBy = [];
             }
         }
     }

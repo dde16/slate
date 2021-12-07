@@ -8,7 +8,7 @@ namespace Slate\Data\Iterator {
         use TAnchoredIterator;
 
         public function prev(): void {
-            prev($this);
+            $this->seek(intval($this->key())-1);
         }
     }
 }

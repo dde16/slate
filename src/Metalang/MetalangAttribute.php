@@ -10,15 +10,54 @@ namespace Slate\Metalang {
     use ReflectionParameter;
 
     abstract class MetalangAttribute {
-        // Kept so it raises an error when accessed in case I missed any
-        public ReflectionClass         $class;
-        public ReflectionMethod        $method;
-        public ReflectionProperty      $property;
-        public ReflectionClassConstant $constant;
-        public ReflectionParameter     $parameter;
+        private bool $bootstrapped = false;
 
-        public ReflectionClass|ReflectionMethod|ReflectionProperty|ReflectionClassConstant|ReflectionParameter $parent;
+        public null|ReflectionClass|ReflectionMethod|ReflectionProperty|ReflectionClassConstant|ReflectionParameter $parent = null;
 
+        /**
+         * Ensures all attributes have a constructor dependency injection.
+         */
+        public function __construct() { }
+
+        /**
+         * This is a one-time dependency injection function for the class construct the attribute belongs to.
+         *
+         * @param ReflectionClass|ReflectionMethod|ReflectionProperty|ReflectionClassConstant|ReflectionParameter $parent
+         *
+         * @return void
+         */
+        public function setParent(ReflectionClass|ReflectionMethod|ReflectionProperty|ReflectionClassConstant|ReflectionParameter $parent): void {
+            if($this->parent !== null)
+                throw new \Error("A parent is already defined for this Attribute.");
+
+            $this->parent = $parent;
+        }
+        
+        /**
+         * This function is ran once the parent design is finished instantiating attributes.
+         *
+         * @param MetalangDesign $design
+         *
+         * @return void
+         */
+        public function bootstrap(MetalangDesign $design): void {
+            $this->bootstrapped = true;
+        }
+
+        /**
+         * Tells the design whether this instance has already been bootstrapped.
+         *
+         * @return boolean
+         */
+        public function isBootstrapped(): bool {
+            return $this->bootstrapped;
+        }
+
+        /**
+         * Returns the key(s) that will allow this attribute to be referenced.
+         *
+         * @return array|string
+         */
         public function getKeys(): array|string {
             return $this->parent->getName();
         }

@@ -12,7 +12,7 @@ namespace Slate\Sql\Statement {
 
     use Slate\Facade\DB;
     use Slate\Facade\Sql;
-    use Slate\Mvc\App;
+    use Slate\Facade\App;
     use Slate\Sql\ISqlResultProvider;
 
     use Slate\Sql\Expression\TSqlColumnsExpression;
@@ -60,9 +60,9 @@ class SqlInsertStatement extends SqlStatement  {
                 : null;
         }
 
-        public function row(array $row) {
-
-            $this->columns(\Arr::keys($row));
+        public function row(array $row, bool $columns = true): static {
+            if($columns)
+                $this->columns(\Arr::keys($row));
 
             $this->rows[] = $row;
 

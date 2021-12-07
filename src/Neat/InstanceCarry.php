@@ -2,9 +2,7 @@
 
 namespace Slate\Neat {
 
-use Slate\Neat\Attribute\Carry as CarryAttribute;
-
-class InstanceCarry extends Carry {
+    class InstanceCarry extends Carry {
         protected object $instance;
 
         public function __construct(object $primary, object $instance) {

@@ -26,9 +26,9 @@ namespace Slate\Http {
         const TEMPORARY_REDIRECT              = 307;
         // [Client Error 4xx]
         const BAD_REQUEST                     = 400;
-        const UNAUTHORIZED                    = 401;
+        const UNAUTHORIZED                    = 401; // Not authenticated
         const PAYMENT_REQUIRED                = 402;
-        const FORBIDDEN                       = 403;
+        const FORBIDDEN                       = 403; // Not authorised to perform this action
         const NOT_FOUND                       = 404;
         const METHOD_NOT_ALLOWED              = 405;
         const NOT_ACCEPTABLE                  = 406;
@@ -106,6 +106,10 @@ namespace Slate\Http {
 
         public static function message($code): string|null {
             return @self::$messages[$code];
+        }
+
+        public static function isRedirect(int $code): bool {
+            return $code >= HttpCode::MULTIPLE_CHOICES && $code <= HttpCode::TEMPORARY_REDIRECT;
         }
 
         public static function isError(int $code): bool {

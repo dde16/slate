@@ -1,8 +1,6 @@
 <?php
 
 namespace Slate\Data {
-
-    use Slate\Data\Iterator\ArrayAssocIterator;
     use Slate\Data\Iterator\ArrayExtendedIterator;
     use Slate\Data\Iterator\IAnchoredIterator;
     use Slate\Data\Iterator\IExtendedIterator;

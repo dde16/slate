@@ -2,6 +2,9 @@
 
 namespace Slate\Sql {
 
+    use Slate\Sql\Connection\MsSqlConnection;
+    use Slate\Sql\Connection\MySqlConnection;
+    use Slate\Sql\Connection\PgSqlConnection;
     use Slate\Utility\Factory;
 
     class SqlConnectionFactory extends Factory {

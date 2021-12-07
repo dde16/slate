@@ -1,80 +1,49 @@
 <?php
 
 namespace Slate\Mvc {
-    use Slate\Foundation\Kernel;
-    use Slate\Utility\TMiddleware;
-    use Slate\Utility\TUninstantiable;
 
+    use Slate\Foundation\App as FoundationApp;
     use Slate\Http\HttpRequest;
     use Slate\Http\HttpResponse;
 
-    use Slate\Mvc\Route;
-    use Slate\Mvc\Router;
+    class App extends FoundationApp {
+        protected HttpRequest $request;
+        protected HttpResponse $response;
 
-    use Slate\Mvc\Result;
-
-    use Slate\Mvc\Result\JsonResult;
-    use Slate\Mvc\Result\ScalarResult;
-    use Slate\Mvc\Result\FileResult;
-    use Slate\Mvc\Result\FilesResult;
-
-    use Slate\Mvc\Attribute\Preprocessor as PreprocessorAttribute;
-    use Slate\Mvc\Attribute\Postprocessor as PostprocessorAttribute;
-    use Slate\Mvc\Attribute\Route as RouteAttribute;
-
-    final class App {
-        use TUninstantiable;
-        use TMiddleware;
-
-        protected static array $middleware = [
-            "http.request"                     => HttpRequest::class,
-            "http.request.file"                => HttpRequestFile::class,
-
-            "http.response"                    => HttpResponse::class,
-            "http.response.file"               => HttpResponseFile::class,
-
-            // Routing
-            "routing.router"                   => Router::class,
-            "routing.route"                    => Route::class,
-
-            // Results
-            "result.compound"                  => Result::class,
-            "result.scalar"                    => Result::class,
-            "result.file"                      => Result::class,
-            "result.files"                     => Result::class,
-        ];
-        
-        public static array $using      = [
-            "http.request"                     => HttpRequest::class,
-            "http.request.file"                => HttpRequestFile::class,
-
-            "http.response"                    => HttpResponse::class,
-            "http.response.file"               => HttpResponseFile::class,
-
-            "routing.router"                   => Router::class,
-            "routing.route"                    => Route::class,
-            
-            "result.compound"                  => JsonResult::class,
-            "result.scalar"                    => ScalarResult::class,
-            "result.file"                      => FileResult::class,
-            "result.files"                     => FilesResult::class,
+        public const PROVIDERS = [
+            \Slate\Foundation\Provider\ConfigurationProvider::class,
+            \Slate\Foundation\Provider\HandlerProvider::class,
+            \Slate\Foundation\Provider\ConnectionProvider::class,
+            \Slate\Foundation\Provider\QueueProvider::class,
+            \Slate\Foundation\Provider\RepositoryProvider::class,
+            \Slate\Mvc\Provider\RouteProvider::class
         ];
 
-        protected static Kernel $kernel;
-        
-        public static function kernel(Kernel $kernel): void {
-            static::$kernel = $kernel;
+        public function __construct(string $root) {
+            $this->request  = HttpRequest::capture();
+            $this->response = new HttpResponse();
+
+            parent::__construct($root);
         }
 
         /**
-         * The magic method that will, if any methods are called statically, try and 
-         * call the singleton instance. This can create loops if not used carefully.
-         * 
-         * @return mixed
+         * Get the request for the current lifecycle.
+         *
+         * @return HttpResponse|null
          */
-        protected static function __callStatic(string $name, array $arguments): mixed {
-            return static::$kernel->{$name}(...$arguments);
+        public function request(): HttpRequest|null {
+            return $this->request;
         }
+
+        /**
+         * Get the response for the current lifecycle.
+         *
+         * @return HttpResponse|null
+         */
+        public function response(): HttpResponse|null {
+            return $this->response;
+        }
+        
     }
 }
 

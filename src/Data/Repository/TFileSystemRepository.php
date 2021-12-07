@@ -45,7 +45,7 @@ namespace Slate\Data\Repository {
         }
 
         public function until(string $key, mixed $value, DateTimeInterface|DateInterval|float|int $ttl = null): void {
-            $ttl = $ttl !== null ? \Integer::fromDateTime($ttl) : -1.0;
+            $ttl = $ttl !== null ? \Real::fromDateTime($ttl) : -1.0;
 
             $key = $this->derive($key);
     

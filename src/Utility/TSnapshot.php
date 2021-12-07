@@ -12,12 +12,15 @@ namespace Slate\Utility {
             bool $binary = false,
             bool $nulls = true,
             bool $suppress = true
-        ) {
+        ): ?array {
             $reflection = (new \ReflectionClass(static::class));
 
             if(\Arr::isEmpty($properties)) {
                 $ignore = \Arr::unique(
-                    \Arr::merge(\Cls::getConstant(static::class, "SNAPSHOT_IGNORE") ?: [], ["objectSnapshot", "propertySnapshots"])
+                    \Arr::merge(
+                        \Cls::getConstant(static::class, "SNAPSHOT_IGNORE", []),
+                        ["objectSnapshot", "propertySnapshots"]
+                    )
                 );
 
                 if(\Cls::hasInterface(static::class, ISnapshotExplicit::class)) {
@@ -35,24 +38,29 @@ namespace Slate\Utility {
                             function($property) use($ignore) {
                                 $propertyName = $property->getName();
             
-                                return (!$property->isStatic() && !\Arr::contains($ignore, $propertyName)) ? $property : null;
+                                return
+                                    (!$property->isStatic() && !\Arr::contains($ignore, $propertyName))
+                                        ? $property
+                                        : null;
                             }
                         )
                     );
                 }
             }
             else {
-                $properties = \Arr::filter(\Arr::map(
-                    $properties,
-                    function($propertyName) use($reflection) {
-                        $property = $reflection->getProperty($propertyName);
+                $properties = \Arr::filter(
+                    \Arr::map(
+                        $properties,
+                        function($propertyName) use($reflection) {
+                            $property = $reflection->getProperty($propertyName);
 
-                        if(!$property->isStatic())
-                            return $property;
+                            if(!$property->isStatic())
+                                return $property;
 
-                        return null;
-                    }
-                ));
+                            return null;
+                        }
+                    )
+                );
             }
 
             $propertySnapshots = [];

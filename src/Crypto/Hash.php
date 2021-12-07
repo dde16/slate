@@ -10,12 +10,12 @@ namespace Slate\Crypto {
     class Hash extends Model {
         protected string $algorithm;
 
-        protected HashContext $context;
+        protected HashContext $hashContext;
 
         public function __construct(string $algorithm, string $data = null) {
             $this->setAlgorithm($algorithm);
 
-            $this->context = hash_init($this->algorithm);
+            $this->hashContext = hash_init($this->algorithm);
 
             if($data) $this->update($data);
         }
@@ -25,7 +25,7 @@ namespace Slate\Crypto {
         }
 
         public function update(string $data): bool {
-            return hash_update($this->context, $data);
+            return hash_update($this->hashContext, $data);
         }
 
         #[Setter("algorithm")]
@@ -38,16 +38,16 @@ namespace Slate\Crypto {
             }
         }
 
-        public function toBinary(): string {
-            return hash_final($this->context, binary: true);
+        public function toBytes(): string {
+            return hash_final($this->hashContext, binary: true);
         }
 
         public function toHex(): string {
-            return hash_final($this->context, binary: false);
+            return hash_final($this->hashContext, binary: false);
         }
 
         public function toBase64(): string {
-            return base64_encode($this->toBinary());
+            return base64_encode($this->toBytes());
         }
 
         #[Getter("algorithm")]

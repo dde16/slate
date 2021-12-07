@@ -8,22 +8,36 @@ namespace Slate\Http {
     use Slate\Data\FieldPrepped;
     use Slate\Facade\Security;
     use Slate\Media\Uri;
+    use Slate\Mvc\Attribute\Route;
     use Slate\Neat\Attribute\Getter;
+    use Slate\Neat\Attribute\ReadOnly;
     use Slate\Neat\Attribute\Setter;
 
-class HttpRequest extends HttpPacket {
+    class HttpRequest extends HttpPacket {
+        #[ReadOnly]
         protected string     $path;
+
+        #[ReadOnly]
         protected int        $method;
+
+        #[ReadOnly]
         protected float      $version;
         
+        #[ReadOnly]
         protected $route = null;
+
+        #[ReadOnly]
         protected ?Collection $parameters = null;
 
         protected ?StreamReader $bodyStream = null;
 
+        #[ReadOnly]
         protected Collection $query;
 
+        #[ReadOnly]
         protected Uri $uri;
+
+        protected ?string $inputSource = null;
 
         public function __construct(
             int $method,
@@ -51,24 +65,37 @@ class HttpRequest extends HttpPacket {
             $this->files   = new Collection($files, Collection::READABLE);
         }
 
-        #[Getter("uri")]
-        public function getUri(): Uri {
-            return $this->uri;
+        #[Getter("source")]
+        public function getSource(): string {
+            $contentType = $this->headers["content-type"] ?? "";
+
+            if(!$this->inputSource) {
+                $this->inputSource = 
+                    (\Str::contains($contentType, "/json") || \Str::contains($contentType, "+json")
+                        ? "json"
+                        : ($this->method & (HttpMethod::GET | HttpMethod::HEAD)
+                            ? "query"
+                            : "form"
+                        )
+                    );
+            }
+
+            return $this->inputSource;
         }
 
-        #[Getter("method")]
-        public function getMethod(): int {
-            return $this->method;
-        }
-
-        #[Getter("version")]
-        public function getVersion(): float {
-            return $this->version;
+        #[Getter("input")]
+        public function getInput(): Collection {
+            return match($this->source) {
+                "json" => collect($this->getBody()->json(assert: true)),
+                "query" => collect($this->uri->query),
+                "form" => $this->query,
+                default => null
+            };
         }
 
         #[Getter("parameters")]
         public function getParameters(): Collection {
-            return $this->parameters ?: new Collection();
+            return $this->parameters ?? new Collection();
         }
         
         #[Setter("parameters")]
@@ -79,22 +106,12 @@ class HttpRequest extends HttpPacket {
             $this->parameters = new Collection($parameters, Collection::READABLE);
         }
 
-        #[Getter("query")]
-        public function getQuery(): Collection {
-            return $this->query;
-        }
-
         #[Setter("route")]
-        public function setRoute($route): void {
+        public function setRoute(Route $route): void {
             if($this->route !== null)
                 throw new \Error("Unable to set the request route as it has already been set.");
 
             $this->route = $route;
-        }
-
-        #[Getter("route")]
-        public function getRoute(): mixed {
-            return $this->route;
         }
 
         public function get(string|int $key, array $options = []): mixed {
@@ -109,8 +126,25 @@ class HttpRequest extends HttpPacket {
             ], $schema, multisource: true);
         }
 
-        public function var(string $name): mixed {
+        public function var(string $name): FieldPrepped {
             return (new FieldPrepped($name))->from($this->parameters, $this->uri->query, $this->query);
+        }
+
+        
+        public function bool(string $name, string $errorMessage = null): bool {
+            return $this->var($name)->bool($errorMessage);
+        }
+        
+        public function int(string $name, string $errorMessage = null): int {
+            return $this->var($name)->int($errorMessage);
+        }
+        
+        public function string(string $name, string $errorMessage = null): string {
+            return $this->var($name)->string($errorMessage);
+        }
+        
+        public function float(string $name, string $errorMessage = null): float {
+            return $this->var($name)->float($errorMessage);
         }
 
         #[Getter("body")]
@@ -138,8 +172,6 @@ class HttpRequest extends HttpPacket {
                         $query,
                         env("mvc.security.auto-sanitise.escapes", ["fallback" => ["\"", "'", "`"], "validator" => Closure::fromCallable('is_array')])
                     );
-
-                
             }
 
             $uri->setPath(HttpEnvironment::getPath());
@@ -152,7 +184,10 @@ class HttpRequest extends HttpPacket {
             $method = HttpMethod::getValue(\Str::uppercase(HttpEnvironment::getMethod()));
 
             /** Load Headers */
-            $headers = HttpEnvironment::getHeaders();
+            $headers = \Arr::mapAssoc(
+                HttpEnvironment::getHeaders(),
+                fn(string $key, string $value) => [\Str::lower($key), $value]
+            );
 
             /** Load Cookies */
             $cookies = HttpEnvironment::getCookies();

@@ -2,19 +2,18 @@
 
 namespace Slate\Neat\Attribute {
     use Attribute;
+    use ReflectionMethod;
     use Slate\Metalang\MetalangAttribute;
+    use Slate\Metalang\MetalangDesign;
     
     #[Attribute(Attribute::TARGET_METHOD)]
-    class Retry extends MetalangAttribute {
-        public const NAME = "Retry";
-    
+    class Retry extends MetalangAttribute {    
         protected float $delay;
         protected int   $backoff;
 
         protected mixed $test;
     
         public function __construct(float $delay, int $backoff = 2, mixed $test = false, bool $strict = false) {
-    
             if($delay <= 0)
                 throw new \Error("Delay must be a non-zero, positive, real number.");
     

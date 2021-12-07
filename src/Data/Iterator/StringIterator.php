@@ -168,15 +168,17 @@ namespace Slate\Data\Iterator {
             return (((is_bool($pointer) && $pointer) ? $this->pointer : $pointer) >= strlen($this->string));
         }
 
-        public function relseek(int $pointer): void {
-            $this->seek($this->tell() + $pointer);
+        public function relseek(int $pointer): bool {
+            return $this->seek($this->tell() + $pointer);
         }
 
-        public function seek(int $pointer): void {
+        public function seek(int $pointer): bool {
             if($pointer < 0)
-                throw new \Error("The pointer must be a positive integer.");
+                return false;
 
             $this->pointer = $pointer;
+
+            return true;
         }
     }
 }

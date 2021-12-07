@@ -41,6 +41,12 @@ namespace Slate\Utility {
          */
         const CRITICAL = (1<<4);
 
+        /**
+         * A flag on whether logs should be verbose.
+         * NOT A LOG LEVEL
+         */
+        const VERBOSE = (1<<5);
+
         const ALL      = 
             Logger::DEBUG |
             Logger::INFO  |
@@ -140,7 +146,7 @@ namespace Slate\Utility {
             $tb = "    ";
             $this->log(
                 $level,
-                "\n".\Cls::getClass($throwable).": ".
+                "\n".get_class($throwable).": ".
                 "\n{$tb}Message : ".\Str::wrap($throwable->getMessage(), "'").
                 "\n{$tb}File    : ".\Str::wrap($throwable->getFile(), "'").
                 "\n{$tb}Line    : ".\Str::wrap($throwable->getLine(), "'").

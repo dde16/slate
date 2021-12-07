@@ -2,10 +2,10 @@
 
 namespace Slate\Sql {
     use Slate\Facade\DB;
+    use Slate\Sql\Condition\SqlCondition;
     use Slate\Sql\Statement\SqlDropStatement;
 
     final class SqlSchema implements ISqlStorageMedium {
-        protected static array $schemas = [ ];
 
         protected string $name;
         protected string $charset = "DEFAULT";
@@ -13,18 +13,14 @@ namespace Slate\Sql {
 
         protected array  $tables;
 
-        protected function __construct(string $name) {
+        public function __construct(SqlConnection $conn, string $name) {
             $this->name = $name;
+            $this->conn = $conn;
             $this->tables = [];
         }
 
-        public static function named(string $name): static {
-            $schema = &static::$schemas[$name];
-
-            if($schema === null)
-                $schema = new SqlSchema($name);
-
-            return $schema;
+        public function conn(): SqlConnection {
+            return $this->conn;
         }
 
         public function load(array $options = []): void { }
@@ -74,7 +70,9 @@ namespace Slate\Sql {
         }
 
         public function table(string $table): SqlTable {
-            return (new SqlTable($this, $table));
+            $sqlTable = &$this->tables[$table];
+
+            return $sqlTable ?? ($sqlTable = (new SqlTable($this, $table)));
         }
     }
 }

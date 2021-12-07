@@ -23,14 +23,6 @@ namespace Slate\Sql {
          * @return void
          */
         function exists(): bool;
-
-        /**
-         * Load the current medium, with options to load its children.
-         *
-         * @param array $options
-         * @return void
-         */
-        function load(array $options = []): void;
     }
 }
 

@@ -10,6 +10,10 @@ namespace Slate\Sql\Clause {
             return $this;
         }
 
+        public function getCollation(): string {
+            return $this->collation;
+        }
+
         public function buildCollateClause(): ?string {
             return $this->collation ? "COLLATE {$this->collation}" : null;
         }

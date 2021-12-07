@@ -25,7 +25,7 @@ namespace Slate\IO {
         }
         
         public function until(string $key, mixed $value, DateTimeInterface|DateInterval|float|int $ttl = null): void {
-            $ttl = $ttl !== null ? \Real::fromDateTime($ttl) : -1.0;
+            $ttl = $ttl !== null ? \Real::fromDateTime($ttl) : null;
     
             $this->hashmap[$key] = [
                 "value" => $value,

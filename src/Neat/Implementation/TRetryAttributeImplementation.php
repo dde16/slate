@@ -3,13 +3,13 @@
 namespace Slate\Neat\Implementation {
 
     use Closure;
-    use Slate\Metalang\Attribute\AttributeCallStatic;
-    use Slate\Metalang\Attribute\AttributeCall;
+    use Slate\Metalang\Attribute\HookCallStatic;
+    use Slate\Metalang\Attribute\HookCall;
     use Slate\Neat\Attribute\Retry;
     use Slate\Neat\Attribute\Throttle;
 
 trait TRetryAttributeImplementation {
-        #[AttributeCall(Retry::class, [Throttle::class])]
+        #[HookCall(Retry::class, [Throttle::class])]
         public function retryImplementor(string $name, array $arguments, object $next): mixed {
             return static::retrySharedImplementor(
                 $name,
@@ -21,7 +21,7 @@ trait TRetryAttributeImplementation {
             );
         }
 
-        #[AttributeCallStatic(Retry::class, [Throttle::class])]
+        #[HookCallStatic(Retry::class, [Throttle::class])]
         public static function retryStaticImplementor(string $name, array $arguments, object $next): mixed {
             return static::retrySharedImplementor(
                 $name,

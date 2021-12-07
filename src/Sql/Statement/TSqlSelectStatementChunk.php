@@ -2,7 +2,7 @@
 
 namespace Slate\Sql\Statement {
     use Slate\Facade\DB;
-    use Slate\Mvc\App;
+    use Slate\Facade\App;
 
 trait TSqlSelectStatementChunk {
         public function chunk(int $size, int $from = 0) {

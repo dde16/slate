@@ -14,7 +14,7 @@ abstract class Compound extends DataType {
      * @return object
      */
     public static function unset(object|array &$compound, array|string $path): bool {
-        if(\Any::isString($path))
+        if(is_string($path))
             $path = \Str::split($path, ".");
 
         $length = count($path);
@@ -47,7 +47,7 @@ abstract class Compound extends DataType {
      * @return object
      */
     public static function set(object|array &$compound, array|string $path, mixed $value, object|array|null $fallback = null): bool {
-        if(\Any::isString($path))
+        if(is_string($path))
             $path = \Str::split($path, ".");
 
         $length = count($path);
@@ -83,7 +83,7 @@ abstract class Compound extends DataType {
      * @return object
      */
     public static function &get(object|array &$compound, array|string $path, mixed $fallback = null, bool &$fellback = false): mixed {
-        if(\Any::isString($path))
+        if(is_string($path))
             $path = \Str::split($path, ".");
 
         $length = count($path);

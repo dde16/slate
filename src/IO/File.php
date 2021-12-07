@@ -50,7 +50,6 @@ class File extends Stream {
         const APPEND               = "a";
         const APPEND_SEEKABLE      = "a+";
 
-        //TODO: use SplFileInfo
         public SplFileInfo $path;
         public string $basename;
         public string $filename;
@@ -92,7 +91,7 @@ class File extends Stream {
             return $this->currentMode ?: $this->predefinedMode;
         }
 
-        public function open(string $mode = null, bool $lock = false): void {
+        public function open(string $mode = null, int $lock = null): void {
             if($this->resource !== NULL)
                 throw new IOException("File is already open.");
 
@@ -121,7 +120,10 @@ class File extends Stream {
 
             $this->resource = $resource;
             
-            if($this->lock = $lock) $this->lock();
+            if($lock !== null) {
+                $this->lock = true;
+                $this->lock($lock);
+            }
         }
 
         public function delete(): bool {
@@ -222,12 +224,6 @@ class File extends Stream {
             $sourcePath = $this->path;
             $destinationPath = $destination;
 
-            if(!\Str::isPath($destination)) {
-                $sourcePathDirectory = dirname($sourcePath);
-
-                $destinationPath = $sourcePathDirectory . $destination;
-            }
-
             if(copy($sourcePath, $destinationPath)) {
                 if($follow) {
                     $this->path = new SplFileInfo($destinationPath);
@@ -237,9 +233,7 @@ class File extends Stream {
                 }
             }
             else {
-                throw new IOException(
-                    \Str::format("Unable to copy file '{}' to '{}'.", $sourcePath, $destinationPath, $this->path->__toString())
-                );
+                throw new IOException("Unable to copy file '{$sourcePath}' to '{$destinationPath}'.");
             }
 
             return null;

@@ -2,13 +2,13 @@
 
 namespace Slate\Neat\Attribute {
     use Attribute;
+    use ReflectionMethod;
     use Slate\Metalang\MetalangAttribute;
-    use Slate\Mvc\App;
+    use Slate\Facade\App;
+    use Slate\Metalang\MetalangDesign;
 
 #[Attribute(Attribute::TARGET_METHOD)]
-    class Cache extends MetalangAttribute {
-        public const NAME = "Cache";
-    
+    class Cache extends MetalangAttribute {    
         protected string $repo;
         protected ?float    $ttl = null;
         protected bool    $persistent;
@@ -20,6 +20,9 @@ namespace Slate\Neat\Attribute {
             $this->ttl        = $ttl;
             $this->repo       = $repo;
             $this->persistent = $persistent;
+
+            if(!$this->persistent)
+                App::repo($this->repo)->forget($this->getCacheKey());
         }
     
         public function getCacheKey(): string {
@@ -32,13 +35,6 @@ namespace Slate\Neat\Attribute {
     
         public function getTtl(): float|null {
             return $this->ttl;
-        }
-    
-        public function consume($method): void {
-            parent::consume($method);
-    
-            if(!$this->persistent)
-                App::repo($this->repo)->forget($this->getCacheKey());
         }
     }
 }

@@ -1,37 +1,48 @@
 <?php
 
 namespace Slate\Mvc\Route {
+
+    use Closure;
+    use RuntimeException;
     use Slate\Http\HttpRequest;
     use Slate\Http\HttpResponse;
     use Slate\Http\HttpProtocol;
     use Slate\Exception\HttpException;
-    use Slate\Mvc\App;
-    use Slate\Mvc\Attribute\Postprocessor;
-    use Slate\Mvc\Attribute\Preprocessor;
+    use Slate\Facade\App;
+    use Slate\Mvc\Attribute\Handler;
+    use Slate\Mvc\Attribute\Middleware;
     use Slate\Mvc\Attribute\Route as RouteAttribute;
     use Slate\Mvc\Result;
     use Slate\Mvc\Route;
+    use Throwable;
 
     class ControllerRoute extends Route {
-        public array  $targets;
+        // public array  $targets;
 
-        public function __construct(string $pattern, array $targets, bool $fallback = false) {
+        protected string $controller;
+        protected string $action;
+        protected ?RouteAttribute $attribute = null;
+
+        public function __construct(string $pattern, array|string $target, bool $fallback = false) {
             parent::__construct($pattern, $fallback);
+            
+            if(is_string($target))
+                $target = \Str::split($target, "@");
+            
+            if(count($target) < 2) {
+                throw new \Error("A route's target must be [controller, action].");
+            }
 
-            $this->targets = \Arr::map(
-                $targets,
-                function($target) {    
-                    if(\Any::isString($target)) {
-                        $target = \Str::split($target, "@");
-                    }
-                    
-                    if(count($target) < 2) {
-                        throw new \Error("A route's target must be [classname, action].");
-                    }
+            $this->controller = $target[0];
+            $this->action     = $target[1];
 
-                    return $target;
-                }
-            );
+            $design = $this->controller::design();
+
+            if(($this->attribute = $design->getAttrInstance(RouteAttribute::class, $this->action)) === null)
+                throw new HttpException(500, "Controller action {$this->controller}::\${$this->action} doesn't exist.");
+
+            if($this->attribute->methods)
+                $this->method($this->attribute->methods);
         }
 
         public function go(HttpRequest $request, HttpResponse $response, array $match): mixed {
@@ -44,80 +55,70 @@ namespace Slate\Mvc\Route {
             $controllerResult = null;
             $controllerDesign = $controllerClass::design();
 
+            $controllerMiddleware = $controllerClass::MIDDLEWARE;
+
             // try {
-            $controllerPreprocessors  = $controllerClass::PREPROCESSORS;
-            $controllerPostprocessors = $controllerClass::POSTPROCESSORS;
+            $controllerHandlers       = $controllerClass::HANDLERS;
 
-            return \Fnc::chain(
-                \Arr::map(
-                    $controllerPreprocessors,
-                    function($preprocessor) use($controllerDesign, $controllerInstance, $controllerClass) {
-                        if(($preprocessor = $controllerDesign->getAttrInstance(Preprocessor::class, $preprocessor)) === null)
-                            throw new \Error("Unknown preprocessor in controller '$controllerClass'.");
+            $controllerClosures = array_merge(
+                \Arr::column(\Arr::map(
+                    $controllerMiddleware,
+                    function($middleware) use($controllerDesign, $controllerInstance, $controllerClass, $request, $response) {
+                        /** @var Middleware $middleware */
+                        if(($_middleware = $controllerDesign->getAttrInstance(Middleware::class, $middleware)) === null)
+                            throw new \Error("Unknown controller middleware {$controllerClass}->{$middleware}.");
 
-                        return $preprocessor->parent->getClosure($controllerInstance);
-                    }
-                ),
-                [$request],
-                function(HttpRequest $request) use($controllerDesign, $controllerClass, $controllerPostprocessors, $controllerRoute, $controllerInstance, $controllerAction, $response) {
-                    try {
-                        $controllerResult = $controllerInstance->{$controllerAction}($request, $response);
-                    }
-                    catch(\Throwable $throwable) {
-                        $controllerResult = $throwable;
-                    }
+                        $middleware = $_middleware;
 
-                    $bypass = false;
-
-                    if(is_object($controllerResult) ? (is_subclass_of($controllerResult, Result::class) || $controllerResult instanceof Result) : false) {
-                        $bypass = $controllerResult->bypasses();
-                    }
-
-                    if(!$bypass) {
-                        $controllerResult = \Fnc::chain(
-                            \Arr::map(
-                                $controllerPostprocessors,
-                                function($postprocessorName) use($controllerDesign, $controllerInstance, $controllerClass) {
-                                    if(($postprocessor = $controllerDesign->getAttrInstance(Postprocessor::class, $postprocessorName)) === null)
-                                        throw new \Error("Unknown postprocessor '$postprocessorName' in controller '$controllerClass'.");
-            
-                                    return $postprocessor->parent->getClosure($controllerInstance);
-                                }
-                            ),
-                            [$request, $response, $controllerResult],
-                            function(HttpRequest $request, HttpResponse $response, mixed $data) {
-                                return $data;
+                        return [
+                            $middleware->getName(),
+                            function() use($middleware, $controllerInstance, $request, $response) {
+                                return $middleware->parent->getClosure($controllerInstance)($request, $response, ...func_get_args());
                             }
-                        );
+                        ];
                     }
+                ), 0, 1),
+                [
+                    "Action" => function() use($request, $response, $controllerInstance, $controllerAction) {
+                        return $controllerInstance->{$controllerAction}($request, $response);
+                    }
+                ]
+            );
 
-                    return $controllerResult;
+            return \Fnc::graph(
+                $controllerClosures,
+                function(): mixed {
+                    throw new RuntimeException("This shouldn't happen.");
+                },
+                function(Throwable $throwable, Closure $next, Closure $jump) use($controllerHandlers, $controllerDesign, $controllerInstance, $controllerClass) {
+                    return \Fnc::chain(
+                        \Arr::map(
+                            $controllerHandlers,
+                            function($handlerName) use($controllerDesign, $controllerInstance, $controllerClass): Closure {
+                                if(($handler = $controllerDesign->getAttrInstance(Handler::class, $handlerName)) === null)
+                                    throw new \Error("Unknown handler '$handlerName' in controller '$controllerClass'.");
+        
+                                return $handler->parent->getClosure($controllerInstance);
+                            }
+                        ),
+                        function(Throwable $throwable): void {
+                            throw $throwable;
+                        },
+                        [$throwable, $jump]
+                    );
                 }
             );
         }
 
         public function match(HttpRequest $request, array $patterns = [], bool $bypass = false): array|null {
             if(($result = parent::match($request, $patterns, $bypass)) !== null) {
-                foreach($this->targets as list($controller, $action)) {
-                    if(!class_exists($controller))
-                        throw new HttpException(500, "Class '$controller' doesn't exist.");
-
-                    $design = $controller::design();
-
-                    if(($route = $design->getAttrInstance(RouteAttribute::class, $action, subclasses: true)) === null) {
-                        throw new HttpException(500, "Controller action {$controller}::\${$action} doesn't exist.");
-                    }
-
-                    if($route->accepts($request)) {
-                        return array_merge(
-                            $result, [
-                                "controller" => $controller,
-                                "action"     => $action,
-                                "route"      => $route
-                            ]
-                        );
-                    }
-                }
+                return array_merge(
+                    $result, [
+                        "controller" => $this->controller,
+                        "action"     => $this->action,
+                        "route"      => $this->attribute
+                    ]
+                );
             }
 
             return null;

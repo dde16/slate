@@ -2,9 +2,9 @@
 
 namespace Slate\Sql {
 
-use Slate\Mvc\App;
+    use Slate\Facade\App;
 
-trait TSqlUsingConnection {
+    trait TSqlUsingConnection {
         protected string|SqlConnection|null $conn = null;
 
         public function using(string|SqlConnection $conn): static {

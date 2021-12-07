@@ -33,15 +33,24 @@ final class Arr extends CompoundType {
     public const RECURSIVE_TOP_DOWN = (1<<1);
 
     /**
+     * Ensure that a value is an array, if not; wrap it into one.
+     *
+     * @param mixed $value
+     *
+     * @return string
+     */
+    public static function ensure(mixed $value): array {
+        return !is_array($value) ? [$value] : $value;
+    }
+
+    /**
      * Format/transform a compound value.
      *
      * @return void
      */
     public static function format(array $compound, array $format): array|object {
         return \Arr::mapAssoc(
-            \Arr::associate($format, null, function(mixed $collision): Closure|string|null {
-                return (is_array($collision) || is_string($collision) || ($collision instanceof Closure)) ? $collision : null;
-            }),
+            \Arr::associate($format, null),
             function($fromKey, $toKey) use($compound) {
                 if($toKey === null)
                     $toKey = $fromKey;
@@ -177,9 +186,8 @@ final class Arr extends CompoundType {
         foreach($array as $key => $value) {
             $tmpPath = [...$path, $key];
 
-            if(\Any::isArray($value)) {
+            if(is_array($value)) {
                 $empty = \Arr::isEmpty($value);
-
 
                 if(\Integer::hasBits($flags, \Arr::DOTS_EVAL_ARRAY) && !$empty) {
                     $branches = \Arr::merge(
@@ -402,7 +410,7 @@ final class Arr extends CompoundType {
      * @return int
      */
     public static function count($array, string|Closure $filter = null, int $mode = COUNT_NORMAL): int {
-        if(\Any::isString($filter))
+        if(is_string($filter))
             $filter = fn($value) => \Any::traverse($value, $filter);
 
         if($filter !== null) {
@@ -437,7 +445,7 @@ final class Arr extends CompoundType {
      * @return array
      */
     public static function dotsByValue (array|ArrayAccess $array,  string $using = ".",  int $flags = \Arr::DOTS_EVAL_ALL, string|array $path = []): array {
-        if(\Any::isString($path)) $path = \Str::split($path, $using);
+        if(is_string($path)) $path = \Str::split($path, $using);
 
         $dots = [];
 
@@ -445,7 +453,7 @@ final class Arr extends CompoundType {
             $curpath = [...$path, $key];
             $strpath = \Arr::join($curpath, $using);
 
-            if(\Any::isArray($value)) {
+            if(is_array($value)) {
                 if($flags & \Arr::DOTS_EVAL_ARRAY) {
                     $dots = \Arr::merge(
                         $dots,
@@ -482,7 +490,7 @@ final class Arr extends CompoundType {
      * @return array
      */
     public static function dotsByReference (array|ArrayAccess &$array, string $using = ".", int $flags = \Arr::DOTS_EVAL_ASSOC, string|array $path = []): array {
-        if(\Any::isString($path)) $path = \Str::split($path, $using);
+        if(is_string($path)) $path = \Str::split($path, $using);
 
         $dots = [];
 
@@ -490,7 +498,7 @@ final class Arr extends CompoundType {
             $path[] = $key;
             $strpath .= \Arr::join($path, ".");
 
-            if(\Any::isArray($value)) {
+            if(is_array($value)) {
                 if($flags & \Arr::DOTS_EVAL_ARRAY) {
                     $dots = \Arr::merge(
                         $dots,
@@ -746,7 +754,7 @@ final class Arr extends CompoundType {
      * @return bool
      */
     public static function has (array|ArrayAccess $array, string|int|array $key): bool {
-        return \Any::isArray($key) ? \Arr::hasKeys($array, $key) : \Arr::hasKey($array, $key);
+        return is_array($key) ? \Arr::hasKeys($array, $key) : \Arr::hasKey($array, $key);
     }
 
     public static function getSingle (array|ArrayAccess $array, string $key, array $options = []): mixed {
@@ -765,7 +773,7 @@ final class Arr extends CompoundType {
 
         // $raisable  = ($important !== null && $fallback === null) ? $raisable : false;
 
-        if(\Any::isString($cast)) {
+        if(is_string($cast)) {
             if($castClass = \Type::getByName($cast)) {
                 $cast = $castClass;
             }
@@ -784,12 +792,12 @@ final class Arr extends CompoundType {
 
         $value = \Arr::hasKey($array, $key) ? @$array[$key] : null;
 
-        if(\Any::isCallable($converter) && $value !== NULL) {
+        if(is_callable($converter) && $value !== NULL) {
             $value = \Fnc::call($converter, [ $value ]);
         }
 
         if($value !== NULL) {
-            if(\Any::isCallable($validator)) {
+            if(is_callable($validator)) {
                 if(\Fnc::call($validator, [ $value ]) !== true) {
                     throw new \Error(
                         \Str::format(
@@ -827,7 +835,7 @@ final class Arr extends CompoundType {
      * @return array|null
      */
     public static function use (array|ArrayAccess $array, string|array $offsets, callable $callback = null, array $options = []): array|null {
-        if(\Any::isString($offsets)) {
+        if(is_string($offsets)) {
             $offsets = [$offsets];
         }
 
@@ -842,7 +850,7 @@ final class Arr extends CompoundType {
             }
         );
 
-        if(\Any::isCallable($callback)) {
+        if(is_callable($callback)) {
             \Fnc::call(
                 $callback,
                 \Arr::values($offsets)
@@ -1170,7 +1178,6 @@ final class Arr extends CompoundType {
     public static function associate(
         array $array,
         $default,
-        \Closure $collision = null,
         bool $deep = false,
         bool $strict = false
     ): array {
@@ -1282,9 +1289,10 @@ final class Arr extends CompoundType {
      */
     public static function cluster (array|ArrayAccess $array, Closure $callback, bool $preserve = true): array {
         $clusters = [];
+        $pkey = 0;
 
         foreach($array as $key => $value) {
-            $cluster = $callback($value, $key);
+            $cluster = $callback($value, $key) ?? $pkey++;
 
             if($preserve)
                 $clusters[$cluster][$key] = $value;
@@ -1306,14 +1314,11 @@ final class Arr extends CompoundType {
      * A different version of array_merge which preserves integer keys.
      */
     public static function mergePreserve(array|ArrayAccess ...$arrays): array {
-        
         $buffer = [];
 
-        foreach($arrays as $array) {
-            foreach($array as $key => $value) {
+        foreach($arrays as $array)
+            foreach($array as $key => $value)
                 $buffer[$key] = $value;
-            }
-        }
 
         return $buffer;
     }
@@ -1407,7 +1412,7 @@ final class Arr extends CompoundType {
             throw new \BadFunctionCallException("An array was not supplied to Arr::map().");
         }
 
-        if(!\Any::isArray($callback) && $callback === null) {
+        if(!is_array($callback) && $callback === null) {
             throw new \BadFunctionCallException("A callback was not supplied to Arr::map().");
         }
 
@@ -1433,6 +1438,8 @@ final class Arr extends CompoundType {
      * @param array $array
      * 
      * @return mixed
+     * 
+     * TODO: remove
      */
     public static function median (array|ArrayAccess $array): mixed {
         $array = \Arr::sort($array);
@@ -1444,7 +1451,7 @@ final class Arr extends CompoundType {
     /**
      * Alias of array_count_values
      */
-    public static function tally (array|ArrayAccess $array): int {
+    public static function tally(array|ArrayAccess $array) {
         return array_count_values($array);
     }
 
@@ -1455,17 +1462,15 @@ final class Arr extends CompoundType {
      * 
      * @return array An associatve array with the key => value of the duplicate item.
      */
-    public static function duplicates($array): array {
+    public static function duplicates(array|ArrayAccess $array): array {
         $unique     = [];
         $duplicates = [];
 
         foreach($array as $index => $value) {
-            if(\Arr::contains($unique, $value)) {
-                $duplicates[$index] = $value;
-            }
-            else {
-                $unique[] = $value;
-            }
+            \Arr::contains($unique, $value)
+                ? ($duplicates[$index] = $value)
+                : ($unique[] = $value)
+            ;
         }
 
         return $duplicates;
@@ -1517,6 +1522,38 @@ final class Arr extends CompoundType {
         return (array_sum($array) / count($array));
     }
 
+    public static function maxEntry(array|ArrayAccess $array, Closure $callback) {
+        $maxIndex = null;
+        $maxValue = 0;
+
+        foreach($array as $index => $anon) {
+            $value = $callback($anon);
+
+            if($value > $maxValue) {
+                $maxIndex = $index;
+                $maxValue = $value;
+            }
+        }
+
+        return [$maxIndex, $array[$maxIndex]];
+    }
+
+    public static function minEntry(array|ArrayAccess $array, Closure $callback) {
+        $minIndex = null;
+        $minValue = \Integer::MAX;
+
+        foreach($array as $index => $anon) {
+            $value = $callback($anon);
+
+            if($value < $minValue) {
+                $minIndex = $index;
+                $minValue = $value;
+            }
+        }
+
+        return [$minIndex, $array[$minIndex]];
+    }
+
     /**
      * Alias of 'min'
      */
@@ -1537,45 +1574,6 @@ final class Arr extends CompoundType {
     public static function sum (array|ArrayAccess $array): int {
         return array_sum($array);
     }
-    
-    /**
-     * Subtract the values of multiple arrays.
-     * 
-     * @param array ...$arrays
-     * 
-     * @return array
-     */
-    public static function subtract (array|ArrayAccess ...$arrays): array {
-        $lastValue = null;
-
-        $arrayDeltas = [];
-
-        foreach($arrays as $currentValueIndex => $currentValue) {
-            if($lastValue !== NULL) {
-                $pairArrayDeltas = [];
-
-                if(\Any::isArray($currentValue)) {
-                    foreach($currentValue as $currentValueSubIndex => $currentValueSubValue) {
-                        $lastValueSubValue = $lastValue[$currentValueSubIndex];
-
-                        if($lastValueSubValue === NULL) {
-                            $lastValueSubValue = 0;
-                        }
-
-                        $currentValueSubValueDelta = $lastValueSubValue - $currentValueSubValue;
-
-                        $pairArrayDeltas[$currentValueSubIndex] += $currentValueSubValueDelta;
-                    }
-                }
-
-                $arrayDeltas[] = $pairArrayDeltas;
-            }
-
-            $lastValue = $currentValue;
-        }
-
-        return $arrayDeltas;
-    }
 
     /**
      * Gets the first entry of a given array by reference, optionally by a given filter.
@@ -1585,7 +1583,7 @@ final class Arr extends CompoundType {
      * 
      * @return array
      */
-    public static function startEntry (array|ArrayAccess $array, Closure|string $filter = null): array {
+    public static function startEntry(array|ArrayAccess $array, Closure|string $filter = null): array {
         if($filter === NULL) {
             $firstKey = array_key_first($array);
             $firstValue = &$array[$firstKey];
@@ -1630,7 +1628,7 @@ final class Arr extends CompoundType {
         foreach($array as $entry) {
             list($key, $value) = $entry;
 
-            if(!(\Any::isString($key) || \Any::isInt($key)))
+            if(!(is_string($key) || is_int($key)))
                 throw new \Error("Keys must be integers or strings.");
 
             $assoc[$key][] = $value;
@@ -2007,8 +2005,6 @@ final class Arr extends CompoundType {
         if(is_int($look)) $look = [$look, $look];
         else if(count($look) !== 2)
             throw new \Error("There must be two forward and back looking sizes.");
-
-        $size = \Arr::sum($look)+1;
 
         $backwardLook = $look[0];
         $forwardLook  = $look[1];

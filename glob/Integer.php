@@ -1,33 +1,140 @@
 <?php
 
+use Slate\Data\Iterator\ArrayExtendedIterator;
+
+/**
+ * A class to double as a central point for Integer functions while being 
+ * a way to class-ify types.
+ * 
+ * TODO: in the add with overflow detection - use & 1 << 63 to detect overflow
+ * TODO: remove fromBase and toBase when the IntArray can perform these tasks
+ */
 class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainable  {
-    const NAMES            = ["int", "integer"];
-    const GROUP            = ScalarType::class;
-    const VALIDATOR        = "is_int";
-    const CONVERTER        = "intval";
+    public const NAMES            = ["int", "integer"];
+    public const GROUP            = ScalarType::class;
+    public const VALIDATOR        = "is_int";
+    public const CONVERTER        = "intval";
 
-    const MIN              = PHP_INT_MIN;
-    const MAX              = PHP_INT_MAX;
+    public const MIN              = PHP_INT_MIN;
+    public const MAX              = PHP_INT_MAX;
 
-    const BYTESIZE         = PHP_INT_SIZE;
-    const BITSIZE          = PHP_INT_SIZE*8;
+    public const BYTESIZE         = PHP_INT_SIZE;
+    public const BITSIZE          = PHP_INT_SIZE*8;
+
+    public const SI  = 1000;
+    public const IEC = 1024;
+
+    public const BYTE     = 1;
+
+    //SI
+    public const KILOBYTE = 2;
+    public const MEGABYTE = 3;
+    public const GIGABYTE = 4;
+    public const TERABYTE = 5;
+    public const PETABYTE = 6;
+
+    //IEC
+    public const KIBIBYTE = 2;
+    public const MEBIBYTE = 3;
+    public const GIBIBYTE = 4;
+    public const TIBIBYTE = 5;
+    public const PIBIBYTE = 6;
+
+    /**
+     * Memory units in the SI format.
+     * 
+     * @var array<string,string[]>
+     */
+    public const SI_UNITS = [
+        self::BYTE     => ["Byte",     "B"],
+        self::KILOBYTE => ["Kilobyte", "KB"],
+        self::MEGABYTE => ["Megabyte", "MB"],
+        self::GIGABYTE => ["Gigabyte", "GB"],
+        self::TERABYTE => ["Terabyte", "TB"],
+        self::PETABYTE => ["Petabyte", "PB"]
+    ];
+
+    /**
+     * Memory units in the IEC format.
+     * 
+     * @var array<string,string[]>
+     */
+    public const IEC_UNITS = [
+        self::BYTE     => ["Byte",     "B"],
+        self::KILOBYTE => ["Kibibyte", "KiB"],
+        self::MEGABYTE => ["Mebibyte", "MiB"],
+        self::GIGABYTE => ["Gibibyte", "GiB"],
+        self::TERABYTE => ["Tibibyte", "TiB"],
+        self::PETABYTE => ["Pibibyte", "PiB"]
+    ];
 
     public const OR  = (1<<0);
     public const XOR = (1<<1);
     public const AND = (1<<2);
 
+    /**
+     * Determine the most efficient storage method for a given integer.
+     *
+     * @param integer $integer
+     *
+     * @return array<string|int,string,int>
+     */
+    public static function efficientStorageOf(int $integer): array {
+        $digits  = \Math::digits($integer);
+        $bitsize = \Integer::bitsize($digits, false);
+
+        return (
+            $bitsize > $digits
+                ? ["string", $digits]
+                : ["int", $bitsize]
+        );
+    }
+
+    public static function getReducedSize(int $bytes, int $standard = self::SI) {
+        $value = $bytes;
+        $units = new ArrayExtendedIterator(match($standard) {
+            self::SI => self::SI_UNITS,
+            self::IEC => self::IEC_UNITS
+        });
+        $unit = $units->current();
+        $units->next();
+
+        while($value >= $standard && $units->valid()) {
+            $unit   = $units->current();
+            $value /= $standard;
+            $units->next();
+        }
+        
+        return [$value, $unit];
+    }
+
     public static function fromBinary(string $binary) {
-        $bytes = Integer::BYTESIZE;
+        $bitsize = strlen($binary);
+        $integer = 0;
 
-        $binary = mb_convert_encoding($binary, "utf-8");
-        $length = strlen($binary);
+        for($offset = 0; $offset < $bitsize; $offset++) {
+            $integer |= intval($binary[$offset]) << ($bitsize - $offset - 1);
+        }
 
-        if($length > $bytes)
-            throw new \Error("Binary string must be of length {$bytes}.");
+        return $integer;
+    }
 
-        $binary = \Str::padRight($binary, "\0", $bytes);
+    public static function toBinary(int $integer, int $bitsize = self::BITSIZE): string {
+        return \Str::padLeft(decbin($integer), "0", $bitsize);
+    }
 
-        for($sum = $index = 0; $index < $length; $sum |= ord($binary[$index]) << ($index++ * Integer::BYTESIZE));
+    public static function fromBytes(string $bytes): int {
+        $bytesize = Integer::BYTESIZE;
+        $bytes    = \Str::padLeft($bytes, "\0", $bytesize);
+
+        if($bytesize > strlen($bytes))
+            throw new \Error("Binary string must be of length {$bytesize}.");
+
+        $sum = 0;
+
+        for($index = strlen($bytes)-1; $index > -1; $index--) {
+            $sum |= ord($bytes[$index]) << (($bytesize - $index - 1) * 8);
+        }
 
         return $sum;
     }
@@ -160,7 +267,7 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
     }
 
     /**
-     * Generate an integer with its bits filled in a given range.
+     * Generate an integer with its bits filled in a given range (reads right to left).
      * 
      * @param int $from Starting at zero, what bit to start from (from the right)
      * @param int $to   Starting at zero, what bit to end at (from the right)
@@ -169,16 +276,14 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
      */
     public static function fillAt(int $from, int $to): int {
         /**
-         * Works by taking advantage of how bits are assigned when bit shifted, depending on the
-         * sign. Eg. 1 right shift when negative, 0 when positive.
-         * 
          * Eg.
          * From : 7
          * To   : 5
+         * Size : 8
          * 
          * 1) 00000001 (1)
          * 2) 00001000 (1 << ((7 - 5) + 1 = 3))
-         * 3) 10001000 (change sign)
+         * 3) 10001000 (change sign always negative)
          * 4) 01110111 (not)
          * 5) 11100000 (<<7)
         */
@@ -186,7 +291,7 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
     }
 
     /**
-     * Generate a bitmask to only the integers in a given range.
+     * Generate a bitmask to only the integers in a given range (reads from right to left).
      * 
      * @param int $integer 
      * @param int $from
@@ -194,12 +299,59 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
      * 
      * @return int
      */
-    public static function only(int $integer, int $from, int $to): int {
-        return $integer & \Integer::fillAt($from, $to);
+    public static function only(int $integer, int $from, int $to, bool $zero = false): int {
+
+        return ($zero
+            ? ($integer >> $from) & \Integer::fillBy(0, $to - $from - 1)
+            : ($integer & \Integer::fillAt($from, $to))
+        );
     }
 
     /**
-     * Generate a bitmask to only the integers outside of a given range.
+     * Split an integer by a given size.
+     */
+    public static function split(int $integer, int $bitsize, int $offset, int $splitsize, int $direction = -1): array {
+        $in = (int)ceil($bitsize / $splitsize);
+        $ints = [];
+        $carry = null;
+    
+        for($i = 0; $i < $in; $i++) {
+            $from = ( $offset + ( $i    * $splitsize));
+            $to   = (($offset + (($i+1) * $splitsize)));
+    
+            $_from = ($direction === 1 ? ($bitsize - $to)   : $from+1);
+            $_to   = ($direction === 1 ? ($bitsize - $from) : $to);
+
+            $carried = false;
+
+            $from = $_from;
+            $to = $_to;
+    
+            if($from < 0) {
+                $from = 0;
+                $carried = true;
+            }
+    
+            if($to < 0) {
+                $to = 0;
+                $carried = true;
+            }
+            
+            $subint = \Integer::only($integer, $from, $to, true);
+
+            if($carried) {
+                $carry = $subint;
+            }
+            else {
+                $ints[] = $subint;
+            }
+        }
+    
+        return [$ints, $carry];
+    }
+
+    /**
+     * Generate a bitmask to only the integers outside of a given range (reads right to left).
      * 
      * @param int $integer
      * @param int $from
@@ -248,7 +400,9 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
     }
 
     /**
-     * And integer operator with more utils.
+     * And integer operator with more utils and strict matching.
+     * Eg. 6 & ((1 | 2) = 3) = 2 which evaluates to boolean true.
+     * Thus will not match all bits.
      * 
      * @param int       $bitpack
      * @param int|array $orpack
@@ -256,7 +410,7 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
      * @return int
      */
     public static function hasBits(int $bitpack, int|array $orpack): bool {
-        $orpack = \Any::isArray($orpack) ? \Arr::or($orpack) : $orpack;
+        $orpack = is_array($orpack) ? \Arr::or($orpack) : $orpack;
 
         return ($bitpack !== 0 && $orpack === 0) ?: (($bitpack & $orpack) === $orpack);
     }
@@ -271,7 +425,7 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
      */
     public static function permissions(array|string $permissions): int {
         if(is_string($permissions)) {
-            $permissions = \Arr::map(\Str::split($permissions), 'intval');
+            $permissions = \Arr::map(\Str::split($permissions), Closure::fromCallable('intval'));
         }
 
         $bits = 0;

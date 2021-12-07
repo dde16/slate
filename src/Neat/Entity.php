@@ -5,7 +5,7 @@ namespace Slate\Neat {
     use Closure;
     use Slate\Facade\DB;
     use Slate\Facade\Security;
-    use Slate\Mvc\App;
+    use Slate\Facade\App;
     use Slate\Neat\Attribute\Column as ColumnAttribute;
     use Slate\Neat\Attribute\Scope as ScopeAttribute;
 
@@ -18,8 +18,10 @@ namespace Slate\Neat {
     use Slate\Neat\Implementation\TColumnAttributeImplementation;
     use Slate\Neat\EntityMarker;
     use Slate\Sql\SqlConnection;
+    use Slate\Sql\SqlSchema;
+    use Slate\Sql\SqlTable;
 
-    class Entity extends Model implements ISnapshotExplicit {
+class Entity extends Model implements ISnapshotExplicit {
         public const DESIGN  = EntityDesign::class;
 
         use TScopeAttributeImplementation;
@@ -35,39 +37,6 @@ namespace Slate\Neat {
         public const REF_ITEM_WRAP      = (1<<2);
         public const REF_OUTER_WRAP     = (1<<3);
         public const REF_NO_WRAP        = (1<<4);
-
-        public function __construct(array $array = []) {
-            static::design();
-
-            foreach(static::design()->getColumns() as $attr) { 
-                $column = $attr->getColumn();
-                $sqlType = $column->getType();
-
-                
-                if($sqlType->hasDefault()) {
-                    $nativeType = $sqlType->getScalarType();
-
-                    if($attr->parent->hasType()) {
-                        $phpType = $attr->parent->getType()->getName();
-
-                        if(!\Cls::exists($phpType)) {
-                            if(($nativeType = \Type::getByName($phpType)) === null) {
-                                throw new \Error("Unknown type '{$phpType}'.");
-                            }
-                        }
-                        else {
-                            $nativeType = $phpType;
-                        }
-                    }
-
-                    $this->{$attr->parent->getName()} = $column->getDefault(
-                        $nativeType
-                    );
-                }
-            }
-
-            parent::__construct($array);
-        }
 
         public static function conn(bool $fallback = true): ?SqlConnection {
             return (($name = \Cls::getConstant(static::class, "CONN")) !== null)
@@ -118,9 +87,12 @@ namespace Slate\Neat {
             return $query->first();
         }
 
-        public function __destruct() {
-            parent::__destruct();
-            static::design()->discardInstance($this);
+        public static function schema(): SqlSchema {
+            return static::conn()->schema(static::SCHEMA);
+        }
+
+        public static function table(): SqlTable {
+            return static::schema()->table(static::TABLE);
         }
         
         public static function ref(string $affix = null, int $flags = Entity::REF_SQL | Entity::REF_ITEM_WRAP): EntityReference {
@@ -141,7 +113,7 @@ namespace Slate\Neat {
 
             foreach($array as $propertyName => $propertyValue) {
                 if(($columnAttribute = static::design()->getAttrInstance(ColumnAttribute::class, $propertyName)) !== null) {
-                    $sqlType = $columnAttribute->getColumn()->getType();
+                    $sqlType = $columnAttribute->getColumn(static::class)->getType();
 
                     if($sqlType === null) {
                         throw new \Error(
@@ -157,7 +129,7 @@ namespace Slate\Neat {
                     if($columnAttribute->parent->hasType()) {
                         $phpType = $columnAttribute->parent->getType()->getName();
 
-                        if(!\Cls::exists($phpType)) {
+                        if(!\class_exists($phpType)) {
                             if(($nativeType = \Type::getByName($phpType)) === null) {
                                 throw new \Error("Unknown type '" . $phpType . "'.");
                             }
@@ -200,9 +172,10 @@ namespace Slate\Neat {
                 ),
                 function($propertyName, $propertyValue) use($columns) {
                     $propertyColumn = $columns[$propertyName];
+                    $propertyColumnType = $propertyColumn->getColumn(static::class)->getType();
 
-                    if($propertyValue !== null ? \Cls::hasInterface($propertyColumn->getColumn()->getType(), ISqlTypeForwardConvertable::class) : false) {
-                        $propertyValue = $propertyColumn->getColumn()->getType()->toSqlValue($propertyValue);
+                    if($propertyValue !== null ? \Cls::hasInterface($propertyColumnType, ISqlTypeForwardConvertable::class) : false) {
+                        $propertyValue = $propertyColumnType->toSqlValue($propertyValue);
                     }
                     else if(!$propertyColumn->isIncremental() && !$propertyColumn->isNullable()) {
                         throw new \Error(\Str::format(
@@ -321,9 +294,10 @@ namespace Slate\Neat {
                             ),
                             function($propertyName, $propertyValue) use($entityModelColumns) {
                                 $propertyColumn = $entityModelColumns[$propertyName];
+                                $propertyColumnType = $propertyColumn->getColumn(static::class)->getType();
 
-                                if($propertyValue !== null ? \Cls::hasInterface($propertyColumn->getColumn()->getType(), ISqlTypeForwardConvertable::class) : false) {
-                                    $propertyValue = $propertyColumn->getColumn()->getType()->toSqlValue($propertyValue);
+                                if($propertyValue !== null ? \Cls::hasInterface($propertyColumnType, ISqlTypeForwardConvertable::class) : false) {
+                                    $propertyValue = $propertyColumnType->toSqlValue($propertyValue);
                                 }
                                 else if(!$propertyColumn->isIncremental() && !$propertyColumn->isNullable()) {
                                     throw new \Error(\Str::format(
@@ -373,8 +347,8 @@ namespace Slate\Neat {
                     $insertStatement->rows(
                         \Arr::map(
                             $insertModelRows,
-                            function($insertModelRow) use($entityColumnsMap) {
-                                return \Arr::rearrange($insertModelRow, $entityColumnsMap, function($key) {
+                            function($insertModelRow) use($insertColumnsMap) {
+                                return \Arr::rearrange($insertModelRow, $insertColumnsMap, function($key) {
                                     return DB::raw("`$key`");
                                 });
                             }
@@ -417,6 +391,7 @@ namespace Slate\Neat {
 
                     $multiquery[] = $updateStatement->toString().";";
                 }
+
 
                 if(!\Arr::isEmpty($multiquery)) {
                     $conn->beginTransaction();

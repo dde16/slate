@@ -9,6 +9,10 @@ namespace Slate\Sql\Clause {
 
             return $this;
         }
+        
+        public function getCharset(): string {
+            return $this->charset;
+        }
 
         public function buildCharsetClause(): ?string {
             return $this->charset ? "CHARACTER SET {$this->charset}" : null;

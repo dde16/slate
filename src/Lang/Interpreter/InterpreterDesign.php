@@ -42,13 +42,13 @@ class InterpreterDesign extends MetalangDesign  {
 
             if($tokens = \Cls::getConstant($class, "PRIORITY")) {
                 foreach($tokens as $id) {
-                    if($token = $this->getAttrInstance(TokenAttribute::class, $id, subclasses: true)) {
+                    if($token = $this->getAttrInstance(TokenAttribute::class, $id)) {
                         $this->tokens[$id] = &$this->customAttributeInstances[$token::class][$id];
                     }
                 }
             }
             else {
-                foreach($this->getAttrInstances(TokenAttribute::class, subclasses: true) as $token) {
+                foreach($this->getAttrInstances(TokenAttribute::class) as $token) {
                     $this->tokens[$token->parent->getValue()] = $token;
                 }
             }

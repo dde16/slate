@@ -22,9 +22,8 @@ namespace Slate\Http {
 
         #[Getter("body")]
         public function getBody(): StreamWriter {
-            if(!$this->bodyStream){
+            if(!$this->bodyStream)
                 $this->bodyStream = new StreamWriter(fopen("php://output", "a+"));
-            }
 
             return $this->bodyStream;
         }
@@ -90,6 +89,7 @@ namespace Slate\Http {
         }
 
         public function send(): void {
+            
             http_response_code($this->status);
 
             if(!$this->files->isEmpty()) {
@@ -115,14 +115,11 @@ namespace Slate\Http {
 
             $this->headers["Server-Timing"] = $timings;
             
-            foreach($this->headers as $key => $value) {
+            foreach($this->headers as $key => $value) 
                 header("$key: $value", true);
-            }
 
-            foreach ($this->cookies as $key => $arguments) {
+            foreach ($this->cookies as $key => $arguments) 
                 \Fnc::call('setcookie', $arguments);
-            }
-            
         }
     }
 }

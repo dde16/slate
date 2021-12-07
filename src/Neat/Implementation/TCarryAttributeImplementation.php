@@ -3,12 +3,12 @@
 namespace Slate\Neat\Implementation {
 
     use Closure;
-    use Slate\Metalang\Attribute\AttributeCallStatic;
-    use Slate\Metalang\Attribute\AttributeCall;
+    use Slate\Metalang\Attribute\HookCallStatic;
+    use Slate\Metalang\Attribute\HookCall;
     use Slate\Neat\Attribute\Carry;
 
 trait TCarryAttributeImplementation {
-        #[AttributeCall(Carry::class)]
+        #[HookCall(Carry::class)]
         public function implementInitialInstanceCarry(string $name, array $arguments, object $next): array {
             return static::implementInitialSharedCarry(
                 $name,
@@ -28,7 +28,7 @@ trait TCarryAttributeImplementation {
             );
         }
 
-        #[AttributeCallStatic(Carry::class)]
+        #[HookCallStatic(Carry::class)]
         public static function implementInitialStaticCarry(string $name, array $arguments, object $next): array {
             return static::implementInitialSharedCarry(
                 $name,

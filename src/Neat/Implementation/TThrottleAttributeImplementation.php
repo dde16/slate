@@ -3,8 +3,8 @@
 namespace Slate\Neat\Implementation {
 
     use Closure;
-    use Slate\Metalang\Attribute\AttributeCallStatic;
-    use Slate\Metalang\Attribute\AttributeCall;
+    use Slate\Metalang\Attribute\HookCallStatic;
+    use Slate\Metalang\Attribute\HookCall;
     use Slate\Neat\Attribute\Throttle;
     use Slate\Neat\Attribute\ThrottleContext;
     use Slate\Neat\Attribute\ThrottleMethod;
@@ -17,7 +17,7 @@ trait TThrottleAttributeImplementation {
 
         protected static array  $staticLastContextThrottle = [];
 
-        #[AttributeCall(Throttle::class)]
+        #[HookCall(Throttle::class)]
         public function throttleImplementor(string $name, array $arguments, object $next): mixed {
             return static::throttleSharedImplementor(
                 $name,
@@ -41,7 +41,7 @@ trait TThrottleAttributeImplementation {
             );
         }
 
-        #[AttributeCallStatic(Throttle::class)]
+        #[HookCallStatic(Throttle::class)]
         public static function throttleStaticImplementor(string $name, array $arguments, object $next): mixed {
             return static::throttleSharedImplementor(
                 $name,

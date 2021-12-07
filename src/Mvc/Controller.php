@@ -7,8 +7,8 @@ namespace Slate\Mvc {
     use Slate\Mvc\Result\ViewResult;
 
 abstract class Controller extends MetalangClass {
-        public const PREPROCESSORS = [];
-        public const POSTPROCESSORS = [];
+        public const MIDDLEWARE     = [];
+        public const HANDLERS       = [];
 
         protected string $webPath;
 
@@ -16,9 +16,9 @@ abstract class Controller extends MetalangClass {
             $this->webPath = $webPath;
         }
 
-        protected function view(array $data = [], string $mime = null): ViewResult {
-            return view($this->relativePath, $data, $mime);
-        }
+        // protected function view(array $data = [], string $mime = null): ViewResult {
+        //     return view($this->relativePath, $data, $mime);
+        // }
 
         public static function action(string $action): array {
             return [static::class, $action];

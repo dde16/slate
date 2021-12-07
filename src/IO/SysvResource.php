@@ -12,6 +12,10 @@ namespace Slate\IO {
             return $this->resource !== null && $this->resource !== false;
         }
 
+        public function getKey():int {
+            return $this->key;
+        }
+
         public function assertAcquired(): void {
             if(!$this->isAcquired())
                 throw new \Error(\Str::format(

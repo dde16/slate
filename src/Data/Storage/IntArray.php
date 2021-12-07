@@ -1,21 +1,142 @@
 <?php
 
 namespace Slate\Data\Storage {
+
+    use App\Auxiliary\ArrayAssociativeIterator;
+    use Generator;
     use Slate\Data\BasicArray;
+    use Slate\Data\Iterator\ArrayExtendedIterator;
 
     /**
-     * A class aimed to handle larger sets of integers or 64 bit bytes,
-     * very much like tthe UInt64Array of javascript.
+     * A class aimed to handle larger sets of integers, very much
+     * like the UInt64Array of javascript with more functionality.
+     * 
+     * TODO: every n bits
+     * TODO: base conversions using every n bits
+     * TODO: incrementing/decrementing
      */
     class IntArray extends BasicArray {
         protected static string $container = "integers";
 
+        /**
+         * Integer array.
+         * In the context of a stream: the first element would be the oldest piece of data and the last element the newest.
+         *
+         * @var int[]
+         */
         public array $integers = [];
         public int   $bitsize = 0;
 
         public function __construct(array $integers = [], int $bitsize = 64) {
+            if(log($bitsize, 2) % 1 != 0)
+                throw new \Error("Bitsize must be a power of two.");
+
             $this->bitsize  = $bitsize;
             $this->integers = $integers;
+        }
+
+        /**
+         * Get n bits without overlap.
+         *
+         * @return Generator
+         */
+        public function chunk(int $bits): Generator {
+            $ints       = new ArrayExtendedIterator($this->integers);
+
+            /**
+             * The carry for the next integer if it overflows.
+             * 
+             * @var int $mod
+             */
+            $subCarry   = 0;
+
+            /**
+             * A position modifier that tells how many bits we need to retrieve from the last integer.
+             * 
+             * @var int $offset
+             */
+            $offset        = 0;
+
+            while($ints->valid()) {
+                $currentInt   = $ints->current();
+
+                $subCarry ??= 0;
+
+                if($offset === 0)
+                    $offset = $bits;
+                
+                /** If there is an overlap between integers */
+                if($offset > 0) {
+                    $from   = $this->bitsize - $offset;
+                    $to     = $this->bitsize;
+                    $subInt = \Integer::only($currentInt, $from, $to, true);
+
+                    $leftOffset = $bits - $offset;
+
+                    if($leftOffset > 0) {
+                        /** Yield the complete integer */
+                        yield $subInt | ($subCarry << $offset);
+                    }
+                }
+
+                list($subInts, $subCarry)
+                    = \Integer::split(
+                        $currentInt,
+                        $this->bitsize,
+                        ($bits - $offset),
+                        $bits,
+                        1
+                    );
+
+                foreach($subInts as $subInt)
+                    yield $subInt;
+                
+                $offset = (($this->bitsize - ($bits - $offset)) % $bits);
+
+                $ints->next();
+            }
+
+            /** If there is a remaining sub carry that was cut off by the end of the integer array */
+            if($subCarry !== null)  
+                yield $subCarry << ($bits - $offset);
+        }
+
+        /**
+         * Trim the end of the array so it doesn't contain empty numbers.
+         */
+        public function trim(): void {
+            $iterator = new ArrayAssociativeIterator($this->integers);
+
+            while($iterator->valid())
+                if($iterator->current() === 0)
+                    unset($this->integers[$iterator->key()]);
+        }
+
+        public function toBase2(string $base) {
+            $basin = strlen($base);
+            $check = 1 << ($basin-1);
+            $shift = 0;
+
+            while($shift < $this->getSize()) {
+
+                // if()
+
+            }
+        }
+
+        public function toBase(string $base): string {
+            $baseSize = strlen($base);
+            $basePow = log($baseSize, 2);
+
+            if(($basePow % 1) != 0)
+                throw new \Error("The base size mustt be a power of two.");
+
+            $basePow = (int)$basePow;
+
+            return \Arr::join(\Arr::map(
+                iterator_to_array($this->chunk($basePow)),
+                fn(int $int): string => $base[$int]
+            ));
         }
 
         /**
@@ -26,9 +147,7 @@ namespace Slate\Data\Storage {
          * @return array
          */
         public function xor(): int {
-            $accumulator = 0;
-
-            foreach($this->integers as $integer) $accumulator ^= $integer;
+            for($accumulator = $index = 0; $index < count($this->integers); $accumulator ^= $this->integers[$index++]);
 
             return $accumulator;
         }
@@ -123,7 +242,13 @@ namespace Slate\Data\Storage {
          * @return void
          */
         public function toBinary(string $separator = " "): string {
-            return \Arr::join(\Arr::map($this->integers, function($int) { return \Str::padLeft(decbin($int), "0", $this->bitsize); }), $separator);
+            return \Arr::join(
+                \Arr::map(
+                    $this->integers,
+                    fn(int $int): string => \Str::padLeft(decbin($int), "0", $this->bitsize)
+                ),
+                $separator
+            );
         }
      
         /**
@@ -144,11 +269,7 @@ namespace Slate\Data\Storage {
             foreach($this->integers as $integer) {
                 if($intPackSize > 1) {
                     for($index = $intPackSize-1; $index > -1; $index--) {
-                        $string .=
-                            chr(
-                                ($integer >> ($index * $charsize)
-                            ) & $charsizeMax
-                        );
+                        $string .= chr(($integer >> ($index * $charsize)) & $charsizeMax);
                     }
                 }
                 else {
@@ -175,11 +296,32 @@ namespace Slate\Data\Storage {
          * @param  mixed $shift
          * @return void
          */
-        public function shiftRight(int $shift): void {
-            $mostSignificantBitShift  = $shift % $this->bitsize; // 7
-            $leastSignificantBitShift = $this->bitsize - $mostSignificantBitShift; // 1
+        public function shiftRight(int $shift = 1): void {
+            /**
+             * Works by determining how many integers will be shifted and then how many of the last
+             * integer needs to be shifted.
+             */
 
-            $intShift = $shift / $this->bitsize; // 1
+            /**
+             * Get the remaining bitshift from the left.
+             * 
+             * @var int $leastSignificantBitShift
+             */
+            $mostSignificantBitShift  = $shift % $this->bitsize;
+
+            /**
+             * Get the remaining bitshift from the right.
+             * 
+             * @var int $leastSignificantBitShift
+             */
+            $leastSignificantBitShift = $this->bitsize - $mostSignificantBitShift;
+
+            /**
+             * Get the amount of integers we need to shift by before shifting the remaining.
+             * 
+             * @var int $intShift
+             */
+            $intShift = $shift / $this->bitsize;
 
             for ($currentIndex = count($this->integers) - 1; $currentIndex > -1; $currentIndex--){
                 if($currentIndex > $intShift-1) {
@@ -202,14 +344,16 @@ namespace Slate\Data\Storage {
          * @param  mixed $shift
          * @return void
          */
-        public function shiftLeft(int $shift): void {
+        public function shiftLeft(int $shift = 1): void {
             $mostSignificantBitShift  = $shift % $this->bitsize;
             $leastSignificantBitShift = $this->bitsize - $mostSignificantBitShift;
 
             $intShift = $shift / $this->bitsize;
             $lastIndex = count($this->integers) - $intShift;
 
-            for ($currentIndex = 0; $currentIndex < count($this->integers); $currentIndex++){
+            $size = count($this->integers);
+
+            for ($currentIndex = 0; $currentIndex < $size; $currentIndex++){
                 if ($currentIndex <= $lastIndex) {
                     $mostSignificantIntShift = $currentIndex + $intShift;
 
@@ -231,7 +375,9 @@ namespace Slate\Data\Storage {
          * @return void
          */
         public function shift(int $shift): void {
-            $this->{($shift > 0) ? 'shiftRight' : 'shiftLeft'}($shift);
+            ($shift > 0)
+                ? $this->shiftRight($shift)
+                : $this->shiftLeft($shift*-1);
         }
         
         /**

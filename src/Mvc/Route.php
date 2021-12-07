@@ -3,11 +3,17 @@
 namespace Slate\Mvc {
 
     use Slate\Data\IJitStructureItem;
+    use Slate\Http\HttpMethod;
     use Slate\Http\HttpRequest;
     use Slate\Http\HttpResponse;
+    use Slate\Utility\TMacroable;
     use SplStack;
+    use UnexpectedValueException;
 
 abstract class Route implements IJitStructureItem {
+        use TMacroable;
+
+        public int      $methods;
         public ?string  $name;
         public int      $size;
 
@@ -16,6 +22,7 @@ abstract class Route implements IJitStructureItem {
         public RouteUri $uri;
     
         public function __construct(string $pattern, bool $fallback = false) {
+            $this->methods = HttpMethod::SUPPORTED;
             $this->uri = new RouteUri($pattern);
             $this->size = $this->uri->slashes();
 
@@ -23,38 +30,54 @@ abstract class Route implements IJitStructureItem {
             $this->fallback = $fallback;
         }
 
-        public function isFallback(): bool {
-            return $this->fallback;
+        public function get(): static {
+            return $this->method("get");
         }
 
-        public function consumeAncestors(array $parents): void {
-            $prefixes = new SplStack;
+        public function post(): static {
+            return $this->method("post");
+        }
 
-            foreach($parents as $parent) {
-                if($parent->domain)
-                    $this->uri->host = $parent->domain;
+        public function patch(): static {
+            return $this->method("patch");
+        }
 
-                if($parent->prefix) {
-                    $prefixes->push($parent->prefix);
-                }
+        public function delete(): static {
+            return $this->method("delete");
+        }
 
-                if($parent->name) {
-                    if(!$this->name)
-                        $this->name = "";
+        public function method(string|array $methods): static {
 
-                    $this->name = $parent->name . $this->name;
+            $methods = \Arr::xor(
+                HttpMethod::tokenise(
+                    \Arr::map(
+                        \Arr::ensure($methods),
+                        fn($method) => \Str::upper($method)
+                    )
+                )[0]
+            );
+        
+            $this->methods = $methods;
+
+            return $this;
+        }
+
+        public function accepts(HttpRequest $request): bool {
+            $method = $request->method;
+        
+            if(is_string($method)) {
+                if(($method = HttpMethod::getValue(\Str::uppercase($method))) == null) {
+                    throw new UnexpectedValueException(\Str::format(
+                        "'{}' is not a valid Http method.", $method
+                    ));
                 }
             }
+        
+            return \Integer::hasBits($this->methods, $method);
+        }
 
-            while(!$prefixes->isEmpty()) {
-                $prefix = $prefixes->pop();
-
-                $this->uri->setPath(
-                    \Path::normalise($prefix) . $this->uri->getPath()
-                );
-                
-                $this->size = $this->uri->slashes();
-            }
+        public function isFallback(): bool {
+            return $this->fallback;
         }
 
         public function format(array $data = []): string {
@@ -70,7 +93,7 @@ abstract class Route implements IJitStructureItem {
         public function match(HttpRequest $request, array $patterns = [], bool $bypass = false): array|null {
             $controllerArguments = $this->uri->match($request->uri->getPath(), $patterns);
     
-            return $controllerArguments !== null || $this->fallback ? [
+            return ($controllerArguments !== null && $this->accepts($request)) || $this->fallback ? [
                 "webpath"   => $request->uri->getPath(),
                 "arguments" => $controllerArguments ?: []
             ] : null;

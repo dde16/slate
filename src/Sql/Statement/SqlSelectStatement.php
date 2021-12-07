@@ -3,18 +3,7 @@
 namespace Slate\Sql\Statement {
     use Slate\Sql\SqlConstruct;
     use Slate\Sql\SqlStatement;
-
     
-
-    
-
-    
-
-    
-
-    
-    
-
     use Slate\Sql\Expression\TSqlColumnsExpression;
 
     use Slate\Sql\Clause\TSqlFromClause;

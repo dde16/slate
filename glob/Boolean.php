@@ -24,7 +24,7 @@ class Boolean extends ScalarType implements Slate\Data\ISizeStaticallyAttainable
         if(is_bool($value)) {
             return $value;
         }
-        if(\Any::isString($value)) {
+        if(is_string($value)) {
             if(!$strict) 
                 $value = \Str::lowercase($value);
 
@@ -35,7 +35,7 @@ class Boolean extends ScalarType implements Slate\Data\ISizeStaticallyAttainable
                 return false;
             }
         }
-        else if(\Any::isNumeric($value)) {
+        else if(is_numeric($value)) {
             if($value == 1) {
                 return true;
             }

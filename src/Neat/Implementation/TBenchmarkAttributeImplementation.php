@@ -3,14 +3,14 @@
 namespace Slate\Neat\Implementation {
 
     use Closure;
-    use Slate\Metalang\Attribute\AttributeCallStatic;
-    use Slate\Metalang\Attribute\AttributeCall;
+    use Slate\Metalang\Attribute\HookCallStatic;
+    use Slate\Metalang\Attribute\HookCall;
     use Slate\Neat\Attribute\Benchmark;
     use Slate\Neat\Attribute\Cache;
     use Slate\Neat\Attribute\Retry;
 
 trait TBenchmarkAttributeImplementation {
-        #[AttributeCallStatic(Benchmark::class, [Retry::class, Cache::class])]
+        #[HookCallStatic(Benchmark::class, [Retry::class, Cache::class])]
         public static function benchmarkStaticImplementor(string $name, array $arguments, object $next): mixed {
             return static::benchmarkSharedImplementor(
                 $name, $arguments,
@@ -21,7 +21,7 @@ trait TBenchmarkAttributeImplementation {
             );
         }
 
-        #[AttributeCall(Benchmark::class, [Retry::class, Cache::class])]
+        #[HookCall(Benchmark::class, [Retry::class, Cache::class])]
         public function benchmarkInstanceImplementor(string $name, array $arguments, object $next): mixed {
             return static::benchmarkSharedImplementor(
                 $name, $arguments,

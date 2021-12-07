@@ -4,55 +4,50 @@ namespace Slate\Mvc\Middleware {
 
     use Slate\Http\HttpRequest;
     use Slate\Http\HttpResponse;
-    use Slate\Mvc\App;
-    use Slate\Mvc\Attribute\Postprocessor;
-    use Slate\Mvc\Attribute\Preprocessor;
+    use Slate\Facade\App;
+    use Slate\Mvc\Attribute\Middleware;
+    use Slate\Mvc\Result;
     use Slate\Mvc\Result\AnyResult;
     use Slate\Mvc\Result\DataResult;
 
     trait CacheMiddleware {
         /**
-         * This will actually retrieve and send the cached data.
+         * 
          *
          * @param HttpRequest $request
          * @param object $next
          * @return void
          */
-        #[Preprocessor("Cache")]
-        public function cachePreprocessor(HttpRequest $request, object $next) {
-            
-            if(($repo = $request->route->cache) !== null) {
-                $key = $this->cacheKey($request);
-
-                if(App::repo($repo)->has($key))
-                    return (new AnyResult(App::repo($repo)->pull($key), bypass: true));
-            }
-
-            return $next($request);
-        }
-
-        /**
-         * This is to be placed exactly after what you want to be cached, this is so it
-         * doesn't capture, say, aesthetic postprocessors.
-         *
-         * @param HttpRequest $request
-         * @param HttpResponse $response
-         * @param mixed $data
-         * @param object $next
-         * @return mixed
-         */
-        #[Postprocessor("Cache")]
-        public function cachePostprocessor(HttpRequest $request, HttpResponse $response, mixed $data, object $next): mixed {
+        #[Middleware("Cache")]
+        public function cacheMiddleware(HttpRequest $request, HttpResponse $response, object $next) {
             if(($repo = $request->route->cache) !== null) {
                 $key = $this->cacheKey($request);
                 $repo = App::repo($repo);
 
-                if($repo->expired($key)) {
-                    $repo->put($key, $data);
+                if($repo->has($key)) {
+                    $data = $repo->pull($key);
+
+                    if(\Cls::isSubclassInstanceOf($data, Result::class)) {
+                        $data->bypass(true);
+
+                        return $data;
+                    }
+
+                    return (new AnyResult($data, bypass: true));
                 }
             }
 
-            return $next($request, $response, $data);
+            $data = $next();
+
+            if(($repo = $request->route->cache) !== null) {
+                $key = $this->cacheKey($request);
+                $repo = App::repo($repo);
+
+                if($repo->expired($key))
+                    $repo->put($key, $data, $request->route->ttl);
+            }
+
+            return $data;
         }
 
         protected function cacheKey(HttpRequest $request) {
@@ -65,12 +60,10 @@ namespace Slate\Mvc\Middleware {
                         "protocol" => $request->uri->getScheme(),
                         "version" => $request->version,
                         "parameters" => $request->parameters->toArray(),
-                        "query" => $request->query->toArray(),
+                        "query" => $request->uri->query,
                         "header" => \Arr::mapAssoc(
                             $request->headers->toArray(),
-                            function($key, $value) {
-                                return [\Str::lower($key), $value];
-                            }
+                            fn($key, $value) => [\Str::lower($key), $value]
                         )
                     ]
                 ], ".")

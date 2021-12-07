@@ -22,11 +22,20 @@ namespace Slate\Media {
     use Slate\Exception\IOException;
 
 class Image {
-        /* Properties */
+        /**
+         * The gd image resource.
+         *
+         * @var mixed
+         */
         public mixed      $resource;
+
+        /**
+         * The list of colours used in the image.
+         *
+         * @var Collection
+         */
         public Collection $colours;
 
-        /* Constructor */
         public function __construct() {
             $this->resource = null;
             $this->colours  = collect();
@@ -71,7 +80,6 @@ class Image {
             return $this->resource;
         }
 
-        /* Member Functions */
         public function getDimensions(): array {
             return [$this->getWidth(), $this->getHeight()];
         }
@@ -84,7 +92,6 @@ class Image {
             return imagesx($this->resource);
         }
 
-        /** Colour */
         public function allocate(): void {
             $arguments      = func_get_args();
             $argumentsCount = func_num_args();
@@ -449,7 +456,7 @@ class Image {
         public function importStream($resource): void {
             $data = NULL;
 
-            if(\Any::isResource($resource)) {
+            if(is_resource($resource)) {
                 $stream = new Stream($resource);
                 $data = $stream->read();
                 $stream->close();

@@ -5,7 +5,7 @@ namespace Slate\Utility {
         // public const AROUND = NULL;
 
         public function __set(string $name, $value): void {
-            $target = (\Cls::hasProperty($this->{static::AROUND}, $name) ? $this->{static::AROUND} : $this);
+            $target = (property_exists($this->{static::AROUND}, $name) ? $this->{static::AROUND} : $this);
     
             $target->{$name} = $value;
         }

@@ -42,7 +42,9 @@ namespace Slate\Data {
                     }
                     else {
                         if(is_object($current) ? \Cls::implements($current, IJitStructureItem::class) : false) {
-                            $current->consumeAncestors($ancestors);
+                            foreach(\Arr::reverse($ancestors) as $ancestor) {
+                                $current = $ancestor->influence($current);
+                            }
                         }
 
                         if($key === null) {

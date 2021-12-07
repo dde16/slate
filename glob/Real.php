@@ -14,7 +14,7 @@ class Real extends ScalarType implements \Slate\Data\ISizeStaticallyAttainable {
     }
 
     public static function getSize(): int {
-        return strlen(\Any::dec2bin(PHP_FLOAT_MAX));
+        return PHP_INT_SIZE;
     }
 
     public static function dynamicRound(int|float $number, int|float $rounder): int|float {

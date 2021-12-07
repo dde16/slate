@@ -39,7 +39,7 @@ class Type extends \Slate\Structure\Enum {
         foreach(static::$classes as $class) {
             $names = Cls::getConstant($class, "NAMES");
 
-            if(Any::isArray($names)) {
+            if(is_array($names)) {
                 if(Arr::contains($names, \Str::lowercase($name))) {
                     return $class;
                 }

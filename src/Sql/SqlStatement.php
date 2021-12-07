@@ -3,7 +3,7 @@
 namespace Slate\Sql {
 
     use Slate\Data\IStringForwardConvertable;
-    use Slate\Mvc\App;
+    use Slate\Facade\App;
 
     abstract class SqlStatement extends SqlConstruct {
         use TSqlUsingConnection;

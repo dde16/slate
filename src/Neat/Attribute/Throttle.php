@@ -4,6 +4,7 @@ namespace Slate\Neat\Attribute {
 
     use Attribute;
     use Slate\Metalang\MetalangAttribute;
+    use Slate\Metalang\MetalangDesign;
 
     abstract class Throttle extends MetalangAttribute {
         protected float $throttle;

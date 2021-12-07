@@ -2,121 +2,64 @@
 
 namespace Slate\Neat\Attribute {
     use Attribute;
+    use ReflectionProperty;
     use ReflectionUnionType;
+    use Slate\Metalang\MetalangDesign;
     use Slate\Neat\EntityDesign;
+    use Slate\Sql\Constraint\SqlForeignKeyConstraint;
+    use Slate\Sql\SqlTable;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
     class OneToOne extends OneToAny {
-        public const NAME = "OneToOne";
-
         public array|string|null $foreignRelationship = null;
+
+        protected ?string $symbol;
+        protected ?string $onUpdate;
+        protected ?string $onDelete;
 
         public function __construct(
             string $localProperty,
-            array|string $foreignRelationship = null,
-            string ...$foreignChainingProperties
+            array $foreignRelationship = null,
+            string $symbol = null,
+            string $onUpdate = null,
+            string $onDelete = null
         ) {
-            $this->localProperty = $localProperty;
-            $this->foreignRelationship = $foreignRelationship;
-            $this->foreignChainingProperties = $foreignChainingProperties;
+            parent::__construct($localProperty, $foreignRelationship);
+
+            $this->symbol = $symbol;
+            $this->onUpdate = $onUpdate;
+            $this->onDelete = $onDelete;
         }
 
-        public function setForeignSurrogateRelationship(): void {
-            $foreignRelationship = $this->foreignRelationship;
-            $localProperty = $this->localProperty;
-            $foreignChainingProperties = $this->foreignChainingProperties;
+        public function getConstraint(string $entity): void {
+            $design = $entity::design();
 
-            if(!is_array($foreignRelationship)) {
-                $localClass        = $this->parent->getDeclaringClass()->getName();
-                $localDesign       = $localClass::design();
+            if(($localColumnAttribute = $design->getAttrInstance(Column::class, $this->localProperty)) !== null) {
+                $localColumn = $localColumnAttribute->getColumn($entity);
 
-                if(($localColumnAttribute = $localDesign->getAttrInstance(Column::class, $localProperty)) === null)
-                    throw new \Error("Unknown surrogate column {$localClass}::\${$localProperty}");
-
-                $localSqlColumn = $localColumnAttribute->getColumn();
-
-                if(!$localSqlColumn->isForeignKey())
-                    throw new \Error("OneToOne surrogate column {$localClass}::\${$localProperty} is not a foreign key.");
-
-                $foreignSchema = $localSqlColumn->getForeignSchema();
-                $foreignTable  = $localSqlColumn->getForeignTable();
-                $foreignColumn = $localSqlColumn->getForeignColumn();
-
-
-                $foreignClass = $foreignRelationship ?: EntityDesign::byReference($foreignSchema, $foreignTable);
-
-                if($foreignClass === null)
-                    throw new \Error("Unable to resolve Entity(schema=`{$foreignSchema}`, table=`{$foreignTable}`).");
-
+                $foreignClass = $this->foreignImmediateClass;
                 $foreignDesign = $foreignClass::design();
+                $foreignColumn = $foreignDesign->getAttrInstance(Column::class, $this->foreignImmediateProperty);
 
-                if(($foreignColumnAttribute = $foreignDesign->getColumn($foreignColumn)) === null)
-                    throw new \Error("Undeclared column {$foreignClass}::\${$foreignColumn}.");
+                if(!$localColumn->foreignKeyConstraint) {
+                    $localColumn->foreignKeyConstraint = new SqlForeignKeyConstraint($localColumn, $this->symbol);
 
-                $foreignRelationship = [
-                    $foreignClass,
-                    $foreignColumnAttribute->parent->getName()
-                ];
+                    if($this->onUpdate)
+                        $localColumn->foreignKeyConstraint->onUpdate($this->onUpdate);
+
+                    if($this->onDelete)
+                        $localColumn->foreignKeyConstraint->onDelete($this->onDelete);
+
+                    $localColumn->foreignKeyConstraint->references(
+                        $foreignClass::SCHEMA,
+                        $foreignClass::TABLE,
+                        $foreignColumn->getColumnName()
+                    );
+                }
             }
-
-            $this->setForeignRelationship($foreignRelationship, $foreignChainingProperties);
-        }
-
-        public function getForeignClass(): string {
-            if(!$this->foreignImmediateClass) {
-                $this->setForeignSurrogateRelationship();
+            else {
+                throw new \Error("Unknown ");
             }
-
-            return parent::getForeignClass();
-        }
-
-        public function getForeignProperty(): string {
-            if(!$this->foreignImmediateProperty) {
-                $this->setForeignSurrogateRelationship();
-            }
-
-            return parent::getForeignProperty();
-        }
-
-
-        public function consume($property): void {
-            parent::consume($property);
-
-
-
-            // if($property->hasType()) {
-            //     $propertyType = $property->getType();
-
-            //     $errorMessage = \Str::format(
-            //         "{}::\${} must have no type or a union type of string|{}, int|{} or int|string|{} and allow null.",
-            //         $property->getDeclaringClass()->getName(),
-            //         $property->getName(),
-            //         ($foreignClass = $this->getForeignClass()),
-            //         $foreignClass,
-            //         $foreignClass
-            //     );
-
-            //     if($propertyType instanceof ReflectionUnionType) {
-            //         if(!$propertyType->allowsNull())
-            //             throw new \Error($errorMessage);
-
-            //         $propertyUnionTypes = $propertyType->getTypes();
-
-            //         $hasScalar = \Arr::any($propertyUnionTypes, function($propertyUnionType) {
-            //             return \Arr::contains(["int", "string"], $propertyUnionType->getName());
-            //         });
-                    
-            //         $hasForeignClass = \Arr::any($propertyUnionTypes, function($propertyUnionType) {
-            //             return $propertyUnionType->getName() === $this->getForeignClass();
-            //         });
-
-            //         if(!($hasScalar && $hasForeignClass))
-            //             throw new \Error($errorMessage);
-            //     }
-            //     else {
-            //         throw new \Error($errorMessage);
-            //     }
-            // }
         }
     }
 }

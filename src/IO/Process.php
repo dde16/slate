@@ -28,9 +28,9 @@ namespace Slate\IO {
             2 => ["pipe", "w"]  // stderr is a pipe that the child will write to
         ];
 
-        public IStream $stdin;
-        public IStream $stdout;
-        public IStream $stderr;
+        public $stdin;
+        public $stdout;
+        public $stderr;
 
         public function __construct(string $cwd = null) {
             $this->cwd = $cwd;
@@ -68,7 +68,6 @@ namespace Slate\IO {
             $this->stdout  = $this->descriptors[1][0] === "file"
                 ? new File($this->descriptors[1][1] === "r" ? "w" : "r")
                 : Stream::factory($this->descriptors[1][1]  === "r" ? "w" : "r", [ &$stdout ]);
-
 
             $this->stderr  = $this->descriptors[2][0] === "file"
                 ? new File($this->descriptors[2][1] === "r" ? "w" : "r")

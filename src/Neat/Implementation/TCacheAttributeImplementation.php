@@ -2,21 +2,21 @@
 
 namespace Slate\Neat\Implementation {
     use Closure;
-    use Slate\Metalang\Attribute\AttributeCallStatic;
-    use Slate\Metalang\Attribute\AttributeCall;
-    use Slate\Mvc\App;
+    use Slate\Metalang\Attribute\HookCallStatic;
+    use Slate\Metalang\Attribute\HookCall;
+    use Slate\Facade\App;
     use Slate\Neat\Attribute\Cache;
     use Slate\Neat\Attribute\Throttle;
 
 trait TCacheAttributeImplementation {
-        #[AttributeCallStatic(Cache::class, [Throttle::class])]
+        #[HookCallStatic(Cache::class, [Throttle::class])]
         public static function cacheStaticImplementor(string $name, array $arguments, object $next): mixed {
             return static::cacheSharedImplementor($name, $arguments, function($name, $arguments) {
                 return static::{$name}(...$arguments);
             }, $next);
         }
 
-        #[AttributeCall(Cache::class, [Throttle::class])]
+        #[HookCall(Cache::class, [Throttle::class])]
         public function cacheImplementor(string $name, array $arguments, object $next): mixed {
             return static::cacheSharedImplementor($name, $arguments, function($name, $arguments) {
                 return $this->{$name}(...$arguments);
