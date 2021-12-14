@@ -11,6 +11,10 @@ final class Obj extends CompoundType {
         return $object;
     }
 
+    public static function hasPublicMethod(object $object, string $method): bool {
+        return method_exists($object, $method) && is_callable([$object, $method]);
+    }
+
     public static function hasProperty(object $object, string $property): bool {
         return property_exists($object, $property);
     }

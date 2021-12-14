@@ -50,6 +50,25 @@ namespace Slate\Media {
 
             $prevIndex = null;
 
+            /**
+             * This block contains the logic for resolving dotlinks.
+             * 
+             * Taking the example:
+             * /root/path/to/../../file
+             * 
+             * Converted into a list of segments
+             * root, path, to, .., .., file
+             * 
+             * Each time a dotlink (..) is encounted, the cursor will eliminated the closest segment to the left then itself.
+             * root, path, to  , ..  , ..  , file
+             * root, path, null, null, ..  , file
+             * root, null, null, null, null, file
+             * 
+             * Finally nulls can be ignored which gives us our final path
+             * /root/file
+             * 
+             * If there are any dotlinks left, this will be raised as an error.
+             */
             while($iterator->valid()) {
                 $currentIndex = $iterator->key();
                 $currentItem = $iterator->current();

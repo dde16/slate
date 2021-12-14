@@ -1,7 +1,25 @@
 <?php
 
 namespace Slate\Structure {
-    trait TEnum {
+
+    use ReflectionClass;
+    use RuntimeException;
+
+trait TEnum {
+        /**
+         * Ensure the class is not instantiable by default.
+         */
+        private function __construct() {}
+
+        /**
+         * Get all of the values for this enum.
+         * 
+         * @return array
+         */
+        public static function getValues(): array {
+            return (new ReflectionClass(static::class))->getConstants();
+        }
+
         /**
          * Check if a constant value exists.
          * 
@@ -91,6 +109,46 @@ namespace Slate\Structure {
             return \Arr::tokenise($array, \Arr::flip(
                 \Cls::getConstants(static::class)
             ));
+        }
+
+        /**
+         * Get the keys for the given values.
+         * 
+         * @param mixed[] $values
+         * 
+         * @return string[]
+         */
+        public static function getKeysOf(array $values): array {
+            $enumValues = static::getValues();
+
+            return \Arr::map(
+                $values,
+                function(int $value) use($enumValues): string {
+                    return ($key = array_search($value, $enumValues)) !== false ? $key : null;
+                }
+            );
+        }
+
+        /**
+         * Unpack an integer using this enum's values.
+         * 
+         * @param int $integer
+         * 
+         * @return array
+         */
+        public static function unpack(int $integer): array {
+            $values = static::getValues();
+            $unpacked = [];
+
+            foreach($values as $key => $value) {
+                if(!is_int($value))
+                    throw new RuntimeException("Unable to check bits for value " . static::class . "::{$key} as it isn't an integer.");
+
+                if(($integer & $value) === $value)
+                    $unpacked[] = $value;
+            }
+
+            return $unpacked;
         }
     }
 }

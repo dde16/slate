@@ -37,7 +37,7 @@ final class Arr extends CompoundType {
      *
      * @param mixed $value
      *
-     * @return string
+     * @return array
      */
     public static function ensure(mixed $value): array {
         return !is_array($value) ? [$value] : $value;

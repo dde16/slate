@@ -29,9 +29,8 @@ namespace Slate\Mvc\Route {
             if(is_string($target))
                 $target = \Str::split($target, "@");
             
-            if(count($target) < 2) {
+            if(count($target) < 2)
                 throw new \Error("A route's target must be [controller, action].");
-            }
 
             $this->controller = $target[0];
             $this->action     = $target[1];
@@ -43,6 +42,9 @@ namespace Slate\Mvc\Route {
 
             if($this->attribute->methods)
                 $this->method($this->attribute->methods);
+
+            if($this->attribute->mimes)
+                $this->mime(...\Arr::ensure($this->attribute->mimes));
         }
 
         public function go(HttpRequest $request, HttpResponse $response, array $match): mixed {

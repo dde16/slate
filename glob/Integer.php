@@ -132,9 +132,8 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
 
         $sum = 0;
 
-        for($index = strlen($bytes)-1; $index > -1; $index--) {
+        for($index = strlen($bytes)-1; $index > -1; $index--)
             $sum |= ord($bytes[$index]) << (($bytesize - $index - 1) * 8);
-        }
 
         return $sum;
     }

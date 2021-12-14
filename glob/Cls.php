@@ -3,7 +3,7 @@
 /** 
  * A facade to contain all class related functions.
  */
-abstract class Cls {
+final class Cls extends \Slate\Utility\Facade {
     /**
      * Check whether a given class or object is the subclass or
      * the instance of a/multiple parent classes.
@@ -19,7 +19,11 @@ abstract class Cls {
                 || ($targetClassObject instanceof $parentClassObject);
         });
     }
-    
+
+    public static function hasPublicMethod(string $class, string $method): bool {
+        return method_exists($class, $method) && is_callable([$class, $method]);
+    }
+
     /**
      * Get all tthe subclasses of a given parent class.
      *
@@ -108,12 +112,7 @@ abstract class Cls {
      * @return bool
      */
     public static function hasInterface(string|object $class, string $interface): bool {
-        return \Arr::contains(
-            \Cls::getInterfaces(
-                $class,
-            ),
-            $interface
-        );
+        return \Arr::contains(\Cls::getInterfaces($class), $interface);
     }
     
     /**
@@ -177,9 +176,7 @@ abstract class Cls {
      * @return mixed
      */
     public static function bindMethod(string|object $class, string $method, array $arguments = []): mixed {
-        return function() use($class, $method, $arguments) {
-            return \Cls::callMethod($class, $method, $arguments);
-        };
+        return (fn() => \Cls::callMethod($class, $method, $arguments));
     }
     
     /**
@@ -191,11 +188,7 @@ abstract class Cls {
      * @return mixed
      */
     public static function callMethod(string|object $class, string $method, array $arguments = []): mixed {
-        if(!is_string($class)) {
-            return \Fnc::call([$class, $method], $arguments);
-        }
-
-        return \Fnc::call($class . "::" . $method, $arguments);
+        return \Fnc::call((!is_string($class) ? [$class, $method] : $class . "::" . $method), $arguments);
     }
     
     /**

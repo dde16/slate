@@ -46,7 +46,7 @@ abstract class Compound extends DataType {
      * 
      * @return object
      */
-    public static function set(object|array &$compound, array|string $path, mixed $value, object|array|null $fallback = null): bool {
+    public static function set(object|array &$compound, array|string $path, mixed $value, object|array|null $fallback = []): bool {
         if(is_string($path))
             $path = \Str::split($path, ".");
 

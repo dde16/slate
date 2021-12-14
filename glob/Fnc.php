@@ -1,6 +1,16 @@
 <?php
 abstract class Fnc {
-
+    /**
+     * Chain a set of closures with the ability to jump further in the chain.
+     *
+     * @param array $closures
+     * @param Closure $finally
+     * @param Closure|null $handler
+     * @param array $arguments
+     * @param string|null $to
+     *
+     * @return mixed
+     */
     public static function graph(array $closures, Closure $finally, Closure $handler = null, array $arguments = [], string $to = null): mixed {
         $handler ??= (fn(Throwable $throwable) => throw $throwable);
     
@@ -30,6 +40,15 @@ abstract class Fnc {
         return $data;
     }
     
+    /**
+     * Chain a set of closures, with the next injected as the last argument.
+     *
+     * @param array $closures
+     * @param Closure $finally
+     * @param array $arguments
+     *
+     * @return mixed
+     */
     public static function chain(array $closures, Closure $finally, array $arguments = []): mixed {
         $closure = \Arr::first($closures) ?: $finally;
         $closures = array_slice($closures, 1);
@@ -37,10 +56,25 @@ abstract class Fnc {
         return $closure(...[...$arguments, fn() => \Fnc::chain($closures, $finally, func_get_args())]);
     }
     
+    /**
+     * Check whether a function exists globally or on an object/class.
+     *
+     * @param string|array $function
+     *
+     * @return boolean
+     */
     public static function exists(string|array $function): bool{
         return is_string($function) ? function_exists($function) : method_exists(...$function);
     }
 
+    /**
+     * call_user_func_array alias.
+     *
+     * @param string|array|object $function
+     * @param array $arguments
+     *
+     * @return mixed
+     */
     public static function call(string|array|object $function, array $arguments = []): mixed {
         return call_user_func_array(
             $function,

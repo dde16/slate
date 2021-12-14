@@ -103,8 +103,7 @@ namespace Slate\Crypto {
             string $iv,
             int $options = OPENSSL_RAW_DATA,
             string &$tag = null,
-            string $aad = null,
-            int $tagLength = 16
+            string $aad = null
         ): string|false {
             return openssl_decrypt(
                 $ciphertext,

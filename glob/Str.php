@@ -899,10 +899,20 @@ abstract class Str extends ScalarType {
     public static function swap(string $source, array $replace): string {
         $last = $source;
 
-        foreach ($replace as $from => $to)
+        foreach($replace as $from => $to)
             $last = \Str::replace($last, $from, $to);
 
         return $last;
+    }
+
+    /**
+     * Convert a string to camel case.
+     * 
+     * @param string $source
+     * @return string
+     */
+    public static function camel(string $source): string {
+        return lcfirst(str_replace(" ", "", ucwords(str_replace(["-", "_"], " ", $source))));
     }
 
     /**

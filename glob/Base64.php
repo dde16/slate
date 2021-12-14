@@ -1,8 +1,6 @@
 <?php
 
-class Base64 {
-    use Slate\Utility\TUninstantiable;
-
+class Base64 extends \Slate\Utility\Facade {
     /**
      * Try and decode/parse a base64 string and raise on error.
      * 
