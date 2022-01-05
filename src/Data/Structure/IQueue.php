@@ -2,7 +2,6 @@
 
 namespace Slate\Data\Structure {
     interface IQueue {
-                
         /**
          * Check whether the queue is full.
          * 

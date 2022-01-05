@@ -49,6 +49,63 @@ abstract class Str extends ScalarType {
         "\0" => "\\0"
     ];
 
+    public static function formatDateInterval(
+        DateInterval $interval,
+        array $names = [],
+        array $ignoring = ["f"],
+        string $unitDelimiter = "",
+        string $listDelimiter = ", ",
+        string $lastListDelimiter = " and ",
+        int $largest = 3,
+        bool $skipZeros = true,
+    ) {
+        $names = \Arr::map(
+            \Arr::merge(
+                [
+                    "y" => "y",
+                    "m" => "mo",
+                    "d" => "d",
+                    "h" => "h",
+                    "i" => "m",
+                    "s" => "s",
+                    "f" => "ms"
+                ],
+                $names
+            ),
+            function(array|string $names) {
+                if(is_string($names))
+                    $names = [$names, $names];
+
+                $names[1] = \Str::format($names[1] ?? "{singular}s", ["singular" => $names[0]]);
+
+                return $names;
+            }
+        );
+
+        $interval = \Arr::entries(\Arr::except(\Arr::only((array)$interval, ["y", "m", "d", "h", "i", "s", "f"]), $ignoring));
+
+        $nonzero = fn($v) => $v[1] != 0;
+
+        [$firstNonZeroIndex] = \Arr::firstEntry($interval, $nonzero);
+
+        $interval = \Arr::slice($interval, $firstNonZeroIndex, $largest);
+        
+        if($skipZeros)
+            $interval = \Arr::filter($interval, $nonzero);
+
+
+        $interval = \Arr::mapAssoc(
+            $interval,
+            function(int $index, array $entry) use($names, $unitDelimiter) {
+                [$key, $value] = $entry;
+
+                return [null, $value.$unitDelimiter.($names[$key][$value > 1])];
+            }
+        );
+
+        return \Arr::join(\Arr::slice($interval, 0, -1), $listDelimiter) . ($lastListDelimiter ? $lastListDelimiter : $listDelimiter).\Arr::last($interval);
+    }
+
     public static function toIntegers(string $bytes, int $bitsize = 8): array {
         return \Arr::map(
             \Str::split($bytes, $bitsize / 8),
@@ -368,8 +425,11 @@ abstract class Str extends ScalarType {
      * @param string $value The value to check for in the source string.
      * @return bool
      */
-    public static function startswith(string $string, string $value): bool {
-        return (substr(strval($string), 0, strlen($value)) === $value);
+    public static function startswith(string $string, string|array $value): bool {
+        return \Arr::any(
+            !is_array($value) ? [$value] : $value,
+            fn(string $value) => (substr(strval($string), 0, strlen($value)) === $value)
+        );
     }
 
     /**
@@ -379,8 +439,11 @@ abstract class Str extends ScalarType {
      * @param value The value to check for in the source string.
      * @return bool
      */
-    public static function endswith(string $source, string|array $values): bool {
-        return (substr($source, strlen($source) - strlen($values), strlen($source)) === $values);
+    public static function endswith(string $source, string|array $value): bool {
+        return \Arr::any(
+            !is_array($value) ? [$value] : $value,
+            fn(string $value) => (substr($source, strlen($source) - strlen($value), strlen($source)) === $value)
+        );
     }
 
     public static function divide(string $source): array {
@@ -393,12 +456,7 @@ abstract class Str extends ScalarType {
     }
 
     public static function ord(string $source): array {
-        return \Arr::map(
-            \Str::split($source),
-            function ($char) {
-                return ord($char);
-            }
-        );
+        return \Arr::map(\Str::split($source), Closure::fromCallable('ord'));
     }
 
     public static function explode(string $string, string $delimiter = " ", int $limit = PHP_INT_MAX): array {
@@ -414,7 +472,9 @@ abstract class Str extends ScalarType {
         $array = [];
 
         if (is_int($splitter)) {
-            return str_split($source, $splitter);
+
+
+            return $source !== "" ? str_split($source, $splitter) : [];
 
             // for($index = 0; $index < $length; $index++) {
             //     if ($index % $splitter === 0) {

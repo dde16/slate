@@ -18,8 +18,8 @@ namespace Slate\Mvc\Result {
                 $path .= ".php";
             }
 
-            $path = Env::get("mvc.view.path").\Path::normalise($path);
-            $root = env("mvc.root.path");
+            $path = Env::get("mvc.path.absolute.views").\Path::normalise($path);
+            $root = env("mvc.path.absolute.root");
 
             if(\Path::safe($root, $path)) {
                 $this->data = Buffer::wrap(function() use($path, $data) {

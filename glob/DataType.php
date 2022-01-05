@@ -1,6 +1,7 @@
 <?php
 
-abstract class DataType {
+
+abstract class DataType extends \Slate\Utility\Facade {
     /**
      * Validate that the value is of the class type.
      * 

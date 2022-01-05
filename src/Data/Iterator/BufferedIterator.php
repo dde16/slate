@@ -15,11 +15,20 @@ namespace Slate\Data\Iterator {
         /** buffer result storage */
         protected array              $buffer;
 
-        /** A pointer for the buffer results */
+        /**
+         * A pointer for the buffer results.
+         * 
+         * @var int
+         */
         protected int                $pointer;
 
-        /** The generator to source values from */
+        /**
+         * The generator to source values from.
+         * 
+         * @var Generator|Iterator
+         */
         protected Generator|Iterator $generator;
+
             
         public function __construct(Generator|Iterator $generator) {
             $this->generator    = $generator;
@@ -52,6 +61,10 @@ namespace Slate\Data\Iterator {
                     unset($this->buffer[$lastKey - $index]);
                 }
             }
+        }
+
+        public function source(): Generator|Iterator {
+            return $this->generator;
         }
 
         /** @see Countable::count() */

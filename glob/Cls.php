@@ -20,6 +20,14 @@ final class Cls extends \Slate\Utility\Facade {
         });
     }
 
+    /**
+     * Check whether a given class has a public method.
+     *
+     * @param string $class
+     * @param string $method
+     *
+     * @return boolean
+     */
     public static function hasPublicMethod(string $class, string $method): bool {
         return method_exists($class, $method) && is_callable([$class, $method]);
     }

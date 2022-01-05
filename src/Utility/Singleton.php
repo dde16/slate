@@ -36,6 +36,15 @@ namespace Slate\Utility {
         }
 
         /**
+         * Tell whether the singleton has been instiantiated.
+         * 
+         * @return object
+         */
+        public static function instantiated(): bool {
+            return @static::$instances[static::class] !== null;
+        }
+
+        /**
          * Get the singleton instance.
          *
          * @return object
@@ -58,7 +67,7 @@ namespace Slate\Utility {
          */
         public static function singleton(string $class = null): ?string {
             if($class === null)
-                return @self::$singletons[static::class] ?? static::DEFAULT;
+                return @self::$singletons[static::class] ?? static::DEFAULT ?? static::class;
             
             self::$singletons[static::class] = $class;
             return null;

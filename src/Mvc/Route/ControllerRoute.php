@@ -34,33 +34,22 @@ namespace Slate\Mvc\Route {
 
             $this->controller = $target[0];
             $this->action     = $target[1];
-
-            $design = $this->controller::design();
-
-            if(($this->attribute = $design->getAttrInstance(RouteAttribute::class, $this->action)) === null)
-                throw new HttpException(500, "Controller action {$this->controller}::\${$this->action} doesn't exist.");
-
-            if($this->attribute->methods)
-                $this->method($this->attribute->methods);
-
-            if($this->attribute->mimes)
-                $this->mime(...\Arr::ensure($this->attribute->mimes));
         }
 
         public function go(HttpRequest $request, HttpResponse $response, array $match): mixed {
             $controllerClass = $match["controller"];
             $controllerAction = $match["action"];
-            $request->route = $controllerRoute = $match["route"];
+            $request->route = $match["route"];
 
-            $controllerInstance = new $controllerClass($match["webpath"]);
+            $controllerInstance = new $controllerClass();
 
-            $controllerResult = null;
             $controllerDesign = $controllerClass::design();
 
             $controllerMiddleware = $controllerClass::MIDDLEWARE;
 
             // try {
             $controllerHandlers       = $controllerClass::HANDLERS;
+
 
             $controllerClosures = array_merge(
                 \Arr::column(\Arr::map(
@@ -114,11 +103,11 @@ namespace Slate\Mvc\Route {
 
         public function match(HttpRequest $request, array $patterns = [], bool $bypass = false): array|null {
             if(($result = parent::match($request, $patterns, $bypass)) !== null) {
+                
                 return array_merge(
                     $result, [
                         "controller" => $this->controller,
-                        "action"     => $this->action,
-                        "route"      => $this->attribute
+                        "action"     => $this->action
                     ]
                 );
             }

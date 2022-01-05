@@ -23,7 +23,7 @@ namespace Slate\Mvc {
 
         public function __construct(string $uri = null) {
             if($uri !== null) {
-                $parsed = parse_url($uri);
+                $parsed = static::parse($uri);
 
                 $this->scheme   = $parsed["scheme"];
                 $this->host     = $parsed["host"];
@@ -33,7 +33,7 @@ namespace Slate\Mvc {
 
                 $prefix = $this->toString();
                 
-                $this->setPath(\Path::normalise($prefix ? \Str::removePrefix($uri, $prefix) : $uri));
+                $this->setPath(\Path::normalise($prefix ? \Str::removePrefix($parsed["pathIncludingQuery"], $prefix) : $parsed["pathIncludingQuery"]));
                 
                 if(!empty($parsed["fragment"]))
                     throw new \Error("Rest URIs are not allowed fragments.");
@@ -165,7 +165,7 @@ namespace Slate\Mvc {
                             null,
                             [
                                 "(?:"
-                                    . ($paramOptions["optional"]  && $paramOptions["leading_slash"] ? "/" : "")
+                                    . ($paramOptions["optional"] || $paramOptions["leading_slash"] ? "/" : "")
                                     . "(?'param_$paramName'"
                                         . (@$wheres[$paramName] ?: "[^/]+")
                                     . ")"
@@ -175,7 +175,7 @@ namespace Slate\Mvc {
                                         ? "?"
                                         : ""
                                 ),
-                                $paramOptions["from"] - intval($paramOptions["optional"] && $paramOptions["leading_slash"]), $paramOptions["to"]
+                                $paramOptions["from"] - intval($paramOptions["optional"] || $paramOptions["leading_slash"]), $paramOptions["to"]
                             ]
                         ];
                     }
@@ -191,6 +191,7 @@ namespace Slate\Mvc {
                 $this->params,
                 fn($param) => $param["ambiguous"] ? (@$wheres[$param["name"]] === null) : false
             );
+
 
             if(!\Arr::isEmpty($requiredAbsentParams))   
                 throw new \Error(\Str::format(

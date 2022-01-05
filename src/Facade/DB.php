@@ -2,7 +2,6 @@
 
 namespace Slate\Facade {
     use Slate\Utility\Facade;
-    use Slate\Utility\TMiddleware;
     use Slate\Mvc\Env;
 
     use Slate\Sql\Statement\TSqlSelectStatement;
@@ -20,7 +19,6 @@ namespace Slate\Facade {
     use Slate\Sql\SqlRaw;
     
     final class DB extends Facade {
-        use TMiddleware;
 
         use TSqlSelectStatement;
         use TSqlDeleteStatement;
@@ -33,17 +31,6 @@ namespace Slate\Facade {
 
         public const SUPPORTED = ["mysql"];
 
-        protected static string $default;
-        protected static array  $connections = [];
-
-        protected static array $middleware = [
-            "mysql" => MySqlConnection::class
-        ];
-        
-        protected static array $using = [
-            "mysql" => MySqlConnection::class
-        ];
-
         public static function raw(string $content): SqlRaw {
             return(new SqlRaw($content));
         }
@@ -54,41 +41,6 @@ namespace Slate\Facade {
             $statement = $conn->prepare($query, $binds);
             
             $statement->execute();
-        }
-
-        public static function default(string $name = null): SqlConnection|null {
-            if($name === null) {
-                return static::$connections[static::$default];
-            }
-
-            if(\Arr::hasKey(static::$connections, $name))
-                throw new \Error("No connection by that name to be default.");
-
-            static::$default = $name;
-
-            return null;
-        }
-
-        //TODO: remove functions as they are now stored in the App
-        public static function add(string $name, SqlConnection $connection, bool $default = false): void {
-            if(\Arr::hasKey(static::$connections, $name))
-                throw new \Error("This connection is already in use.");
-
-            if($default)
-                static::default($name);
-
-            static::$connections[$name] = $connection;
-        }
-
-        public static function utilise(string $name): SqlConnection {
-            return static::conn($name);
-        }
-        
-        public static function conn(string $name): SqlConnection {
-            if(!\Arr::hasKey(static::$connections, $name))
-                throw new \Error("No connection by that name exists.");
-
-            return static::$connections[$name];
         }
 
         public static function import(string $driver, bool $default = false): void {

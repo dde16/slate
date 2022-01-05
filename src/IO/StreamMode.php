@@ -2,48 +2,49 @@
 
 namespace Slate\IO {
 
-use Slate\Data\IStringForwardConvertable;
+    use RuntimeException;
+    use Slate\Data\IStringForwardConvertable;
     use Slate\Data\TStringNativeForwardConvertable;
 
-class StreamMode implements IStringForwardConvertable {
+    class StreamMode implements IStringForwardConvertable {
         use TStringNativeForwardConvertable;
 
         /** Contains all file modes which truncate. */
         const TRUNCATES = [
-            File::WRITE_ONLY,
-            File::WRITE_PLUS,
+            StreamMode::WRITE_ONLY,
+            StreamMode::WRITE_PLUS,
 
-            File::WRITE_EXCLUSIVE,
-            File::READ_WRITE_EXCLUSIVE
+            StreamMode::WRITE_EXCLUSIVE,
+            StreamMode::READ_WRITE_EXCLUSIVE
         ];
 
         /** Contains all file modes which read. */
         const READS = [
-            File::READ_ONLY,
-            File::READ_WRITE,
-            File::READ_WRITE_EXCLUSIVE,
-            File::WRITE_PLUS,
-            File::APPEND_SEEKABLE
+            StreamMode::READ_ONLY,
+            StreamMode::READ_WRITE,
+            StreamMode::READ_WRITE_EXCLUSIVE,
+            StreamMode::WRITE_PLUS,
+            StreamMode::APPEND_SEEKABLE
         ];
 
         /** Contains all file modes which write */
         const WRITES = [
-            File::WRITE_EXCLUSIVE,
-            File::WRITE_ONLY,
-            File::WRITE_PLUS,
-            File::READ_WRITE_EXCLUSIVE,
-            File::READ_WRITE
+            StreamMode::WRITE_EXCLUSIVE,
+            StreamMode::WRITE_ONLY,
+            StreamMode::WRITE_PLUS,
+            StreamMode::READ_WRITE_EXCLUSIVE,
+            StreamMode::READ_WRITE
         ];
         
         /** Contains all file modes which seek */
         const SEEKS = [
-            File::READ_ONLY,
-            File::READ_WRITE,
-            File::READ_WRITE_EXCLUSIVE,
-            File::WRITE_ONLY,
-            File::WRITE_EXCLUSIVE,
-            File::WRITE_PLUS,
-            File::APPEND_SEEKABLE
+            StreamMode::READ_ONLY,
+            StreamMode::READ_WRITE,
+            StreamMode::READ_WRITE_EXCLUSIVE,
+            StreamMode::WRITE_ONLY,
+            StreamMode::WRITE_EXCLUSIVE,
+            StreamMode::WRITE_PLUS,
+            StreamMode::APPEND_SEEKABLE
         ];
 
         const READ_ONLY            = "r";
@@ -60,6 +61,9 @@ class StreamMode implements IStringForwardConvertable {
         protected string $mode;
 
         public function __construct(string $mode) {
+            if(!\Arr::contains([static::READ_ONLY, static::READ_WRITE, static::READ_WRITE_EXCLUSIVE, static::WRITE_ONLY, static::WRITE_EXCLUSIVE, static::WRITE_PLUS, static::APPEND, static::APPEND_SEEKABLE], $mode))
+                throw new RuntimeException("Invalid Stream Mode '$mode'.");
+
             $this->mode = $mode;
         }
 
@@ -69,6 +73,10 @@ class StreamMode implements IStringForwardConvertable {
 
         public function isWritable(): bool {
             return \Arr::contains(static::WRITES, $this->mode);
+        }
+
+        public function isWriteable(): bool {
+            return $this->isWritable();
         }
 
         public function isTruncatable(): bool {

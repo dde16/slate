@@ -21,6 +21,10 @@ namespace Slate\Data {
             | Collection::APPENDABLE
             | Collection::DELETABLE;
 
+        /**
+         * These are functions that will return a result
+         * rather than modifying the array in place.
+         */
         public const SPL_FUNCTIONS_RETURN = [
             "chunk"                  => "array_chunk",
             "column"                 => "array_column",
@@ -79,12 +83,14 @@ namespace Slate\Data {
             "findAll"                => [\Arr::class, "findAll"],
             "contains"               => [\Arr::class, "contains"],
             "has"                    => [\Arr::class, "has"],
-            "get"                    => [\Arr::class, "get"],
-            "gets"                   => [\Arr::class, "gets"],
+            "get"                    => [\Compound::class, "get"],
             "modify"                 => [\Arr::class, "modify"],
             "use"                    => [\Arr::class, "use"],
         ];
 
+        /**
+         * These functions will modify the array in place.
+         */
         public const SPL_FUNCTIONS_SET = [
             "combine"                => "array_combine",
             "fillKeys"               => "array_fill_keys",
@@ -115,7 +121,6 @@ namespace Slate\Data {
             "mapAssoc"               => [\Arr::class, "mapAssoc"],
             "map"                    => [\Arr::class, "map"],
             "cluster"                => [\Arr::class, "cluster"],
-            
         ];
 
         /**
@@ -242,9 +247,9 @@ namespace Slate\Data {
          * @return void
          */
         public function set(string $offset, $value): void {
-            $this->offsetSet($offset, $value);
+            \Compound::set($this->items, $offset, $value);
         }
-                
+        
         /**
          * Use the values of the collection to format a string.
          *
@@ -253,7 +258,7 @@ namespace Slate\Data {
          * @return string
          */
         public function format(string $format, array $additionals = []): string {
-            return \Str::format($format, array_merge($this->items, $additionals));
+            return \Str::format($format, \Arr::dotsByValue(array_merge($this->items, $additionals)));
         }
         
         /**

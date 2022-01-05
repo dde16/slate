@@ -8,7 +8,7 @@ namespace Slate\Media {
     use Slate\Data\TStringNativeForwardConvertable;
     use Slate\Exception\ParseException;
 
-/**
+    /**
      * A class that, much alike the FilePathInfo SPL object, handles paths.
      * However, this is for applications where the logic of dotlinks etc
      * is still maintained while not being able to touch the filesystem.
@@ -160,6 +160,10 @@ namespace Slate\Media {
          */
         public function getFilename(): ?string {
             return \Str::beforeLast($this->getBasename(), ".");
+        }
+
+        public function toArray(): array {
+            return $this->items;
         }
 
         public function toString(string $delimiter = "/"): string {

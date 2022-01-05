@@ -123,7 +123,7 @@ namespace Slate\Metalang {
             return ($this->getAttrInstance($classes, $key, $subclasses) !== null);
         }
 
-        public function invokeStaticMethod(string $method, array $arguments = null): mixed {
+        public function invokeStaticMethod(string $method, array $arguments = []): mixed {
             if(!$this->hasMethod($method, ReflectionMethod::IS_STATIC))
                 throw new ReflectionException(\Str::format(
                     "Trying to invoke static method {}::{}() which doesn't exist.",
@@ -131,14 +131,14 @@ namespace Slate\Metalang {
                     $method
                 ));
 
-            return $this->getMethod($method)->invoke(null, $arguments);
+            return $this->getMethod($method)->invokeArgs(null, $arguments);
         }
     
-        public function invokeMethod(object $object, string $method = "__invoke", array $arguments = null): mixed {
+        public function invokeMethod(object $object, string $method = "__invoke", array $arguments = []): mixed {
             if(!$this->hasMethod($method, ReflectionMethod::IS_STATIC))
                 throw new ReflectionException("");
 
-            return $this->getMethod($method)->invoke($object, $arguments);
+            return $this->getMethod($method)->invokeArgs($object, $arguments);
         }
     
         public function getAttrInstance(string|array $classes, string $key, bool $subclasses = true): MetalangAttribute|null {

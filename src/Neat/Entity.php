@@ -94,13 +94,6 @@ class Entity extends Model implements ISnapshotExplicit {
         public static function table(): SqlTable {
             return static::schema()->table(static::TABLE);
         }
-        
-        public static function ref(string $affix = null, int $flags = Entity::REF_SQL | Entity::REF_ITEM_WRAP): EntityReference {
-            $columnName = $affix;
-            $propertyName = $affix;
-            
-            return(new EntityReference(static::class, $propertyName, $columnName, $flags));
-        }
 
         public function revert(): void {
             $this->fromSqlRow($this->initial);
@@ -111,8 +104,10 @@ class Entity extends Model implements ISnapshotExplicit {
             if($this->initial === null)
                 $this->initial = $array;
 
-            foreach($array as $propertyName => $propertyValue) {
-                if(($columnAttribute = static::design()->getAttrInstance(ColumnAttribute::class, $propertyName)) !== null) {
+            foreach($array as $columnName => $propertyValue) {
+                if(($columnAttribute = static::design()->getColumn($columnName)) !== null) {
+                    $propertyName = $columnAttribute->parent->getName();
+
                     $sqlType = $columnAttribute->getColumn(static::class)->getType();
 
                     if($sqlType === null) {
@@ -121,7 +116,7 @@ class Entity extends Model implements ISnapshotExplicit {
                                 "Column {}::\${}({}) has doesn't have a type defined.",
                                 static::class,
                                 $columnAttribute->parent->getName(),
-                                static::ref($columnAttribute->getColumnName())
+                                static::conn()->wrap($columnAttribute->getColumnName())
                             )
                         );
                     }
@@ -338,9 +333,7 @@ class Entity extends Model implements ISnapshotExplicit {
                 $multiquery = [];
 
                 if(!\Arr::isEmpty($insertModels)) {
-                    $insertStatement  = DB::insert()->into(
-                        $entityClass::ref()
-                    );
+                    $insertStatement  = DB::insert()->into($entityClass::table()->fullname());
 
                     $insertColumnsMap = \Arr::except($entityColumnsMap, $primaryKeyColumn->getColumnName());
 
@@ -373,10 +366,7 @@ class Entity extends Model implements ISnapshotExplicit {
                 }
 
                 if(!\Arr::isEmpty($updateModelRows)) {
-                    $updateStatement  = DB::insert()->into(
-                        $entityClass::ref()
-                    )->conflictMirror();
-
+                    $updateStatement  = DB::insert()->into($entityClass::table()->fullname())->conflictMirror();
 
                     $rows = \Arr::map(
                         $updateModelRows,

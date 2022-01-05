@@ -11,45 +11,7 @@ namespace Slate\IO {
     use Slate\IO\Mime;
     use SplFileInfo;
 
-class File extends Stream {
-        /** Contains all file modes which truncate. */
-        const TRUNCATES = [
-            File::WRITE_ONLY,
-            File::WRITE_PLUS,
-
-            File::WRITE_EXCLUSIVE,
-            File::READ_WRITE_EXCLUSIVE
-        ];
-
-        /** Contains all file modes which read. */
-        const READS = [
-            File::READ_ONLY,
-            File::READ_WRITE,
-            File::READ_WRITE_EXCLUSIVE,
-            File::WRITE_PLUS,
-            File::APPEND_SEEKABLE
-        ];
-
-        /** Contains all file modes which write */
-        const WRITES = [
-            File::WRITE_EXCLUSIVE,
-            File::WRITE_ONLY,
-            File::WRITE_PLUS,
-            File::READ_WRITE_EXCLUSIVE,
-            File::READ_WRITE
-        ];
-
-        const READ_ONLY            = "r";
-        const READ_WRITE           = "r+";
-        const READ_WRITE_EXCLUSIVE = "x+";
-        
-        const WRITE_ONLY           = "w";
-        const WRITE_EXCLUSIVE      = "x";
-        const WRITE_PLUS           = "w+";
-
-        const APPEND               = "a";
-        const APPEND_SEEKABLE      = "a+";
-
+    class File extends Stream {
         public SplFileInfo $path;
         public string $basename;
         public string $filename;
@@ -57,28 +19,30 @@ class File extends Stream {
 
         protected bool $lock;
 
-        protected ?string $predefinedMode = null;
-        protected ?string $currentMode    = null;
+        protected ?StreamMode $predefinedMode = null;
+        protected ?StreamMode $currentMode    = null;
 
         public function __construct(string|SplFileInfo $path, string $mode = null) {
             $this->path = is_string($path) ? (new SplFileInfo($path)) : $path;
-            $this->predefinedMode = $mode;
+
+            if($mode)
+                $this->predefinedMode = new StreamMode($mode);
         }
 
         public function isWritable(bool $physically = false): bool {
-            return $physically ? $this->path->isWritable() : \Arr::contains(static::WRITES, $this->currentMode ?: $this->predefinedMode);
+            return $physically ? $this->path->isWritable() : ($this->currentMode ?? $this->predefinedMode)->isWritable();
         }
 
         public function isTruncatable(bool $physically = false): bool {
             return $physically
                 ? $this->isWritable(true)
-                : \Arr::contains(static::TRUNCATES, $this->currentMode ?: $this->predefinedMode);
+                : ($this->currentMode ?? $this->predefinedMode)->isTruncatable();
         }
 
         public function isReadable(bool $physically = false): bool {
             return $physically
                 ? $this->path->isReadable()
-                : \Arr::contains(static::TRUNCATES, $this->currentMode ?: $this->predefinedMode);
+                : ($this->currentMode ?? $this->predefinedMode)->isReadable();
         }
 
         public function isEof(): bool {
@@ -87,7 +51,7 @@ class File extends Stream {
             return is_bool($pointer) ? ($pointer ? ($this->tell() >= ($this->getSize())) : feof($this->resource)) : $pointer >= ($this->getSize());
         }
 
-        public function getMode(): string {
+        public function getMode(): ?StreamMode {
             return $this->currentMode ?: $this->predefinedMode;
         }
 
@@ -101,9 +65,9 @@ class File extends Stream {
             if($mode === null)
                 throw new IOException("No mode was specified when opening the file.");
 
-            $this->currentMode = $mode = $this->predefinedMode ?: $mode;
+            $this->currentMode = $mode = ($this->predefinedMode === null ? (new StreamMode($mode)) : $this->predefinedMode);
 
-            $read = $mode !== "r" && $mode !== "r+";
+            $read = $mode->toString() !== "r" && $mode->toString() !== "r+";
             $exists = $this->path->isFile();
             
             if($read && !$exists) {
@@ -290,10 +254,8 @@ class File extends Stream {
 
         public static function getSignatureMimeOf(string $path): string {
             // file -b --mime-type image.png
-
-            if(!HttpEnvironment::isLinux()) {
+            if(!HttpEnvironment::isLinux())
                 throw new \BadFunctionCallException("You are not on a Linux system thereby the 'file' binary doesn't exist.");
-            }
 
             if(is_file($path)) {
                 $proc = new Process(dirname($path));

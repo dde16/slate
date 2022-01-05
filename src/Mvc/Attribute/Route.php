@@ -19,10 +19,6 @@ namespace Slate\Mvc\Attribute {
 
         public ?float  $ttl = null;
 
-        public function requiresAuth(): bool {
-            return $this->requiresAuth;
-        }
-
         public function __construct(array|string $methods = null, array|string $mimes = null, string|array $cache = null, ?float $ttl = null, bool $requiresAuth = false) {
             $this->methods = $methods;
             $this->requiresAuth = $requiresAuth;
@@ -34,6 +30,10 @@ namespace Slate\Mvc\Attribute {
                 list($this->cache, $this->cachekey) = $cache;
 
             $this->ttl = $ttl;
+        }
+
+        public function requiresAuth(): bool {
+            return $this->requiresAuth;
         }
 
 

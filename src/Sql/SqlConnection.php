@@ -203,7 +203,7 @@ namespace Slate\Sql {
         //     return $statement;
         // }
 
-        public function soloquery($query): \Generator {
+        public function soloquery(mixed $query, bool $aggr = true): \Generator {
             $statement = $this->prepare($query);
             
             try {

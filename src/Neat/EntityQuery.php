@@ -1,432 +1,161 @@
 <?php
 
 namespace Slate\Neat {
-    use Slate\Data\Graph;
-    use Slate\Data\IStringForwardConvertable;
-    use Slate\Facade\DB;
-    use Slate\Facade\App;
-    use Slate\Neat\Attribute\Column;
-    use Slate\Neat\Attribute\OneToAny;
-    use Slate\Neat\Attribute\OneToMany;
-    use Slate\Neat\Attribute\OneToOne;
-    use Slate\Neat\Attribute\Scope;
-    use Slate\Neat\Entity;
-    use Slate\Sql\Clause\TSqlWhereClause;
-    use Slate\Sql\SqlConnection;
-    use Slate\Sql\Statement\SqlSelectStatement;
-    use Generator;
-    use Iterator;
+
     use Closure;
-    use Slate\Data\TStringNativeForwardConvertable;
-    use Throwable;
+    use RuntimeException;
+    use Slate\Data\Iterator\ArrayRecursiveIterator;
+    use Slate\Neat\Attribute\OneToAny;
+    use Slate\Utility\TPassthru;
 
-    class EntityQuery implements IStringForwardConvertable {
-        use TStringNativeForwardConvertable;
-
-        use TSqlWhereClause;
+    class EntityQuery {
+        use TPassthru;
     
-        protected string $entity;
-        public Graph  $graph;
-        protected ?SqlConnection $conn;
+        public const PASSTHRU = "root";
+        public const PASSTHRU_METHODS = [
+            "andWhere", "where", "orWhere",
+            "orderBy", "orderByAsc", "orderByDesc",
+            "limit", "offset",
+            "get", "count", "scope",
+            "toString"
+        ];
+        public const PASSTHRU_RETURN_THIS = [
+            "andWhere", "where", "orWhere",
+            "orderBy", "orderByAsc", "orderByDesc",
+            "limit", "offset",
+            "scope"
+        ];
     
+        /**
+         * Stores the plan for the query.
+         *
+         * @var array
+         */
+        protected array $plan;
     
-        public function __construct(string $entity, array $plan = []) {
-            $this->entity = $entity;
-            $this->plan($plan);
-            $this->conn = null;
-        }
+        /**
+         * Provides the entry point for the query.
+         *
+         * @var EntityQueryVertex
+         */
+        public EntityQueryVertex $root;
     
-        public function plan(array $plan): static {
-            $this->graph  = new Graph();
-            $this->graph->addVertex((new EntityQueryRootVertex($this->entity)));
+        public function plan(array $plan) {
+            $plan = \Arr::associate($plan, null, true);
     
-            /** Convert the path into branches so they dont require recursion. */
-            $branches = \Arr::map(
-                \Arr::branches(
-                    \Arr::associate($plan, null, deep: true),
-                    \Arr::DOTS_EVAL_ARRAY
-                ),
-                function($branch) {
-                    if(is_array($branch[1]))
-                        $branch[1] = null;
+            \Arr::mapRecursive(
+                $plan,
+                function(string|int $key, mixed $anon): array {
+                    if(\Str::endswith($key, "?")) {
     
-                    return $branch;
+                        $flag = substr($key, -1);
+            
+                        if($anon instanceof Closure)
+                            $anon = [
+                                "@callback" => $anon
+                            ];
+            
+                        if(!is_array($anon))
+                            $anon = [];
+            
+                        $anon["@flag"] = $flag;
+                        $key = substr($key, 0, -1);
+                    }
+            
+                    return [$key, $anon];
                 }
             );
     
+            $this->plan = $plan;
+    
+            $iterator = new ArrayRecursiveIterator($plan);
             
-            foreach($branches as $branchIndex => list($branch, $value)) {
-                $branchClass       = $this->entity;
-                $nextClassKey      = null;
-    
-                foreach(\Arr::describe($branch) as $twigIndex => list($position, $twig)) {
-                    $branchClassDesign = $branchClass::design();
-    
-                    $currentClass       = $branchClass;
-                    $currentClassDesign = $branchClassDesign;
-                    $currentClassKey    = $nextClassKey ?: $currentClass::ref()->toString();
-                    
-                    if(\Str::startswith($twig, "@")) {
-                        $twig = \Str::afterFirst($twig, "@");
-    
-                        $this->graph->modifyVertex($currentClassKey, function($currentClassVertex) use($branch, $twig, $value) {
-                            $validOption = true;
+            foreach($iterator as $path => $value) {
+                $path = \Str::split($path, ".");
+                $key = \Arr::last($path);
+            
+                $option = \Str::startswith($key, "@");
 
-                            try {
-                                $validOption = $currentClassVertex->addOption($twig, $value);
-                            }
-                            catch(Throwable $throwable) {
-                                throw new \Error(\Str::format(
-                                    "Error while adding option '{}': {}",
-                                    \Arr::join($branch, "."),
-                                    $throwable->getMessage()
-                                ), 0, $throwable);
-                            }
 
-                            if(!$validOption) {
-                                throw new \Error(\Str::format(
-                                    "Unknown option at '{}'.",
-                                    \Arr::join($branch, ".")
-                                ));
-                            }
+            
+                if(($option || !\Any::isCompound($value) || $value instanceof Closure) && \Arr::all(\Arr::slice($path, 0, -1), fn($segment) => !\Str::startswith($segment, "@"))) {
+                    $last = $this->root;
     
-                            return $currentClassVertex;
-                        });
-    
-                        break;
-                    }
-                    else {
-                        /** Get the attribute associated with the current twig **/
-                        $joinColumn = $branchClassDesign->getAttrInstance([
-                            OneToOne::class,
-                            OneToMany::class,
-                            Column::class
-                        ], $twig);
-    
-                        $callback = $value;
-    
-                        if(($callback !== null ? $callback instanceof Closure : true) === false) {
-                            if(\Str::startswith(\Arr::last($branch), "@")) {
-                                $callback = null;
-                            }
-                        }
-    
-                        if($joinColumn !== null) {
-                            if($joinColumn->isForeignKey()) {
-                                $nextClass    = $branchClass = $joinColumn->getForeignClass();
-                                $nextClassKey = \Hex::encode(
-                                    crc32($currentClass::ref($joinColumn->parent->getName())->toString(Entity::REF_RESOLVED | Entity::REF_NO_WRAP))
-                                );
-                                
-                                if(!$this->graph->hasVertex($nextClassKey)) {
-                                    $joinScope = $currentClassDesign->getAttrInstance(
-                                        Scope::class, $joinColumn->parent->getName()
-                                    );
-    
-                                    $nextClassVertex = new EntityQuerySubVertex(
-                                        $nextClass,
-                                        "!",
-                                        $nextClass::design()->getAttrInstance(
-                                            Column::class,
-                                            $joinColumn->getForeignProperty()
-                                        ),
-                                        $joinScope
-                                   );
-                                    $nextClassVertex->id = $nextClassKey;
-                                    $nextClassVertex->callback = $callback;
-    
-                                    $this->graph->addVertex($nextClassVertex);
-    
-                                    $joinEdge = new EntityQueryEdge(\Hex::encode(openssl_random_pseudo_bytes(4)), $joinColumn);
-        
-                                    $this->graph->addEdge($currentClassKey, $nextClassKey, $joinEdge);
-                                }
-                            }
-                            else {
-                                throw new \Error("Specifying columns is not supported.");
-                            }
+                    foreach($path as $index => $segment) {
+                        $end = ($index === (count($path) - 1));
+                        if(\Str::startswith($segment, "@") && $end) {
+                            $last->option(\Str::removePrefix($segment, "@"), $value);
                         }
                         else {
-                            throw new \Error(\Str::format(
-                                "Unknown branch path item at {}",
-                                \Arr::join(["root", ...\Arr::slice($branch, 0, $twigIndex+1)], ".")
-                            ));
+                            $entity = $last->entity;
+                            
+                            /** @var EntityDesign $design */
+                            $design = $entity::design();
+
+                            /** @var OneToAny $along */
+                            if(($along = $design->getAttrInstance(OneToAny::class, $segment)) === null)
+                                throw new RuntimeException("Undefined relationship at path '" . \Arr::join(\Arr::slice($path, 0, $index+1), ".") . "'.");
+                            
+                            $foreignClass = $along->getForeignClass();
+
+                            $next = new EntityQuerySubVertex($foreignClass);
+
+                            if($end && $value instanceof Closure) {
+                                $value($next);
+                            }
+            
+                            $next->along($along);
+            
+                            if($value instanceof Closure)
+                                $value($next);
+            
+                            $last->children[$segment]  = $next;
+                            $last = $next;
                         }
                     }
                 }
             }
     
-            return $this;
         }
     
-        public function vertex(): EntityQueryVertex {
-            return $this->graph->getVertex($this->entity::ref());
+        public function __construct(string|Entity $target, array $plan = []) {
+            $this->root = new EntityQueryRootVertex($target);
+            $this->plan($plan);
         }
     
-        public function noCache(): static {
-            $this->vertex()->noCache();
-    
-            return $this;
+        public function get() {
+            return $this->root->apply($this->root->fill(iterator_to_array($this->root->children())));
         }
     
-        public function highPriority(): static {
-            $this->vertex()->highPriority();
+        public function first(): ?Entity {
+            $limit = $this->limit;
+            $this->limit = 1;
     
-            return $this;
+            $models = $this->get();
+    
+            $this->limit = $limit;
+    
+            return \Arr::first($models);
         }
     
-        public function smallResult(): static {
-            $this->vertex()->smallResult();
-    
-            return $this;
-        }
-    
-        public function bigResult(): static {
-            $this->vertex()->bigResult();
-    
-            return $this;
-        }
-    
-        public function bufferResult(): static {
-            $this->vertex()->bufferResult();
-    
-            return $this;
-        }
-    
-        public function orderBy(string|IStringForwardConvertable ...$references): static {
-            $this->vertex()->orderBy(...$references);
-    
-            return $this;
-        }
-    
-        public function orderByAsc(string|IStringForwardConvertable ...$references): static {
-            $this->vertex()->orderByAsc(...$references);
-    
-            return $this;
-        }
-    
-        public function orderByDesc(string|IStringForwardConvertable ...$references): static {
-            $this->vertex()->orderByDesc(...$references);
-    
-            return $this;
-        }
-    
-        public function limit(int|string $limit, int|string $offset = null): static {
-            $this->vertex()->limit($limit, $offset);
-    
-            return $this;
-        }
-
-        public function scope(string $name, array $arguments): static {
-            $this->vertex()->scopes[] = [$this->entity::design()->getAttrInstance(Scope::class, $name), $arguments];
-
-
-            return $this;
-        }
-    
-        public function guide(array $row): array {
-            $branches = [];
-            $vertex = $this->graph->getVertex($this->entity::ref()->toString());
-            $continue   = true;
-    
-            while($continue && $vertex !== null) {
-                $continue = false;
-    
-                $branch = [
-                    $vertex->entity,
-                    \Arr::mapAssoc(
-                        $vertex->entity::design()->getAttrInstances(Column::class),
-                        function($index, $column) use($vertex) {
-                            return [
-                                $vertex->entity::ref($column->getColumnName(), Entity::REF_NO_WRAP | Entity::REF_RESOLVED)->toString(),
-                                $column->parent->getName()
-                            ];
-                        }
-                    )
-                ];
-                
-                foreach($vertex->edges as $joinVertexKey => $joinVertexEdges) {
-                    if(\Arr::hasKey($row, $joinVertexKey)) {
-                        if($joinVertexEdgeKey = $row[$joinVertexKey]) {
-                            if(\Arr::hasKey($joinVertexEdges, $joinVertexEdgeKey)) {
-                                $branch[2] = $joinVertexEdges[$joinVertexEdgeKey];
-    
-                                $continue = true;
-                                
-                                $vertex = $this->graph->getVertex($joinVertexKey);
-    
-                                break;
-                            }
-                        }
-                    }
-    
-                    
-                }
-    
-                $branches[] = $branch;
-            }
-    
-            return $branches;
-        }
-    
-        public function load(array|Generator|Iterator $rows): array {
-            $aggrInstanceKeys = [];
-            $aggrInstances = [];
-    
-            $lastInstance = null;
-    
-            foreach($rows as $row) {
-                $guide = $this->guide($row);
-
-                unset($lastInstance);
-    
-                foreach(\Arr::lead([null, ...$guide]) as list($lastBranch, $nextBranch)) {
-                    list($entity, $columns) = $nextBranch;
-                    
-                    $design = $entity::design();
-    
-                    $rowSlice = \Arr::mapAssoc(
-                        $columns,
-                        fn($column, $property): array => [$property, $row[$column]]
-                    );
-    
-                    $primaryKey = $entity::design()->getPrimaryKey();
-                    $primaryKeyValue = $rowSlice[$primaryKey->parent->getName()];
-    
-                    if($primaryKeyValue !== null) {
-    
-                        $nextInstanceExists = $design->hasIndex($primaryKeyValue);
-    
-                        if($nextInstanceExists) {
-                            $nextInstance = $design->getInstance($design->resolveIndex($primaryKeyValue));
-                        }
-                        else {
-                            $nextInstance = new $entity();
-                            $nextInstance->fromSqlRow($rowSlice);
-                            $nextInstance->snap(store: true);
-                        }
-                        
-                        $design->addIndex($nextInstance->getPrimaryKey(), $nextInstance);
-    
-                        if($lastInstance === null && !\Arr::contains($aggrInstanceKeys, $nextInstancePrimaryKey = $nextInstance->getPrimaryKey())) {
-                            $aggrInstances[] = $nextInstance;
-                            $aggrInstanceKeys[] = $nextInstancePrimaryKey;
-                        }
-    
-                        if($lastInstance !== null) {
-                            $lastJoinColumn = $lastBranch[2]->along;
-                            $lastJoinProperty = $lastJoinColumn->parent->getName();
-    
-                            if(\Cls::isSubclassInstanceOf($lastJoinColumn, OneToOne::class)) {
-                                // if(($lastInstance->{$lastJoinProperty} instanceof $entity)) {
-                                //     throw new \Error(\Str::format(
-                                //         "Multiple instances detected along {}::\${} to {}.",
-                                //         $lastJoinColumn->parent->getDeclaringClass()->getName(),
-                                //         $lastJoinColumn->parent->getName(),
-                                //         $entity
-                                //     ));
-
-                                //     // lastJoinProperty
-                                // }
-
-                                if($lastInstance->{$lastJoinProperty} === null) {
-                                    $lastInstance->{$lastJoinProperty} = $nextInstance;
-                                }
-                            }
-                            else if(\Cls::isSubclassInstanceOf($lastJoinColumn, OneToMany::class)) {
-                                if($lastInstance->{$lastJoinProperty}  === null)
-                                    $lastInstance->{$lastJoinProperty}  = [];
-    
-                                $lastInstance->{$lastJoinProperty}[] = $nextInstance;
-                            }
-                            else {
-                                debug($lastJoinColumn::class);
-                                throw new \Error();
-                            }
-    
-                        }
-    
-                        $lastInstance = $nextInstance;
-                    }
-                }
-    
-            }
-    
-            return $aggrInstances;
-        }
-    
-        public function get(): array {
-            $raw = $this->toString();
-            $conn = $this->conn ?? App::conn();
-    
-            return $this->load($conn->multiquery($raw, aggr: true, rows: true));
-        }
-    
-        public function first(): ?object {
+        public function _page(int $size, int $number): static {
             $query = clone $this;
-            $query->limit(1);
     
-            return $query->get()[0];
-        }
-    
-        public function using(string|SqlConnection $conn): static {
-            if(is_string($conn))
-                $conn = App::conn($conn);
-    
-            $this->conn = $conn;
-    
-            return $this;
-        }
-
-        public function _page(int $size, int $number): EntityQuery {
-            $query = clone $this;
-
             $query->limit(($size * ($number+1))+1, ($size * $number) + intval($number > 0));
-
-            if($this->conn === null)
-                $query->using($this->entity::conn(fallback: true));
-
+    
             return $query;
         }
-        
-
+    
         public function page(int $size, int $number): array {
             $query = $this->_page($size, $number);
-
+    
             $rows = $query->get();
     
-            list($primaryChunk, $secondaryChunk) = \Arr::padRight(
-                \Arr::chunk($rows, $size), [], 2);
-
+            list($primaryChunk, $secondaryChunk) = \Arr::padRight(\Arr::chunk($rows, $size), [], 2);
+    
             $hasNext = !\Arr::isEmpty($secondaryChunk);
-
+    
             return [$primaryChunk, $hasNext, $query];
-        }
-    
-        public function chunk(int $size, bool $meta = false, bool $aggr = false): Generator {
-            $pageSize = $size;
-    
-            $pageNumber = 0;
-            $pageHasNext = true;
-    
-            do {
-
-                list($pageRows, $pageHasNext) = $this->page($pageSize, $pageNumber);
-    
-                if($aggr) {
-                    foreach($pageRows as $pageRow)
-                        yield $pageRow;
-                }
-                else if($meta) {
-                    yield [$pageRows, $pageHasNext];
-                }
-                else {
-                    yield $pageRows;
-                }
-    
-                $pageNumber++;
-    
-            } while($pageHasNext);
         }
     
         public function take(int $amount): array {
@@ -434,131 +163,6 @@ namespace Slate\Neat {
             $query->limit($amount);
     
             return $query->get();
-        }
-
-        public function count(): int {
-            if($this->vertex()->hasEdges())
-                throw new \Error("Cannot count when joining.");
-
-            $query = DB::select(["`ROWS`" => "COUNT(1)"])->from(\Str::wrapc($this->toString(), "()"), as: "anon");
-
-            return $query->get()->current()["ROWS"] ?: 0;
-        }
-    
-        public function toSqlQueries(string $currentVertexKey = null, SqlSelectStatement $currentQuery = null, array $anchors = []): array {
-            $queries = [];
-    
-            if($currentVertexKey === null)
-                $currentVertexKey = $this->entity::ref()->toString();
-    
-            if(!$this->graph->hasVertex($currentVertexKey))
-                throw new \Error("Malformed entity query: graph vertex '$currentVertexKey' doesnt exist.");
-    
-            $currentVertex = $this->graph->getVertex($currentVertexKey);
-    
-            $currentQuery =
-                $currentQuery
-                    ?? DB::select()
-                        ->from(
-                            $currentVertex,
-                            as: $currentVertex->entity::ref(flags: Entity::REF_OUTER_WRAP | Entity::REF_RESOLVED)->toString()
-                        );
-            
-            $currentQuery->columns($currentVertex->getColumns());
-    
-            if($currentVertex->hasEdges()) {
-    
-                foreach($currentVertex->edges as $foreignVertexKey => $foreignVertexEdges) {
-                    $foreignVertex = $this->graph->getVertex($foreignVertexKey);
-    
-                    if(!\Arr::isEmpty($foreignVertexEdges)) {
-                        list($foreignVertexEdgeKey, $foreignVertexEdge) = \Arr::firstEntry($foreignVertexEdges);
-                    
-                        $joinColumn = $foreignVertexEdge->along;
-    
-                        $joinQuery = clone ($currentQuery);
-                        $currentVertex->modifyQuery($joinQuery, $foreignVertex);
-    
-                        $joinForeignProperty = $foreignVertex->entity::design()->getAttrInstance(
-                            Column::class,
-                             $joinColumn->getForeignProperty()
-                        );
-    
-                        $joinLocalProperty = (
-                            (\Cls::isSubclassInstanceOf($joinColumn, OneToAny::class)
-                                ? $currentVertex->entity::design()->getAttrInstance(
-                                    [Column::class],
-                                    $joinColumn->getLocalProperty()
-                                )
-                                : $joinColumn
-                            )
-                        );
-    
-                        $joinAnchor = \Str::wrap($foreignVertexKey, "`");
-                        $joinQuery->column(\Str::wrap($foreignVertexEdgeKey, "'"), as: $joinAnchor);
-                        $joinType = $foreignVertex->flag === "?" ? 'leftJoin' : 'innerJoin';
-                        $joinCondition = function($condition) use($foreignVertex, $joinLocalProperty, $joinForeignProperty, $currentVertex) {
-                            $condition->orOn(
-                                $currentVertex->entity::{$joinLocalProperty->parent->getName()}(),
-                                "=",
-                                DB::raw(
-                                    $foreignVertex->entity::{$joinForeignProperty->parent->getName()}()->toString()
-                                )
-                            );
-    
-                            return $condition;
-                        };
-    
-                        $joinQuery->{$joinType}(
-                            $foreignVertex,
-                            $joinCondition,
-                            as: $foreignVertex->entity::ref(flags: Entity::REF_OUTER_WRAP | Entity::REF_RESOLVED)->toString()
-                        );
-    
-                        
-                        $joinAnchors = [...$anchors, $joinAnchor];
-    
-                        $nextQueries = $this->toSqlQueries($foreignVertexKey, $joinQuery, $joinAnchors);
-    
-                        /** If no next queries were provided, assume we have reached the end of the plan */
-                        if(\Arr::isEmpty($nextQueries)) {
-                            $queries[] = [$joinQuery, $joinAnchors];
-                        }
-                        else {
-                            $queries = \Arr::merge(
-                                $queries,
-                                $nextQueries
-                            );
-                        }
-                    }
-                }
-            }
-            else {
-                $currentVertex->modifyQuery($currentQuery, null);
-
-                if($this->wheres !== null) {
-                    if($currentQuery->wheres === null) {
-                        $currentQuery->wheres = clone $this->wheres;
-                    }
-                    else {
-                        $currentQuery->wheres->where(clone $this->wheres);
-                    }
-                }
-
-                if(($callback = $currentVertex->callback) !== null) {
-                    $callback($currentQuery);
-                }
-                
-                $queries[] = [$currentQuery, $anchors];
-            }
-    
-            return $queries;
-        }
-    
-        public function toString(): string {
-            $queries = $this->toSqlQueries();
-    
-            return \Arr::join(\Arr::map($queries, 0), ";\n");
         }
     }
 }

@@ -9,6 +9,12 @@ namespace Slate\IO {
 
         protected int $allocated = -1;
 
+        public function __construct(int $key, int $size, int $allocate = -1, int $permissions = 0600) {
+            parent::__construct($key, $size, $permissions);
+
+            $this->allocated = $allocate;
+        }
+
         /**
          * @see Slate\Data\IQueue::isFull
          * @see Slate\IO\SysvSharedMemoryLinkedList::isFull

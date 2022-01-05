@@ -3,16 +3,16 @@
 namespace Slate\Data {
     class UniqueArray extends BasicArray {
         public function __construct(array $items = []) {
-            $this->{static::$container} = \Arr::unique($items);
+            $this->{static::CONTAINER} = \Arr::unique($items);
         }
 
         public function offsetPush(mixed $value): void {
-            if(!\Arr::contains($this->{static::$container}, $value))
-                $this->{static::$container}[] = $value;
+            if(!\Arr::contains($this->{static::CONTAINER}, $value))
+                $this->{static::CONTAINER}[] = $value;
         }
 
         public function offsetAssign(string|int $offset, mixed $value): void {
-            $existingOffset = \Arr::find($this->{static::$container}, $value);
+            $existingOffset = \Arr::find($this->{static::CONTAINER}, $value);
 
             if($existingOffset === false) {
                 throw new \Error(

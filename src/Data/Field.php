@@ -4,6 +4,7 @@ namespace Slate\Data {
 
     use ArrayAccess;
     use Closure;
+    use Collator;
     use Slate\Exception\ParseException;
 
     /**
@@ -65,6 +66,13 @@ namespace Slate\Data {
          * @var string|null
          */
         protected ?string $converterErrorMessage;
+
+        /**
+         * Whether to use dot-gets.
+         * 
+         * @var bool
+         */
+        protected bool $dots;
     
         public function __construct(string $name) {
             $this->name = $name;
@@ -74,6 +82,7 @@ namespace Slate\Data {
             $this->converter = null;
             $this->validatorErrorMessage      = null;
             $this->converterErrorMessage      = null;
+            $this->dots = true;
         }
     
         public function fallback(mixed $fallback = null): static {
@@ -150,6 +159,12 @@ namespace Slate\Data {
         public function float(string $errorMessage = null): mixed {
             return $this->cast(\Real::class, $errorMessage);
         }
+
+        public function dots(bool $dots = true): static {
+            $this->dots = $dots;
+
+            return $this;
+        }
     
         protected function getFrom(ArrayAccess|array $source, bool|string $assert = true): array {
             $sourced = true;
@@ -170,8 +185,17 @@ namespace Slate\Data {
                     $sourced = false;
                 }
 
-    
-                $value = $source[$this->name];
+                if($this->dots) {
+                    if($source instanceof Collection) {
+                        $value = $source->get($this->name);
+                    }
+                    else {
+                        $value = \Compound::get($source, $this->name);
+                    }
+                }
+                else {
+                    $value = $source[$this->name];
+                }
     
                 if($this->validator && $sourced) {
                     if(!($this->validator)($value)) {

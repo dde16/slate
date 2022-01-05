@@ -9,23 +9,23 @@ namespace Slate\Data {
         use TOffsetExtended;
 
         public function offsetAssign(string|int $offset, mixed $value): void {
-            $this->{static::$container}[$offset] = $value;
+            $this->{static::CONTAINER}[$offset] = $value;
         }
 
         public function offsetPush(mixed $value): void {
-            $this->{static::$container}[] = $value;
+            $this->{static::CONTAINER}[] = $value;
         }
 
         public function offsetExists($offset): bool {
-            return $this->{static::$container}[$offset] !== NULL;
+            return $this->{static::CONTAINER}[$offset] !== NULL;
         }
 
         public function offsetUnset($offset): void {
-            unset($this->{static::$container}[$offset]);
+            unset($this->{static::CONTAINER}[$offset]);
         }
 
         public function offsetGet($offset): mixed {
-            return @$this->{static::$container}[$offset];
+            return @$this->{static::CONTAINER}[$offset];
         }
     }
 }

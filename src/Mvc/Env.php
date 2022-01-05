@@ -9,22 +9,27 @@ namespace Slate\Mvc {
     final class Env extends Singleton {
         public const DEFAULT = Collection::class;
 
+        public static function fromArray(array $array): void {
+            $dots = \Arr::dotsByValue($array);
+
+            \Arr::mapRecursive(
+                $array,
+                function(string|int $key, mixed $value) use(&$dots) {
+                    if(is_string($value))
+                        $value = \Str::format($value, $dots);
+
+                    return [$key, $value];
+                }
+            );
+
+            static::instance()->fromArray($array);
+        }
+
         public static function make(array $arguments = []): object {
             return parent::make([
                 ["env.host" => HttpEnvironment::getHost()],
                 Collection::APPENDABLE
             ]);
-        }
-
-        public static array $boundpaths = [
-            "mvc.root.path" => [
-                "mvc.view.path",
-                "mvc.public.path"
-            ]
-        ];
-
-        public static function bind(string $root, string $child): void {
-            static::$boundpaths[$root][] = $child;
         }
     }
 }

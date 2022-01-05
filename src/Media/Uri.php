@@ -1,8 +1,10 @@
 <?php
 
 namespace Slate\Media {
-    //TODO: replace file path properties with SplFileInfo
-    /**
+
+    use Slate\Exception\ParseException;
+
+/**
      * A class for handling and extending URIs and Filepaths.
      * Note; when handling dotlinks and noslash paths, it will not resolve them
      * to real paths and only provides combinational path logic.
@@ -44,7 +46,7 @@ namespace Slate\Media {
 
         public function __construct(string $uri = null) {
             if($uri !== null) {
-                $parsed = parse_url($uri);
+                $parsed = static::parse($uri);
 
                 $this->scheme   = $parsed["scheme"];
                 $this->host     = $parsed["host"];
@@ -131,6 +133,20 @@ namespace Slate\Media {
 
         public function setPath(string $path): void {
             $this->path = new UriPath($path);
+        }
+
+        public static function parse(string $uri, int $components = -1) {
+            $parsed = parse_url($uri);
+        
+            if($parsed === null)
+                throw new ParseException([$uri], ParseException::ERROR_URI_PARSE);
+        
+            $parsed["pathIncludingQuery"] = $parsed["path"];
+        
+            if(\Arr::hasKey($parsed, "query"))
+                $parsed["pathIncludingQuery"] = $parsed["path"].\Str::afterLast($uri, $parsed["path"]);
+        
+            return $parsed;
         }
 
         public function toString(int $flags = Uri::ALL, string $delimiter = "/", bool $html = true): ?string {

@@ -10,12 +10,12 @@ namespace Slate\Data {
      * to make a class accessible as an array.
      */
     class BasicArray implements IArrayAccess, IExtendedIterator, Countable {
-        protected static string $container = "items";
+        public const CONTAINER = "items";
 
         use TBasicArray;
 
         public function __construct(array $items = []) {
-            $this->{static::$container} = $items;
+            $this->{static::CONTAINER} = $items;
         }
     }
 }

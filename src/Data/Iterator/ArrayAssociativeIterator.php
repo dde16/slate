@@ -1,11 +1,15 @@
 <?php
 
-namespace App\Auxiliary {
+namespace Slate\Data\Iterator {
     use ArrayIterator;
     use Generator;
     use Slate\Data\Iterator\ArrayExtendedIterator;
     use Slate\Data\Iterator\IExtendedIterator;
 
+    /**
+     * A manual associative iterator since we cant access the internal
+     * pointer of an associative array for the current key.
+     */
     class ArrayAssociativeIterator implements IExtendedIterator  {
         protected array $array;
         protected int   $pointer = 0;

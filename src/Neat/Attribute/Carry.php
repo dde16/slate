@@ -6,22 +6,10 @@ namespace Slate\Neat\Attribute {
     use Slate\Metalang\MetalangAttribute;
     use Slate\Neat\InstanceCarry;
     use Slate\Neat\StaticCarry;
-    use Slate\Utility\TMiddleware;
     use Slate\Metalang\MetalangDesign;
 
     #[Attribute(Attribute::TARGET_METHOD)]
     class Carry extends MetalangAttribute {
-        use TMiddleware;
-
-        protected static array $middleware = [
-            "instance.carry" => InstanceCarry::class,
-            "static.carry"   => StaticCarry::class,
-        ];
-
-        protected static array $using = [
-            "instance.carry" => InstanceCarry::class,
-            "static.carry"   => StaticCarry::class,
-        ];
 
         protected string $carrying;
 

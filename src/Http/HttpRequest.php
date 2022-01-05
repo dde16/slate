@@ -8,7 +8,7 @@ namespace Slate\Http {
     use Slate\Data\FieldPrepped;
     use Slate\Facade\Security;
     use Slate\Media\Uri;
-    use Slate\Mvc\Attribute\Route;
+    use Slate\Mvc\Route;
     use Slate\Neat\Attribute\Getter;
     use Slate\Neat\Attribute\ReadOnly;
     use Slate\Neat\Attribute\Setter;
@@ -157,6 +157,7 @@ namespace Slate\Http {
 
         public function __clone() {
             $this->uri = clone $this->uri;
+            $this->parameters = clone $this->parameters;
         }
 
         public static function capture(): static {
@@ -167,10 +168,10 @@ namespace Slate\Http {
             $queries = ["get" => $_GET, "post" => $_POST];
 
             foreach($queries as $method => $query) {
-                if(env("mvc.security.auto-sanitise", ["fallback" => true]) === true)
+                if(env("mvc.security.sanitise") === true)
                     $queries[$method] = Security::sanitise(
                         $query,
-                        env("mvc.security.auto-sanitise.escapes", ["fallback" => ["\"", "'", "`"], "validator" => Closure::fromCallable('is_array')])
+                        env("mvc.security.escapes") ?? ["\"", "'", "`"]
                     );
             }
 

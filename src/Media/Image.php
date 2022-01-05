@@ -21,7 +21,7 @@ namespace Slate\Media {
     use Slate\Data\Collection;
     use Slate\Exception\IOException;
 
-class Image {
+    class Image {
         /**
          * The gd image resource.
          *
@@ -65,6 +65,20 @@ class Image {
             $this->resource = $resource;
 
             return null;
+        }
+
+        public static function fontFile(string $path): int {
+            if(file_exists($path)) {
+                $font = imageloadfont($path);
+
+                if($font === FALSE)
+                    throw new ParseException("Unable to load font at location '{$path}'.");
+
+                return $font;
+            }
+            else {
+                throw new IOException(["path" => $path], IOException::ERROR_FILE_NOT_FOUND);
+            }
         }
 
         public function create(int $width, int $height): void {

@@ -12,8 +12,14 @@ namespace Slate\IO {
         use TMatchingIterator;
         use TAnchoredIterator;
 
-        
-
+        /**
+         * Hash this stream with a given algorithm and buffer size.
+         *
+         * @param string $algorithm
+         * @param integer $bufferSize The default buffer size is to match that of the sha512sum linux binaries.
+         *
+         * @return Hash
+         */
         public function hash(string $algorithm, int $bufferSize = 32768): Hash { 
             $this->assertOpen();
             
@@ -30,12 +36,12 @@ namespace Slate\IO {
 
         public function json(bool $assert = false, bool $assoc = true, int $flags = 0): ?array {
             $this->assertOpen();
+            $this->rewind();
 
             $json = json_decode($this->readAll(), $assoc, flags: $flags);
 
-            if(json_last_error() !== JSON_ERROR_NONE && $assert) {
+            if($assert ? json_last_error() !== JSON_ERROR_NONE : false)
                 throw new ParseException(json_last_error_msg() . " while parsing json for this stream.");
-            }
 
             return $json;
         }

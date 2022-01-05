@@ -19,12 +19,13 @@ namespace Slate\Neat {
                     : true
             ;
         }
+
         
         public function isPropertyGettable(string $propertyName): bool {
-            $property = $this->getProperty($propertyName);
+            $property = $this->hasProperty($propertyName) ? $this->getProperty($propertyName) : null;
 
             return 
-                !$property->isPublic() && !$property->isStatic()
+                ($property ? (!$property->isPublic() && !$property->isStatic()) : true)
                     ? ((
                         $this->getAttrInstance(Getter::class, $propertyName)
                         ?? $this->getAttrInstance(ReadOnly::class, $propertyName)

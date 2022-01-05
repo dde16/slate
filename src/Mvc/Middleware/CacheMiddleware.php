@@ -20,7 +20,7 @@ namespace Slate\Mvc\Middleware {
          */
         #[Middleware("Cache")]
         public function cacheMiddleware(HttpRequest $request, HttpResponse $response, object $next) {
-            if(($repo = $request->route->cache) !== null) {
+            if(($repo = $request->route->cacheRepo) !== null) {
                 $key = $this->cacheKey($request);
                 $repo = App::repo($repo);
 
@@ -39,7 +39,7 @@ namespace Slate\Mvc\Middleware {
 
             $data = $next();
 
-            if(($repo = $request->route->cache) !== null) {
+            if($repo !== null) {
                 $key = $this->cacheKey($request);
                 $repo = App::repo($repo);
 

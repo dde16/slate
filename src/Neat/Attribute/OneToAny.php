@@ -9,13 +9,17 @@ namespace Slate\Neat\Attribute {
     use Slate\Neat\EntityDesign;
 
     class OneToAny extends MetalangAttribute {
-        public ?string $foreignImmediateClass = null;
-        public ?string $foreignImmediateProperty = null;
+        public ?string $foreignImmediateClass;
+        public ?string $foreignImmediateProperty;
     
         public string $localProperty;
+        public bool $localBelongsToForeign;
     
         public function __construct(string $localProperty, array $foreignRelalationship) {
             $this->localProperty = $localProperty;
+            $this->localBelongsToForeign = false;
+            $this->foreignImmediateClass = false;
+            $this->foreignImmediateProperty = false;
             $this->setForeignRelationship($foreignRelalationship);
         }
 
@@ -65,6 +69,16 @@ namespace Slate\Neat\Attribute {
 
             $this->foreignImmediateClass = $foreignClass;
             $this->foreignImmediateProperty = $foreignProperty;
+        }
+
+        public function localBelongsToForeign(): bool {
+            $foreignDesign = $this->getForeignDesign();
+
+            if($foreignColumn = $foreignDesign->getAttrInstance(Column::class, $this->getForeignProperty())) {
+                return $foreignColumn instanceof PrimaryColumn;
+            }
+
+            return false;
         }
     }
 }

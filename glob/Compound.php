@@ -2,7 +2,26 @@
 
 /** Compound Type and Functions */
 abstract class Compound extends DataType {
-    
+
+    public static function modifyRecursive(object|array &$compound, Closure $callback, string $type = "bottom-top", array $path = []) {
+
+        foreach(static::keys($compound) as $key) {
+            if(is_array($compound)) $value = &$compound[$key];
+            else $value = &$compound->{$key};
+
+            if(\Any::isCompound($value) ? $type === "bottom-up" : false)
+                \Compound::modifyRecursive($value, $callback, $type, [...$path, $key]);
+
+            $callback($key, $value, [...$path, $key]);
+
+            if(\Any::isCompound($value) ? $type === "top-down" : false)
+                \Compound::modifyRecursive($value, $callback, $type, [...$path, $key]);
+        }
+    }
+
+    public static function keys(object|array $compound) {
+        return \Arr::keys(is_object($compound) ? get_object_vars($compound) : $compound);
+    }
 
     /**
      * Used to safely set a nested value in an array or object.

@@ -514,12 +514,7 @@ abstract class Math {
             $value = ($minimum + (\Math::mod($value, $maximum))) - 1;
         }
         else if($value < $minimum) {
-            if($value > 0) {
-                $value = ($maximum - $value) + 1;
-            }
-            else {
-                $value = \Math::mod((($value - $minimum) * -1), $maximum);
-            }
+            $value = $value > 0 ? (($maximum - $value) + 1) : (($maximum + $value) - 1);
         }
 
         return $value;

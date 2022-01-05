@@ -64,7 +64,6 @@ namespace App\Controller {
     use Slate\Mvc\Controller;
 
     class UserController extends Controller {
-        #[Route(methods: "post")]
         public function createUser(HttpRequest $request, HttpResponse $response): string {
             return "Create User";
         }

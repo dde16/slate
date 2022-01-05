@@ -11,26 +11,14 @@ namespace Slate\Lang\Interpreter\Attribute {
 
         public function __construct(string ...$expressions) {
             
-            foreach($expressions as $token) {
+            foreach($expressions as $token)
                 if(!is_string($token))
                     throw new \Error("Array provided to CompoundToken must contain strings exclusively.");
-            }
             
-            uasort(
-                $expressions,
-                function($a, $b) {
-                    return strlen($b) - strlen($a);
-                }
-            );
+            /** Sort in length order */
+            uasort($expressions, fn($a, $b) => strlen($b) - strlen($a));
 
-            $this->expression = \Arr::values(
-                \Arr::map(
-                    $expressions,
-                    function($choice) {
-                        return [$choice, strlen($choice)];
-                    }
-                )
-            );
+            $this->expression = \Arr::values(\Arr::map($expressions, fn($choice): array => [$choice, strlen($choice)]));
         }
     }
 }

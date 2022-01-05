@@ -72,6 +72,10 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
     public const XOR = (1<<1);
     public const AND = (1<<2);
 
+    public static function bytes(int $value, int $unit, int $spec = \Integer::SI) {
+        return $value * ($spec ** $unit);
+    }
+
     /**
      * Determine the most efficient storage method for a given integer.
      *

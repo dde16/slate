@@ -156,8 +156,8 @@ namespace Slate\Data\Iterator {
         /**
          * @see next
          */
-        public function next(): mixed {
-            return ++$this->pointer;
+        public function next(): void {
+            ++$this->pointer;
         }
         
         public function valid(): bool {

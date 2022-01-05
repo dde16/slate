@@ -1,18 +1,23 @@
 <?php
 
 namespace Slate\Metalang {
-
     use Closure;
 
     class MetalangDynamicObject {
         protected array $getters;
         protected array $setters;
-        protected array $callers;
+        protected array $macros;
+        protected ?object $passthru;
 
-        public function __construct() {
-            $this->getters = [];
-            $this->setters = [];
-            $this->callers = [];
+        public function __construct(object $passthru = null) {
+            $this->getters  = [];
+            $this->setters  = [];
+            $this->macros  = [];
+            $this->passthru = $passthru;
+        }
+
+        public function passthru(): ?object {
+            return $this->passthru;
         }
 
         public function getter(string $name, Closure $closure): static {
@@ -27,31 +32,36 @@ namespace Slate\Metalang {
             return $this;
         }
 
-        public function caller(string $name, Closure $closure): static {
-            $this->callers[$name] = $closure;
+        public function macro(string $name, Closure $closure): static {
+            $this->macros[$name] = $closure;
 
             return $this;
         }
 
         public function __get(string $name): mixed {
             if(\Arr::hasKey($this->getters, $name))
-                return $this->getters[$name]();
+                return $this->getters[$name]->call($this);
 
-            return $this->{$name};
+            return $this->passthru ? $this->passthru->{$name} : $this->{$name};
         }
 
         public function __set(string $name, mixed $value): void {
-            if(\Arr::hasKey($this->setters, $name))
-                $this->setters[$name]($value);
-
-            $this->{$name} = $value;
+            if(!\Arr::hasKey($this->setters, $name)) {
+                if($this->passthru)
+                    $this->passthru->{$name} = $value;
+                else
+                    $this->passthru = $value;
+            }
+            else {
+                $this->setters[$name]->call($this, $value);
+            }
         }
 
         public function __call(string $name, array $arguments): mixed {
-            if(\Arr::hasKey($this->callers, $name))
-                $this->callers[$name](...$arguments);
+            if(\Arr::hasKey($this->macros, $name))
+                return $this->macros[$name]->call($this, ...$arguments);
 
-            return $this->{$name}(...$arguments);
+            return $this->passthru ? $this->passthru->{$name}(...$arguments) : $this->{$name}(...$arguments);
         }
     }
 }

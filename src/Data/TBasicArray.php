@@ -12,7 +12,7 @@ namespace Slate\Data {
 
         /** ArrayConvertable */
         public function toArray(): array {
-            return $this->{static::$container};
+            return $this->{static::CONTAINER};
         }
     }
 }

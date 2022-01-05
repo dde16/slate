@@ -53,6 +53,7 @@ abstract class Fnc {
         $closure = \Arr::first($closures) ?: $finally;
         $closures = array_slice($closures, 1);
     
+        /** Uses recursion to implement chaining */
         return $closure(...[...$arguments, fn() => \Fnc::chain($closures, $finally, func_get_args())]);
     }
     

@@ -9,7 +9,7 @@ namespace Slate\Data {
      * A class to pretty print rows.
      */
     class Table extends BasicArray {
-        protected static string $container = "rows";
+        public const CONTAINER = "rows";
 
         public array $columns;
         public array $rows;

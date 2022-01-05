@@ -10,12 +10,6 @@ abstract class Controller extends MetalangClass {
         public const MIDDLEWARE     = [];
         public const HANDLERS       = [];
 
-        protected string $webPath;
-
-        public function __construct(string $webPath) {
-            $this->webPath = $webPath;
-        }
-
         // protected function view(array $data = [], string $mime = null): ViewResult {
         //     return view($this->relativePath, $data, $mime);
         // }

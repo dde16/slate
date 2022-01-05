@@ -15,7 +15,7 @@ trait TColumnAttributeImplementation {
 
             if($columnAttribute = $design->getAttrInstance(Column::class, $name)) {
 
-                return [true, static::ref($columnAttribute->getColumnName(), Entity::REF_ITEM_WRAP)];
+                return [true, static::conn()->wrap($columnAttribute->getColumnName())];
             }
 
             return ($next)($name, $arguments);

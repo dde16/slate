@@ -16,7 +16,7 @@ namespace Slate\Data\Storage {
      * TODO: incrementing/decrementing
      */
     class IntArray extends BasicArray {
-        protected static string $container = "integers";
+        public const CONTAINER = "integers";
 
         /**
          * Integer array.

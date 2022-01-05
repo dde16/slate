@@ -32,6 +32,17 @@ final class Arr extends CompoundType {
     public const RECURSIVE_BOTTOM_UP = (1<<0);
     public const RECURSIVE_TOP_DOWN = (1<<1);
 
+    public static function fromGenerator(Generator $generator): array {
+        $buffer = [ ];
+
+        while($generator->valid()) {
+            $buffer[] = $generator->current();
+            $generator->next();
+        }
+
+        return $buffer;
+    }
+
     /**
      * Ensure that a value is an array, if not; wrap it into one.
      *
@@ -39,14 +50,14 @@ final class Arr extends CompoundType {
      *
      * @return array
      */
-    public static function ensure(mixed $value): array {
+    public static function always(mixed $value): array {
         return !is_array($value) ? [$value] : $value;
     }
 
     /**
      * Format/transform a compound value.
      *
-     * @return void
+     * @return array|object
      */
     public static function format(array $compound, array $format): array|object {
         return \Arr::mapAssoc(
@@ -2125,6 +2136,15 @@ final class Arr extends CompoundType {
         }
     }
 
+    public static function modifyRecursive(array|ArrayAccess &$array, Closure $callback, array $path = []) {
+        foreach($array as $key => &$value) {
+            $callback($key, $value, [...$path, $key]);
+
+            if(is_array($value))
+                \Arr::modifyRecursive($array[$key], $callback, [...$path, $key]);
+        }
+    }
+
     /**
      * Map the values of an array recursively (by reference).
      * 
@@ -2134,17 +2154,15 @@ final class Arr extends CompoundType {
      * 
      * @return void
      */
-    public static function mapRecursive (array|ArrayAccess &$array, Closure $callback, int $depth = 0): void {
+    public static function mapRecursive (array|ArrayAccess &$array, Closure $callback, array $path = []): void {
         foreach($array as $key => $value) {
-            if(is_array($value)) {
-                \Arr::mapRecursive($array[$key], $callback, $depth+1);
-            }
-            else {
-                unset($array[$key]);
-                list($newKey, $newValue) = $callback($key, $value, $depth);
+            unset($array[$key]);
+            list($newKey, $newValue) = $callback($key, $value, [...$path, $key]);
 
-                $array[$newKey] = $newValue;
-            }
+            $array[$newKey] = $newValue;
+
+            if(is_array($newValue))
+                \Arr::mapRecursive($array[$newKey], $callback, [...$path, $newKey]);
         }
     }
 

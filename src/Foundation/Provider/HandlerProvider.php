@@ -14,7 +14,6 @@ namespace Slate\Foundation\Provider {
             set_exception_handler(function(Throwable $throwable) use($dnt) {
                 $this->lastError = $throwable;
 
-
                 try {
                     $response = $this->app->response();
 
@@ -29,44 +28,41 @@ namespace Slate\Foundation\Provider {
 
                     $response->status = $httpCode;
 
-                    Env::use([
-                        "mvc.root.path",
-                        "mvc.view.path",
-                        "mvc.error.page.path" ],
-                        function($mvcRootDirectory, $mvcViewsDirectory, $mvcErrorPage) use($throwable, &$errorPageResolve) {
-                            /** Check if all of the paths are not empty */
-                            if($mvcViewsDirectory !== null && $mvcViewsDirectory !== null && $mvcErrorPage !== null) {
-                                /** Normalise the error page path */
-                                $mvcErrorPage = \Path::normalise($mvcErrorPage);
+                    $mvcRootDirectory = Env::get("mvc.path.absolute.root");
+                    $mvcViewsDirectory = Env::get("mvc.path.absolute.views");
+                    $mvcErrorPage = Env::get("mvc.security.errorPage");
 
-                                /** Check if the views directory exists */
-                                if(\Path::exists($mvcViewsDirectory)) {
-                                    /** Error page must be in the views directory */
-                                    $mvcErrorPage = $mvcViewsDirectory.$mvcErrorPage;
+                    /** Check if all of the paths are not empty */
+                    if($mvcViewsDirectory !== null && $mvcViewsDirectory !== null && $mvcErrorPage !== null) {
+                        /** Normalise the error page path */
+                        $mvcErrorPage = \Path::normalise($mvcErrorPage);
 
-                                    /** Check if the page exists and is safe */
-                                    if($mvcErrorPage = \Path::safe($mvcRootDirectory, $mvcErrorPage)) {
-                                        /** Set the data of the exception */
-                                        $_DATA = [
-                                            "custom" => [
-                                                "Throwable" => $throwable
-                                            ]
-                                        ];
+                        /** Check if the views directory exists */
+                        if(\Path::exists($mvcViewsDirectory)) {
+                            /** Error page must be in the views directory */
+                            $mvcErrorPage = $mvcViewsDirectory.$mvcErrorPage;
 
-                                        /** Get page output */
-                                        ob_start();
-                                        include($mvcErrorPage);
-                                        $body = ob_get_contents();
-                                        ob_end_clean();
+                            /** Check if the page exists and is safe */
+                            if($mvcErrorPage = \Path::safe($mvcRootDirectory, $mvcErrorPage)) {
+                                /** Set the data of the exception */
+                                $_DATA = [
+                                    "custom" => [
+                                        "Throwable" => $throwable
+                                    ]
+                                ];
 
-                                        $errorPageResolve = true;
+                                /** Get page output */
+                                ob_start();
+                                include($mvcErrorPage);
+                                $body = ob_get_contents();
+                                ob_end_clean();
 
-                                        $response->body = $body;
-                                    }
-                                }
+                                $errorPageResolve = true;
+
+                                $response->body = $body;
                             }
                         }
-                    );
+                    }
 
                     /** If there is no error page */
                     if(!$errorPageResolve) {
@@ -79,6 +75,7 @@ namespace Slate\Foundation\Provider {
 
                         /** If verbose then display output */
                         if($verbosePageAllowed) {
+                            // ob_clean();
                             $response->headers["Content-Type"] = "text/html";
                             echo (SlateException::getHtml($throwable, $httpCode));
                         }

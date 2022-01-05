@@ -52,7 +52,7 @@ namespace Slate\Mvc {
         public function acceptsMime(?string $mime = null): bool {
             return
                 !\Arr::isEmpty($this->mimes, $mime)
-                    ? \Arr::contains($this->mimes, $mime)
+                    ? ($mime !== null ? \Arr::contains($this->mimes, $mime) : false)
                     : true;
         }
 
@@ -60,7 +60,7 @@ namespace Slate\Mvc {
             $methods = \Arr::xor(
                 HttpMethod::tokenise(
                     \Arr::map(
-                        \Arr::ensure($methods),
+                        \Arr::always($methods),
                         fn($method) => \Str::upper($method)
                     )
                 )[0]
@@ -105,7 +105,7 @@ namespace Slate\Mvc {
         public function accepts(HttpRequest $request): bool {
             return
                 $this->acceptsMethod($request->method)
-                && $this->acceptsMime($request->headers["content-type"]);
+                &&  $this->acceptsMime(!empty($mime = $request->headers["content-type"]) ? \Str::trim(\Str::beforeFirst($mime, ";")) : null);
         }
 
         public function isFallback(): bool {
@@ -127,7 +127,7 @@ namespace Slate\Mvc {
     
             return ($controllerArguments !== null && $this->accepts($request)) || $this->fallback ? [
                 "webpath"   => $request->uri->getPath(),
-                "arguments" => $controllerArguments ?: []
+                "arguments" => $controllerArguments ?? []
             ] : null;
         }
     }

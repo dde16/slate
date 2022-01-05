@@ -93,6 +93,7 @@ namespace Slate\Neat {
                     if($toKey === null)
                         $toKey = $fromKey;
                     
+
                     if(\Str::startswith($fromKey, "@")) {
                         $fromKey = \Str::removePrefix($fromKey, "@");
 
@@ -111,6 +112,9 @@ namespace Slate\Neat {
                         else if(is_array($toKey)) {
                             if(is_object($value) ? \Cls::isSubclassInstanceOf($value, Model::class) : false) {
                                 $value = $value->toArray($toKey);
+                            }
+                            else if(is_string($value) ? \Cls::exists($value) : false) {
+                                $value = \Arr::format(\Cls::getConstants($value), $toKey);
                             }
                             
                             $toKey = $fromKey;

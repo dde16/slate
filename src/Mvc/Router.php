@@ -11,8 +11,11 @@
     use Slate\Mvc\Route\ControllerRoute;
     use Slate\Mvc\Route\FunctionRoute;
     use Slate\Mvc\Route\ViewRoute;
+    use Slate\Utility\TMacroable;
 
-    class Router {
+class Router {
+        use TMacroable;
+
         /**
          * JIT structure that allows the use of closures to define nested structures.
          *
