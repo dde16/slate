@@ -2,6 +2,7 @@
 
 namespace Slate\Utility {
 
+    use RuntimeException;
     use Slate\Exception\UndefinedRoutineException;
 
     abstract class Singleton {
@@ -10,7 +11,20 @@ namespace Slate\Utility {
             TMacroable::__callStatic as __macroCallStatic;
         }
     
+        /**
+         * The class to be a singleton of.
+         * 
+         * @var string
+         */
         public const DEFAULT = NULL;
+
+        /**
+         * Tells the singleton whether it has to be manually initialised and not
+         * initialised through a method call.
+         * 
+         * @var bool
+         */
+        public const MANUAL = false;
     
         /**
          * Container to store the singleton classes.
@@ -49,11 +63,15 @@ namespace Slate\Utility {
          *
          * @return object
          */
-        public static function instance(): object {
+        public static function instance(bool $automatic = false): object {
             $instance = &static::$instances[static::class];
 
-            if($instance === null)
+            if($instance === null) {
+                if($automatic && static::MANUAL)
+                    throw new RuntimeException("This Singleton must be built manually.");
+
                 static::make();
+            }
 
             return $instance;
         }
@@ -78,7 +96,7 @@ namespace Slate\Utility {
                 return self::__macroCallStatic($name, $arguments);
             }
             catch(UndefinedRoutineException $exception) {
-                return static::instance()->{$name}(...$arguments);
+                return static::instance(true)->{$name}(...$arguments);
             }
         }
     }

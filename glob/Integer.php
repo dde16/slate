@@ -24,21 +24,21 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
     public const SI  = 1000;
     public const IEC = 1024;
 
-    public const BYTE     = 1;
+    public const BYTE     = 0;
 
     //SI
-    public const KILOBYTE = 2;
-    public const MEGABYTE = 3;
-    public const GIGABYTE = 4;
-    public const TERABYTE = 5;
-    public const PETABYTE = 6;
+    public const KILOBYTE = 1 | \Integer::SI;
+    public const MEGABYTE = 2 | \Integer::SI;
+    public const GIGABYTE = 3 | \Integer::SI;
+    public const TERABYTE = 4 | \Integer::SI;
+    public const PETABYTE = 5 | \Integer::SI;
 
     //IEC
-    public const KIBIBYTE = 2;
-    public const MEBIBYTE = 3;
-    public const GIBIBYTE = 4;
-    public const TIBIBYTE = 5;
-    public const PIBIBYTE = 6;
+    public const KIBIBYTE = 1 | \Integer::IEC;
+    public const MEBIBYTE = 2 | \Integer::IEC;
+    public const GIBIBYTE = 3 | \Integer::IEC;
+    public const TIBIBYTE = 4 | \Integer::IEC;
+    public const PIBIBYTE = 5 | \Integer::IEC;
 
     /**
      * Memory units in the SI format.
@@ -72,7 +72,15 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
     public const XOR = (1<<1);
     public const AND = (1<<2);
 
-    public static function bytes(int $value, int $unit, int $spec = \Integer::SI) {
+    public static function decomposeUnit(int $unit) {
+        $spec = ($unit & static::IEC) ?: ($unit & static::SI);
+
+        return [$unit ^ $spec, $spec];
+    }
+
+    public static function bytes(int $value, int $unit) {
+        [$unit, $spec] = \Integer::decomposeUnit($unit);
+
         return $value * ($spec ** $unit);
     }
 

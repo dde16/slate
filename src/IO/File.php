@@ -22,7 +22,17 @@ namespace Slate\IO {
         protected ?StreamMode $predefinedMode = null;
         protected ?StreamMode $currentMode    = null;
 
-        public function __construct(string|SplFileInfo $path, string $mode = null) {
+        public function __construct(string|SplFileInfo $path, string $mode = null, string|FileRotator $rotator = null) {
+            if($rotator !== null) {
+                if(is_string($rotator))
+                    $rotator = new ($rotator);
+
+                if(!is_string($path))
+                    $path = $path->__toString();
+
+                $path = $rotator->rotate($path);
+            }
+
             $this->path = is_string($path) ? (new SplFileInfo($path)) : $path;
 
             if($mode)

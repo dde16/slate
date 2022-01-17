@@ -7,8 +7,6 @@ namespace Slate\Sql\Clause {
 
     trait TSqlWhereClause {
         public ?SqlCondition $wheres = null;
-        public array         $trailingWheres = [];
-
         
         public function andWhere(): object {
             if($this->wheres === null) $this->wheres = new SqlCondition();
@@ -32,28 +30,7 @@ namespace Slate\Sql\Clause {
         
         
         public function buildWhereClause(): string|null {
-            if(($wheres = $this->wheres) !== null) {
-                $wheres = clone $wheres;
-            }
-
-            if(!\Arr::isEmpty($this->trailingWheres)) {
-                if($wheres === null) {
-                    $wheres = new SqlCondition;
-                }
-
-                foreach($this->trailingWheres as $entry) {
-                    list($type, $where) = $entry;
-                    
-                    $wheres->{$type."Where"}(...$where);
-                }
-
-                return "WHERE " . \Str::wrapc($wheres->toString(), "()");
-            }
-            else if($wheres !== null) {
-                return "WHERE " . \Str::wrapc($wheres->toString(), "()");
-            }
-
-            return null;
+            return $this->wheres !== null ? ("WHERE " . \Str::wrapc($this->wheres->toString(), "()")) : null;
         }
     }
 }

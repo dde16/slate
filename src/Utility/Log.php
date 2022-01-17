@@ -6,7 +6,9 @@ namespace Slate\Utility {
     use Slate\IO\IStreamWriteable;
     use Throwable;
 
-    class Logger {
+    class Log {
+        use TMacroable;
+
         const OFF      = 0;
 
         /**
@@ -48,18 +50,18 @@ namespace Slate\Utility {
         const VERBOSE = (1<<5);
 
         const ALL      = 
-            Logger::DEBUG |
-            Logger::INFO  |
-            Logger::WARN  |
-            Logger::ERROR | 
-            Logger::CRITICAL;
+            Log::DEBUG |
+            Log::INFO  |
+            Log::WARN  |
+            Log::ERROR | 
+            Log::CRITICAL;
 
         const NAMES = [
-            Logger::DEBUG => "DEBUG",
-            Logger::INFO => "INFO",
-            Logger::WARN => "WARN",
-            Logger::ERROR => "ERROR",
-            Logger::CRITICAL => "CRITICAL"
+            Log::DEBUG => "DEBUG",
+            Log::INFO => "INFO",
+            Log::WARN => "WARN",
+            Log::ERROR => "ERROR",
+            Log::CRITICAL => "CRITICAL"
         ];
 
         protected array $streams;
@@ -75,7 +77,7 @@ namespace Slate\Utility {
                 []
             ],
             array $context = [],
-            int $level = Logger::ALL
+            int $level = Log::ALL
         ) {
             $this->streams = $streams;
 
@@ -142,7 +144,11 @@ namespace Slate\Utility {
             return \Str::format($formatter, $context);
         }
 
-        public function err(int $level, Throwable $throwable) {
+        public function err(mixed $object): void {
+            $this->log(Log::ERROR, $object);
+        }
+
+        public function throw(Throwable $throwable, int $level = Log::CRITICAL) {
             $tb = "    ";
             $this->log(
                 $level,
@@ -164,6 +170,22 @@ namespace Slate\Utility {
                     "\n"
                 )."\n"
             );
+        }
+
+        public function debug(mixed $object): void {
+            $this->log(Log::DEBUG, $object);
+        }
+
+        public function info(mixed $object): void {
+            $this->log(Log::INFO, $object);
+        }
+
+        public function warn(mixed $object): void {
+            $this->log(Log::WARN, $object);
+        }
+
+        public function crit(mixed $object): void {
+            $this->log(Log::CRITICAL, $object);
         }
 
         public function log(int $level, mixed $object): void {

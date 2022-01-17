@@ -241,7 +241,7 @@ function Schema(string $name): Slate\Sql\SqlSchema {
  */
 function path(string ...$segments): string {
     return "/".\Arr::join(
-        \Arr::map($parts, fn(string $segment): string => \Str::removeAffix($segment, "/")),
+        \Arr::map($segments, fn(string $segment): string => \Str::removeAffix($segment, "/")),
         "/"
     );
 }

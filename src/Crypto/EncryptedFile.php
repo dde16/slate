@@ -19,7 +19,7 @@ namespace Slate\Crypto {
          */
         protected int $blocksize;
 
-        public function __construct(string $path, string $method, string $key, string $mode = null, int $chunksize = null) {
+        public function __construct(string $path, string $method, string $key, string $mode = null) {
             parent::__construct($path, $mode);
 
             $this->cipher = new Cipher($method, $key);

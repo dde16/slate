@@ -57,7 +57,7 @@ namespace Slate\Foundation {
          * @return void
          */
         public function emit(string $event, array $arguments = []): void{
-            \Fnc::chain(@$this->listeners[$event] ?? [], fn() => null, $arguments);
+            \Fnc::chain(@$this->listeners[$event] ?? [], $arguments);
         }
 
         /**
@@ -99,13 +99,13 @@ namespace Slate\Foundation {
                 while(true) {
                     $this->listener($queue);
 
-                    break;
-
                     time_sleep_until(microtime(true) + $timeout);
                 }
             }
-            else if(\Cls::exists(\React\EventLoop\Loop::class)) {
-                \React\EventLoop\Loop::addPeriodicTimer($timeout, Closure::fromCallable([$this, "listener"]));
+            else if(class_exists(\React\EventLoop\Loop::class)) {
+                \React\EventLoop\Loop::addPeriodicTimer($timeout, function() use($queue) {
+                    $this->listener($queue);
+                });
             }
             else {
                 throw new RuntimeException("ReactPHP is specified as the queue event loop where it is not installed.");

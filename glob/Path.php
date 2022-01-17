@@ -10,7 +10,7 @@ class Path {
     public static function assertFileExists(string $path): void {
         \Path::assertExists($path);
 
-        if(is_file($path))
+        if(!is_file($path))
             throw new Slate\Exception\IOException([$path], Slate\Exception\IOException::ERROR_FILE_IS_DIR_MISMATCH);
     }
 

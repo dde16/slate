@@ -9,6 +9,7 @@ namespace Slate\Sql {
     use Slate\Sql\Constraint\SqlUniqueConstraint;
     use Slate\Sql\Expression\SqlColumnBlueprint;
     use Throwable;
+    use Slate\Sql\Type\SqlType;
 
     final class SqlTable implements ISqlStorageMedium {
         protected SqlSchema $schema;
@@ -28,6 +29,18 @@ namespace Slate\Sql {
             $this->increment = null;
         }
 
+        public function load(): void {
+            $this->columns = [];
+            $this->checks  = [];
+
+            $columns = $this->conn()->schematic($this->schema->name(), $this->name());
+
+            foreach($columns as $columnInfo) {
+                $column = $this->column($columnInfo["name"]);
+                $column->fromArray($columnInfo);
+            }
+        }
+
         public function schema(): SqlSchema {
             return $this->schema;
         }
@@ -38,6 +51,20 @@ namespace Slate\Sql {
 
         public function getPrimaryKey(): ?SqlColumn {
             return null;
+        }
+
+        public function increments(string $name): SqlColumn {
+            $column = $this->primary($name);
+            $column->increments();
+
+            return $column;
+        }
+
+        public function primary(string $name): SqlColumn {
+            $column = $this->column($name);
+            $column->primary();
+
+            return $column;
         }
 
         public function column(string $name): ?SqlColumn {

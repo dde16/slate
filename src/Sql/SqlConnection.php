@@ -56,11 +56,18 @@ namespace Slate\Sql {
             );
         }
 
-        public function schema(string $name): SqlSchema {
+        public function table(string $schema, string $table, Closure $callback = null): SqlTable {
+            return $this->schema($schema)->table($table, $callback);
+        }
+
+        public function schema(string $name, Closure $callback = null): SqlSchema {
             $schema = &$this->schema[$name];
 
             if($schema === null)
                 $schema = new SqlSchema($this, $name);
+
+            if($callback)
+                $callback($schema);
 
             return $schema;
         }

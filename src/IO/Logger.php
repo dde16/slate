@@ -3,9 +3,9 @@
 namespace Slate\IO {
 
     use Closure;
-    use Slate\Utility\Logger;
+    use Slate\Utility\Log;
 
-    class LoggerFile extends Logger {
+    class Logger extends Log {
         public function __construct(
             string $path,
             array $formatter = [
@@ -15,23 +15,10 @@ namespace Slate\IO {
             array $context = [],
             int $level = Logger::ALL,
             array $streams = [],
-            // Closure $rotate = null
+            string|FileRotator $rotator = null
         ) { 
             $path = \Path::normalise($path);
-            $file = new File($path);
-
-            // if($rotate) {
-
-            //     if($rotate($file)) {
-            //         $index = -1;
-
-            //         while(\Path::exists($freepath = ($path.(++$index))));
-
-            //         $path = $freepath;
-            //     }
-
-            //     $file = new File($path);
-            // }
+            $file = new File($path, rotator: $rotator ?? LoggerRotator::class);
 
             parent::__construct(
                 [$file, ...\Arr::values($streams)],

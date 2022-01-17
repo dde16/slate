@@ -1,15 +1,16 @@
 <?php
 namespace Slate\Http {
     use Slate\IO\File;
+    use Slate\Neat\Attribute\ReadOnly;
 
     class HttpRequestFile extends HttpFile {
-        protected string $httpFileName;
+        protected string $httpBasename;
         protected int    $httpError;
         protected int    $httpSize;
 
         public function __construct(
             string $field,
-            string $filename,
+            string $basename,
             string $path,
             string $mime,
             int    $error,
@@ -17,19 +18,23 @@ namespace Slate\Http {
         ) {
             parent::__construct($field, $path);
 
-            $this->httpFileName = $filename;
+            $this->httpBasename = $basename;
 
             $this->httpMime = $mime;
             $this->httpError = $error;
             $this->httpSize = $size;
         }
 
+        public function getHttpSize(): int {
+            return $this->httpSize;
+        }
+
         public function getHttpError(): int {
             return $this->httpError;
         }
 
-        public function getFileName(): int {
-            return $this->httpFileName;
+        public function getHttpBasename(): string {
+            return $this->httpBasename;
         }
     }
 }

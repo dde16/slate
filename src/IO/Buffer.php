@@ -79,15 +79,18 @@ namespace Slate\IO {
                 $data = ob_get_contents();
             }
 
-            if($flags & Buffer::CLEAN) {
-                ob_end_clean();
-            }
-            else if($flags & Buffer::FLUSH) {
-                ob_end_flush();
+            $ender = null;
+            if($flags & Buffer::FLUSH) {
+                $ender = 'ob_end_flush';
             }
             else {
-                ob_end_clean();
+                $ender = 'ob_end_clean';
             }
+
+            $status = (Closure::fromCallable($ender))();
+
+            if($status === false)
+                throw new Error("Unknown error while calling {$ender}.");
 
             return $data;
         }

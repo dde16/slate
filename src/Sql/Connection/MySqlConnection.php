@@ -80,10 +80,15 @@ namespace Slate\Sql\Connection {
                 if($column["extra"] === "auto_increment") {
                     $column["autoIncrement"] = (@$autoIncrementQuery->first())["auto_increment"];
                 }
+                else if(empty($column["extra"])) {
+                    $column["extra"] = null;
+                }
+
+                $column["nullable"] = $column["nullable"] === "YES";
             }
 
             if($types)
-                throw new Error("Depreciated");
+                throw new Error("Deprecated");
 
             return $map;
         }

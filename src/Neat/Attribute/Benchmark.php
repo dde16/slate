@@ -2,10 +2,7 @@
 
 namespace Slate\Neat\Attribute {
     use Attribute;
-    use ReflectionMethod;
     use Slate\Metalang\MetalangAttribute;
-    use Slate\Utility\Logger;
-    use Slate\Metalang\MetalangDesign;
 
     #[Attribute(Attribute::TARGET_METHOD)]
     class Benchmark extends MetalangAttribute {    

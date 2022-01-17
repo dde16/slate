@@ -146,6 +146,14 @@ namespace Slate\Data {
         protected bool  $lock;
 
         /**
+         * Flag determines whether the collection has 
+         * already been written to ontop of being locked.
+         *
+         * @var boolean
+         */
+        protected bool  $locked;
+
+        /**
          * Whether on a method not being found,
          * try and call the method on each object
          * in the collection. 
@@ -160,6 +168,7 @@ namespace Slate\Data {
 
         public function __construct(array $values = null, int $permissions = Collection::UNRESTRICTED) {
             $this->lock        = false;
+            $this->locked      = false;
             $this->permissions = $permissions;
             $this->items       = [];
             $this->passthru    = false;
@@ -352,10 +361,12 @@ namespace Slate\Data {
                     $merge = true;
                 }
                 else if($this->lock) {
-                    throw new \Error("This Collection has already been written to and is locked.");
-                }
-                else {
-                    $this->lock = true;
+                    if($this->locked) {
+                        throw new \Error("This Collection has already been written to and is locked.");
+                    }
+                    else {
+                        $this->locked = true;
+                    }
                 }
             }
 

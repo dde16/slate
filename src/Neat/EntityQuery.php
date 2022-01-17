@@ -3,6 +3,7 @@
 namespace Slate\Neat {
 
     use Closure;
+    use Generator;
     use RuntimeException;
     use Slate\Data\Iterator\ArrayRecursiveIterator;
     use Slate\Neat\Attribute\OneToAny;
@@ -42,22 +43,21 @@ namespace Slate\Neat {
     
         public function plan(array $plan) {
             $plan = \Arr::associate($plan, null, true);
+
     
             \Arr::mapRecursive(
                 $plan,
                 function(string|int $key, mixed $anon): array {
+                    if((is_object($anon)  && !\Str::startswith($key, "@")) ? $anon instanceof Closure : false) {
+                        $anon = ["@callback" => $anon];
+                    }
+
                     if(\Str::endswith($key, "?")) {
-    
                         $flag = substr($key, -1);
-            
-                        if($anon instanceof Closure)
-                            $anon = [
-                                "@callback" => $anon
-                            ];
-            
+
                         if(!is_array($anon))
                             $anon = [];
-            
+
                         $anon["@flag"] = $flag;
                         $key = substr($key, 0, -1);
                     }
@@ -76,13 +76,12 @@ namespace Slate\Neat {
             
                 $option = \Str::startswith($key, "@");
 
-
-            
-                if(($option || !\Any::isCompound($value) || $value instanceof Closure) && \Arr::all(\Arr::slice($path, 0, -1), fn($segment) => !\Str::startswith($segment, "@"))) {
+                if(($option || !is_array($value)) && \Arr::all(\Arr::slice($path, 0, -1), fn($segment) => !\Str::startswith($segment, "@"))) {
                     $last = $this->root;
     
                     foreach($path as $index => $segment) {
                         $end = ($index === (count($path) - 1));
+
                         if(\Str::startswith($segment, "@") && $end) {
                             $last->option(\Str::removePrefix($segment, "@"), $value);
                         }
@@ -99,15 +98,8 @@ namespace Slate\Neat {
                             $foreignClass = $along->getForeignClass();
 
                             $next = new EntityQuerySubVertex($foreignClass);
-
-                            if($end && $value instanceof Closure) {
-                                $value($next);
-                            }
             
                             $next->along($along);
-            
-                            if($value instanceof Closure)
-                                $value($next);
             
                             $last->children[$segment]  = $next;
                             $last = $next;
@@ -156,6 +148,19 @@ namespace Slate\Neat {
             $hasNext = !\Arr::isEmpty($secondaryChunk);
     
             return [$primaryChunk, $hasNext, $query];
+        }
+
+        public function chunk(int $size): Generator {
+            $page = 0;
+
+            do {
+
+                [$models, $hasNextPage] = $this->page($size, $page);
+
+                if(count($models) > 0)
+                    yield $models;
+
+            } while($hasNextPage);
         }
     
         public function take(int $amount): array {

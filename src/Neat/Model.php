@@ -113,7 +113,7 @@ namespace Slate\Neat {
                             if(is_object($value) ? \Cls::isSubclassInstanceOf($value, Model::class) : false) {
                                 $value = $value->toArray($toKey);
                             }
-                            else if(is_string($value) ? \Cls::exists($value) : false) {
+                            else if(is_string($value) ? class_exists($value) : false) {
                                 $value = \Arr::format(\Cls::getConstants($value), $toKey);
                             }
                             

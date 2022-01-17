@@ -152,7 +152,8 @@ namespace Slate\Neat {
                 }
             }
     
-            $query->limit = null;
+            if(!\Arr::isEmpty($this->children))
+                $query->limit = null;
     
             foreach($this->getRelationshipColumns() as $relationshipColumn) {
                 $query->column($this->conn->wrap($relationshipColumn->getColumnName()));
@@ -173,7 +174,6 @@ namespace Slate\Neat {
             ];
     
             foreach($relationships as [$name, $relationship]) {
-    
                 $query = $relationship->query();
     
                 if(($alongScope = $localDesign->getAttrInstance(Scope::class, $relationship->along->parent->getName())) !== null) {
@@ -248,6 +248,10 @@ namespace Slate\Neat {
             switch($name) {
                 case "orderDirection":
                     $this->{$name} = $value;
+                    break;
+
+                case "callback":
+                    $value($this);
                     break;
                 
                 case "where":

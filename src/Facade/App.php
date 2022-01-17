@@ -6,6 +6,7 @@ namespace Slate\Facade {
 
     class App extends Singleton {
         public const DEFAULT = \Slate\Foundation\App::class;
+        public const MANUAL  = true;
     }
 }
 

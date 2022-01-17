@@ -32,6 +32,13 @@ final class Arr extends CompoundType {
     public const RECURSIVE_BOTTOM_UP = (1<<0);
     public const RECURSIVE_TOP_DOWN = (1<<1);
 
+    public static function continueGenerator(Generator $generator): Generator {
+        while($generator->valid()) {
+            yield $generator->current();
+            $generator->next();
+        }
+    }
+
     public static function fromGenerator(Generator $generator): array {
         $buffer = [ ];
 
@@ -2161,7 +2168,7 @@ final class Arr extends CompoundType {
 
             $array[$newKey] = $newValue;
 
-            if(is_array($newValue))
+            if(is_array($array[$newKey]))
                 \Arr::mapRecursive($array[$newKey], $callback, [...$path, $newKey]);
         }
     }

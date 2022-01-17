@@ -12,6 +12,25 @@ abstract class Math {
     const E_ANTI_CLOCKWISE = -1;
     const E_CLOCKWISE = 1;
 
+    public static function product(array $set) {
+        if(!$set) {
+            return [[]];
+        }
+    
+        $subset = array_shift($set);
+        $cartesianSubset = \Math::product($set);
+    
+        $result = [];
+        foreach ($subset as $value) {
+            foreach ($cartesianSubset as $cartesianValue) {
+                array_unshift($cartesianValue, $value);
+                $result[] = $cartesianValue;
+            }
+        }
+    
+        return $result;
+    }
+
     /**
      * Find the interior angle of a regular polygon.
      * 

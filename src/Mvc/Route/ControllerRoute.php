@@ -83,18 +83,20 @@ namespace Slate\Mvc\Route {
                 },
                 function(Throwable $throwable, Closure $next, Closure $jump) use($controllerHandlers, $controllerDesign, $controllerInstance, $controllerClass) {
                     return \Fnc::chain(
-                        \Arr::map(
-                            $controllerHandlers,
-                            function($handlerName) use($controllerDesign, $controllerInstance, $controllerClass): Closure {
-                                if(($handler = $controllerDesign->getAttrInstance(Handler::class, $handlerName)) === null)
-                                    throw new \Error("Unknown handler '$handlerName' in controller '$controllerClass'.");
-        
-                                return $handler->parent->getClosure($controllerInstance);
+                        [
+                            ...\Arr::values(\Arr::map(
+                                $controllerHandlers,
+                                function($handlerName) use($controllerDesign, $controllerInstance, $controllerClass): Closure {
+                                    if(($handler = $controllerDesign->getAttrInstance(Handler::class, $handlerName)) === null)
+                                        throw new \Error("Unknown handler '$handlerName' in controller '$controllerClass'.");
+            
+                                    return $handler->parent->getClosure($controllerInstance);
+                                }
+                            )),
+                            function(Throwable $throwable): void {
+                                throw $throwable;
                             }
-                        ),
-                        function(Throwable $throwable): void {
-                            throw $throwable;
-                        },
+                        ],
                         [$throwable, $jump]
                     );
                 }

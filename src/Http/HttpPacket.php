@@ -13,9 +13,6 @@ namespace Slate\Http {
         #[ReadOnly]
         protected Collection $cookies;
 
-        /**
-         * @var Collection[]HttpFile
-         */
         #[ReadOnly]
         protected Collection $files;
 

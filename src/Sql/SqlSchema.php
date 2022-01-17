@@ -1,6 +1,8 @@
 <?php
 
 namespace Slate\Sql {
+
+    use Closure;
     use Slate\Facade\DB;
     use Slate\Sql\Condition\SqlCondition;
     use Slate\Sql\Statement\SqlDropStatement;
@@ -69,10 +71,16 @@ namespace Slate\Sql {
             return crc32("{$this->charset}{$this->collation}{$this->path}{$this->comment}");
         }
 
-        public function table(string $table): SqlTable {
-            $sqlTable = &$this->tables[$table];
+        public function table(string $name, Closure $callback = null): SqlTable {
+            $table = &$this->tables[$name];
 
-            return $sqlTable ?? ($sqlTable = (new SqlTable($this, $table)));
+            if($table === null)
+                $table = new SqlTable($this, $name);
+
+            if($callback !== null)
+                $callback($table);
+
+            return $table;
         }
     }
 }

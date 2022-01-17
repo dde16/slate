@@ -88,7 +88,9 @@ abstract class Str extends ScalarType {
 
         [$firstNonZeroIndex] = \Arr::firstEntry($interval, $nonzero);
 
-        $interval = \Arr::slice($interval, $firstNonZeroIndex, $largest);
+        
+
+        $interval = \Arr::slice($interval, $firstNonZeroIndex ?? 0, $largest);
         
         if($skipZeros)
             $interval = \Arr::filter($interval, $nonzero);

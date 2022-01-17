@@ -15,7 +15,7 @@ On joins, to depth limit you can use this method, where the order by is optional
 ROW_NUMBER() OVER (PARTITION BY primarykey ORDER BY `primarykey`)
 ```
 
-This led to a whole load of hacks, which I dont want to get into as they are exhaustive and at time abstract and difficult to explain. 
+This led to a whole load of hacks, which I dont want to get into as they are exhaustive and at times implicate how the DMBS engine works.
 
 ### New System (Manual Joining)
 
@@ -30,7 +30,7 @@ Here, we would
 - Select all table2 rows where the foreign key equals the primary keys from table1
 - Do this using cursors to minimise performance hit
 
-This is miles simpler as, each step in the query is just one select query - meaning no hacks for limiting or order by.
+This is miles simpler, as each step in the query is just one select query - meaning no hacks for limiting or order by.
 
 For multi-relationship queries, optimisations have been made
 - All relationships have their query statements prepared only once.
@@ -45,7 +45,7 @@ However, this is negated when taking into account that in development you will n
 
 ### New System vs Old System
 
-| Feature             | New System   | Old System                    |
+| Metric              | New System   | Old System                    |
 | ------------------- | ------------ | ----------------------------- |
 | Joins               | Manual       | Native                        |
 | Complexity          | Simpler      | Complex + hacks               |
@@ -57,7 +57,7 @@ However, this is negated when taking into account that in development you will n
 
 For testing, I used predefined relationships in my CRM project where each table has ~10k rows (such as Person -> Account).
 
-### compatibility
+### Compatibility
 
 100% compatibility is maintained in
 - Query planning and options
@@ -66,3 +66,9 @@ For testing, I used predefined relationships in my CRM project where each table 
 However, there are things that wont work
 - Cannot print full SQL queries
 - Just-in-time relationships are currently not in effect
+
+### Targets for next release
+
+- Add caching for models with config options for refreshing models
+- Simplification of the SQL library to enable WHERE clause hashing so we can ensure we dont run another query
+- Add JIT relationships

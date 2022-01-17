@@ -24,7 +24,7 @@ namespace Slate\IO {
             $offset = strval($offset);
             $hashcode = \Str::hashcode($offset);
             
-            return $this->has($hashcode) ? \Arr::hasKey(($map = $this->pull($hashcode)), $offset) : false;
+            return $this->has($hashcode) ? \Arr::hasKey($this->pull($hashcode), $offset) : false;
         }
 
         public function offsetUnset($offset): void {
@@ -36,7 +36,12 @@ namespace Slate\IO {
 
                 unset($map[$offset]);
 
-                $this->put($hashcode, $map);
+                if(\Arr::isEmpty($map)) {
+                    $this->remove($hashcode);
+                }
+                else {
+                    $this->put($hashcode, $map);
+                }
             }
         }
 

@@ -59,6 +59,14 @@ namespace Slate\Sql {
             $this->table  = $table;
         }
 
+        public function references(string $foreignSchema, string $foreignTable, string $foreignColumn): static {
+            $this->foreignColumn = $foreignColumn;
+            $this->foreignSchema = $foreignSchema;
+            $this->foreignTable = $foreignTable;
+
+            return $this;
+        }
+
         public function index(string $type = null): SqlIndex {
             $this->index = new SqlIndex($this, "{$this->table->schema()->name()}_{$this->table->name()}_{$this->name}_IDX", $type);
 
@@ -102,12 +110,17 @@ namespace Slate\Sql {
          *
          * @return SqlType
          */
-        public function is(string $datatype): SqlType {
-            $datatype = \Str::lower($datatype);
+        public function is(string|SqlType $datatype): static {
+            if(is_string($datatype)) {
+                $datatype = \Str::lower($datatype);
 
-            $this->type = SqlType::fromString($this, $datatype);
+                $this->type = SqlType::fromString($this, $datatype);
+            }
+            else {
+                $this->type = $datatype;
+            }
 
-            return $this->type;
+            return $this;
         }
 
         /** Foreign Key */

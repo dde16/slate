@@ -21,6 +21,7 @@ namespace Slate\Mvc {
             \Slate\Foundation\Provider\ConfigurationProvider::class,
             \Slate\Foundation\Provider\HandlerProvider::class,
             \Slate\Foundation\Provider\ConnectionProvider::class,
+            \Slate\Foundation\Provider\ShmProvider::class,
             \Slate\Foundation\Provider\QueueProvider::class,
             \Slate\Foundation\Provider\RepositoryProvider::class
         ];
@@ -51,6 +52,7 @@ namespace Slate\Mvc {
         }
 
         public function run(): HttpResponse {
+            ob_start();
             $request = $this->request();
             $response = $this->response();
 
@@ -91,6 +93,8 @@ namespace Slate\Mvc {
             else {
                 throw new HttpException(404, "No route by that path was found.");
             }
+
+            ob_end_flush();
         }
         
     }

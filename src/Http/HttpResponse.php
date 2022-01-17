@@ -3,6 +3,7 @@
 namespace Slate\Http {
 
     use Slate\Data\Collection;
+    use Slate\Exception\HttpException;
     use Slate\IO\StreamWriter;
     use Slate\Http\HttpCode;
     use Slate\Neat\Attribute\Getter;
@@ -114,6 +115,9 @@ namespace Slate\Http {
             );
 
             $this->headers["Server-Timing"] = $timings;
+
+            if(headers_sent())
+                throw new HttpException(102, "Headers were sent prematurely.");
             
             foreach($this->headers as $key => $value) 
                 header("$key: $value", true);

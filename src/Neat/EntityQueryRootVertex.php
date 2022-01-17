@@ -18,7 +18,7 @@ class EntityQueryRootVertex extends EntityQueryVertex {
                 $query = $this->query();
                 $parentModels = $query->get();
             }
-    
+
             return parent::children($parentModels);
         }
     

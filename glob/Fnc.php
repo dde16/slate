@@ -31,7 +31,10 @@ abstract class Fnc {
         $jump = fn(string $to, array $arguments): mixed => \Fnc::graph($closures, $finally, $handler, $arguments, $to);
     
         try {
-            $data = $closure(...[...$arguments, $next, $jump]);
+            $arguments[] = $next;
+            $arguments[] = $jump;
+
+            $data = call_user_func_array($closure, $arguments);
         }
         catch(Throwable $throwable) {
             $data = $handler($throwable, $next, $jump);
@@ -43,18 +46,20 @@ abstract class Fnc {
     /**
      * Chain a set of closures, with the next injected as the last argument.
      *
-     * @param array $closures
+     * @param Closure[] $closures
      * @param Closure $finally
      * @param array $arguments
      *
      * @return mixed
      */
-    public static function chain(array $closures, Closure $finally, array $arguments = []): mixed {
-        $closure = \Arr::first($closures) ?: $finally;
+    public static function chain(array $closures, array $arguments = []): mixed {
+        $closure = \Arr::first($closures);
         $closures = array_slice($closures, 1);
+
+        $arguments[] = fn() => \Fnc::chain($closures, func_get_args());
     
         /** Uses recursion to implement chaining */
-        return $closure(...[...$arguments, fn() => \Fnc::chain($closures, $finally, func_get_args())]);
+        return $closure ? call_user_func_array($closure, \Arr::values($arguments)) : null;
     }
     
     /**

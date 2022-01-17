@@ -13,7 +13,7 @@ namespace Slate\Facade {
                 case "string":
                     $output = $input;
 
-                    if($escape !== null) {
+                    if($escape === null ? !\Arr::isEmpty($escape) : false) {
                         $output = preg_replace_callback(
                             "/(\\\\)*(" . \Arr::join(\Arr::map($escape, Closure::fromCallable('preg_quote')), "|") . ")/",
                             function($matches) use($escape) {
