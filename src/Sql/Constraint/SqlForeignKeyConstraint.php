@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Constraint {
 
@@ -6,25 +6,28 @@ namespace Slate\Sql\Constraint {
     use Slate\Sql\SqlConstraint;
 
 
-    class SqlForeignKeyConstraint extends SqlColumnConstraint {
+    class SqlForeignKeyConstraint extends SqlSingleColumnConstraint {
         public const SYMBOL_SHORTHAND = "FK";
 
         use TSqlReferencesClause;
 
-        public function build(): array {
-            $indexBuild = ($this->buildIndex());
-            $indexFirst = \Arr::slice($indexBuild, 0, 2);
-            $indexLast  = \Arr::slice($indexBuild, 3);
-
+        public function buildSql(): array {
             return [
                 "CONSTRAINT",
-                $this->symbol,
+                $this->getSymbol(),
                 "FOREIGN",
-                ...$indexFirst,
-                \Str::wrapc($this->column, "()"),
-                ...$indexLast,
+                \Str::wrapc($this->table->conn()->wrap($this->getColumn()), "()"),
                 $this->buildReferencesClause()
             ];
+        }
+
+        public function drop(): void {  
+            $this
+                ->table
+                ->conn()
+                ->alterTable($this->table->schema()->name(), $this->table->name())
+                ->dropForeignKey($this->symbol)
+                ->go();
         }
 
         public function fromArray(array $array): void {

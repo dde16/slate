@@ -1,24 +1,30 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Statement {
-    use Slate\Sql\SqlConstruct;
     use Slate\Sql\SqlStatement;
     
     use Slate\Sql\Expression\TSqlColumnsExpression;
 
     use Slate\Sql\Clause\TSqlFromClause;
-    use Slate\Sql\Clause\TSqlWhereClause;
     use Slate\Sql\Clause\TSqlJoinClause;
     use Slate\Sql\Clause\TSqlGroupByWithRollupClause;
     use Slate\Sql\Clause\TSqlOrderByWithRollupClause;
     use Slate\Sql\Clause\TSqlLimitClause;
 
-    use Slate\Facade\DB;
-
-    use Slate\Sql\ISqlResultProvider;
+    use Slate\Sql\Clause\TSqlWhereInlineClause;
+    use Slate\Sql\Condition\SqlBlockCondition;
     use Slate\Sql\SqlModifier;
 
-class SqlSelectStatement extends SqlStatement implements ISqlResultProvider {
+    /** @method void where(Closure $where) */
+    /** @method void where(string $column, $value) */
+    /** @method void where(string $column, string $operator, $value) */
+    /** @method void orWhere(Closure $where) */
+    /** @method void orWhere(string $column, $value) */
+    /** @method void orWhere(string $column, string $operator, $value) */
+    /** @method void andWhere(Closure $where) */
+    /** @method void andWhere(string $column, $value) */
+    /** @method void andWhere(string $column, string $operator, $value) */
+    class SqlSelectStatement extends SqlStatement {
         public const MODIFIERS =
             SqlModifier::ALL
             | SqlModifier::DISTINCT
@@ -37,7 +43,8 @@ class SqlSelectStatement extends SqlStatement implements ISqlResultProvider {
         use TSqlColumnsExpression;
 
         use TSqlFromClause;
-        use TSqlWhereClause;
+        // use TSqlWhereClause;
+        use TSqlWhereInlineClause;
         use TSqlJoinClause;
         use TSqlGroupByWithRollupClause;
         use TSqlOrderByWithRollupClause;
@@ -52,6 +59,12 @@ class SqlSelectStatement extends SqlStatement implements ISqlResultProvider {
         use TSqlSelectStatementFirst;
         use TSqlSelectStatementPluck;
         use TSqlSelectStatementChunk;
+        use TSqlSelectStatementPaginate;
+    
+        public function __construct() {
+            $this->wheres = new SqlBlockCondition(["logical" => "AND"]);
+            $this->refs   = [&$this->wheres->children];
+        }
 
         public function __clone() {
             if($this->wheres !== null)
@@ -59,8 +72,8 @@ class SqlSelectStatement extends SqlStatement implements ISqlResultProvider {
         }
 
     
-        public function build(): array {
-            return [
+        public function buildSql(): array {
+            $build = [
                 "SELECT",
                 ...$this->buildModifiers([
                     SqlModifier::ALL,
@@ -82,6 +95,8 @@ class SqlSelectStatement extends SqlStatement implements ISqlResultProvider {
                 $this->buildOrderByClause(),
                 $this->buildLimitClause()
             ];
+
+            return $build;
         }
 
 

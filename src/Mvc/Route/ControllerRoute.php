@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Mvc\Route {
 
@@ -36,10 +36,17 @@ namespace Slate\Mvc\Route {
             $this->action     = $target[1];
         }
 
+        public function getController(): string {
+            return $this->controller;
+        }
+
+        public function getAction(): string {
+            return $this->action;
+        }
+
         public function go(HttpRequest $request, HttpResponse $response, array $match): mixed {
             $controllerClass = $match["controller"];
             $controllerAction = $match["action"];
-            $request->route = $match["route"];
 
             $controllerInstance = new $controllerClass();
 
@@ -106,12 +113,12 @@ namespace Slate\Mvc\Route {
         public function match(HttpRequest $request, array $patterns = [], bool $bypass = false): array|null {
             if(($result = parent::match($request, $patterns, $bypass)) !== null) {
                 
-                return array_merge(
-                    $result, [
+                return [$result[0], array_merge(
+                    $result[1], [
                         "controller" => $this->controller,
                         "action"     => $this->action
                     ]
-                );
+                )];
             }
 
             return null;

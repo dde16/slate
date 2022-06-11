@@ -1,28 +1,27 @@
-<?php
-
+<?php declare(strict_types = 1);
 abstract class Math {
-    const EXCLUSIVE = 1;
-    const INCLUSIVE = 2;
+    public const EXCLUSIVE = 1;
+    public const INCLUSIVE = 2;
 
-    const ROUND_HALF_DOWN = PHP_ROUND_HALF_DOWN;
-    const ROUND_HALF_EVEN = PHP_ROUND_HALF_EVEN;
-    const ROUND_HALF_ODD = PHP_ROUND_HALF_ODD;
-    const ROUND_HALF_UP = PHP_ROUND_HALF_UP;
+    public const ROUND_HALF_DOWN = PHP_ROUND_HALF_DOWN;
+    public const ROUND_HALF_EVEN = PHP_ROUND_HALF_EVEN;
+    public const ROUND_HALF_ODD  = PHP_ROUND_HALF_ODD;
+    public const ROUND_HALF_UP   = PHP_ROUND_HALF_UP;
 
-    const E_ANTI_CLOCKWISE = -1;
-    const E_CLOCKWISE = 1;
+    public const E_ANTI_CLOCKWISE = -1;
+    public const E_CLOCKWISE      = 1;
 
-    public static function product(array $set) {
-        if(!$set) {
+    public static function product(array $set): array {
+        if(!$set)
             return [[]];
-        }
     
         $subset = array_shift($set);
         $cartesianSubset = \Math::product($set);
     
         $result = [];
-        foreach ($subset as $value) {
-            foreach ($cartesianSubset as $cartesianValue) {
+        
+        foreach($subset as $value) {
+            foreach($cartesianSubset as $cartesianValue) {
                 array_unshift($cartesianValue, $value);
                 $result[] = $cartesianValue;
             }
@@ -354,17 +353,6 @@ abstract class Math {
     }
 
     /**
-     * Change the sign of a number so its positive.
-     * 
-     * @param int|float $number
-     * 
-     * @return int|float
-     */
-    public static function positive(int|float $number): int|float {
-        return (($number < 0) ? ($number * -1) : $number);
-    }
-
-    /**
      * Round down (floor) to using whole numbers.
      * 
      * @param float|int $number
@@ -521,13 +509,15 @@ abstract class Math {
     /**
      * Check if a value overflows boundaries of min/max, if so; wrap it around by how much its exceeds these bounaries.
      *
-     * @param  int|float $minimum
-     * @param  int|float $maximum
      * @param  int|float $value
-     * @return int|float
+     * @param  int|float $array    Min, max vector
+     * @param  int|float $feedback Whether to return a value whether it did have to overflow.
+     * 
+     * @return int|float|array
      */
-    public static function overflow(int|float $value, array $boundary): int|float {
+    public static function overflow(int|float $value, array $boundary, bool $feedback = false): int|float|array {
         list($minimum, $maximum) = $boundary;
+        $overflowed = true;
 
         if($value > $maximum) {
             $value = ($minimum + (\Math::mod($value, $maximum))) - 1;
@@ -535,8 +525,11 @@ abstract class Math {
         else if($value < $minimum) {
             $value = $value > 0 ? (($maximum - $value) + 1) : (($maximum + $value) - 1);
         }
+        else {
+            $overflowed = false;
+        }
 
-        return $value;
+        return $feedback ? [$value, $overflowed] : $value;
     }
 
     public static function equalSet(array $array): bool {
@@ -579,9 +572,6 @@ abstract class Math {
             for($index = 0; $index < count($originalSet); $index++)
                 $comparativeSet[] = $product * ($index + 1);
     
-            debug($originalSet);
-            debug($comparativeSet);
-    
             $deltaSet = \Math::subtractMatrices($originalSet, $comparativeSet);
     
             if(\Math::equalSet($deltaSet)) {
@@ -593,6 +583,9 @@ abstract class Math {
                 if($deltaSet[0] > 0)
                     $expression .= " + " . $deltaSet[0];
     
+                if($deltaSet[0] < 0)
+                    $expression .= " - " . abs($deltaSet[0]);
+
                 return $expression;
             }
     
@@ -601,8 +594,38 @@ abstract class Math {
         return null;
     }
 
-    public static function subtractMatrices(array ...$matrices) {
 
+    public static function droop(array $array, callable $callback) {
+        $floating = 0;
+        $size     = count($array)-1;
+        $last     = &$array[$size];
+    
+        for($index = 0; $index < $size; $index++) {
+            $before = $array[$index];
+            $after  = $callback($before);
+            $delta  = $before - $after;
+    
+            $floating += $delta;
+    
+            $array[$index] = $after;
+        }
+    
+        $last += $floating;
+    
+        return $array;
+    }
+    
+
+    public static function distribute($number, $divisor) {
+        $distribution = $number / $divisor;
+        $decimal      = fmod((float)$distribution, 1.0);
+        $remainder    = $divisor * $decimal;
+        $integer      = (int)$distribution;
+        
+        return [...array_fill(0,  $integer, $divisor), $remainder];
+    }
+
+    public static function subtractMatrices(array ...$matrices) {
         $matrices = \Math::equaliseMatrices(...$matrices);
 
         $deltas = $matrices[0];
@@ -611,6 +634,19 @@ abstract class Math {
         foreach($matrices as $matrix)
             foreach($matrix as $index => $value) 
                 $deltas[$index] -= $value;
+
+        return $deltas;
+    }
+
+    public static function addMatrices(array ...$matrices) {
+        $matrices = \Math::equaliseMatrices(...$matrices);
+
+        $deltas = $matrices[0];
+        $matrices = \Arr::slice($matrices, 1);
+
+        foreach($matrices as $matrix)
+            foreach($matrix as $index => $value) 
+                $deltas[$index] += $value;
 
         return $deltas;
     }

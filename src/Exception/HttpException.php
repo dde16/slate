@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Exception {
     use Slate\Http\HttpCode;

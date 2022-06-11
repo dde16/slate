@@ -1,90 +1,33 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Foundation\Console {
 
-    use Attribute;
-    use ReflectionMethod;
+    use RuntimeException;
     use Slate\Data\Table;
-    use Slate\Metalang\MetalangClassConstructAttributable;
-    use Slate\Metalang\MetalangAttribute;
-    use Slate\Metalang\MetalangDesign;
+    use Slate\Foundation\Console;
 
-#[Attribute(Attribute::TARGET_METHOD)]
-    class Command extends MetalangAttribute {
-        protected ?string $name;
-        protected array $arguments;
+    class Command {
+        public const NAME = NULL;
+        public const ARGUMENTS = [];
 
-        protected MetalangDesign $design;
-    
-        public function __construct(string $name = null) {
-            $this->name = $name;
-            $this->arguments  = [];
-        }
-    
-        public function getKeys(): string|array {
-            return $this->getName();;
-        }
-    
-        public function getName(): string {
-            return $this->name ?: $this->parent->getName();
-        }
-    
-        public function getArgument(string|int $key): CommandArgument|null {
-            return is_string($key)
-                ? \Arr::first(
-                    $this->arguments,
-                    fn($argument) => \Arr::contains($argument->getNames(), $key)
-                )
-                : $this->arguments[$key];
-        }
-    
-        public function getArguments(): array {
-            return $this->arguments;
-        }
-    
-        public function getHelp(string $basename): string {
-            $help = <<<STR
-Usage: {} [OPTIONS] {} [ARGS]...
+        private ?ArgumentParser $parser = null;
 
-Arguments:
-{}
-STR;
-            $argumentsTable = new Table(["name", "length", "description"]);
+        public array $options = [];
 
-            foreach($this->arguments as $argument) {
-                $argumentsTable->rows[] = [
-                    \Arr::join($argument->getNames(), "/"),
-                    $argument->getNargs(),
-                    $argument->getHelp()
-                ];
-            }
+        public Console $app;
 
-            return \Str::format(
-                $help,
-                $basename, $this->name,
-                $argumentsTable->toTableString(delimitRows: false, delimitColumns: false, padsize: ["left" => 0, "right" => 2])
-            )."\n";
+        public function __construct(Console $app) {
+            if (static::NAME === NULL)
+                throw new RuntimeException("Command " . static::class . " doesn't have a name.");
+
+            $this->app = $app;
         }
-    
-        public function consume($construct): void {
-            parent::consume($construct);
-    
-            $this->arguments = \Arr::filter(\Arr::map(
-                $this->parent->getParameters(),
-                function($parameter)  {
-                    $parameter = new MetalangClassConstructAttributable(
-                        $this->parent,
-                        $parameter
-                    );
-    
-                    if(($argument = @$parameter->getAttributes(CommandArgument::class)[0]) !== null) {
-                        
-                        return $argument->newInstance()[1];
-                    }
-    
-                    return null;
-                }
-            ));
+
+        public function getParser(): ArgumentParser {
+            if ($this->parser === null)
+                $this->parser = ArgumentParser::fromArray(static::ARGUMENTS);
+
+            return $this->parser;
         }
     }
 }

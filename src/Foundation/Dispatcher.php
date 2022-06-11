@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Foundation {
 
@@ -6,8 +6,6 @@ namespace Slate\Foundation {
     use RuntimeException;
     use Slate\Data\Structure\IQueue;
     use Slate\Facade\App;
-    use Slate\IO\SysvSharedMemoryQueue;
-    use Slate\IO\SysvSharedMemoryTableQueue;
 
     class Dispatcher {
         /**
@@ -37,7 +35,7 @@ namespace Slate\Foundation {
             $this->queue = $queue;
         }
 
-        public function on(string $event, Closure ...$closures): static {
+        public function on(string|int $event, Closure ...$closures): static {
             if(!\Arr::hasKey($this->listeners, $event))
                 $this->listeners[$event] = [];
 
@@ -47,7 +45,7 @@ namespace Slate\Foundation {
             return $this;
         }
 
-        public function define(string $event, Closure ...$closures): static {
+        public function define(string|int $event, Closure ...$closures): static {
             return $this->on($event, ...$closures);
         }
 
@@ -56,7 +54,7 @@ namespace Slate\Foundation {
          *
          * @return void
          */
-        public function emit(string $event, array $arguments = []): void{
+        public function emit(string|int $event, array $arguments = []): void{
             \Fnc::chain(@$this->listeners[$event] ?? [], $arguments);
         }
 
@@ -68,7 +66,7 @@ namespace Slate\Foundation {
          *
          * @return void
          */
-        public function dispatch(string $event, array $arguments = []): void {
+        public function dispatch(string|int $event, array $arguments = []): void {
             if($this->queue === null)
                 throw new RuntimeException("Unable to dispatch events to an undefined queue.");
 
@@ -103,7 +101,7 @@ namespace Slate\Foundation {
                 }
             }
             else if(class_exists(\React\EventLoop\Loop::class)) {
-                \React\EventLoop\Loop::addPeriodicTimer($timeout, function() use($queue) {
+                \React\EventLoop\Loop::addPeriodicTimer($timeout, function() use($queue): void {
                     $this->listener($queue);
                 });
             }

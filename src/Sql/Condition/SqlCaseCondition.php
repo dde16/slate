@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Condition {
     use Slate\Facade\DB;
@@ -8,7 +8,6 @@ namespace Slate\Sql\Condition {
         protected mixed $else = null;
 
         public function __construct(array $whens = [], mixed $else = null) {
-
             foreach($whens as $condition => $then)  {
                 $this->when(DB::raw($condition))->then($then);
             }
@@ -16,13 +15,16 @@ namespace Slate\Sql\Condition {
             $this->else($else);
         }
 
-        public function when() {
-            $this->conditions[] = [$this->_condition(func_get_args()), ($then = (new SqlCaseWhen($this)))];
+        public function when(): SqlCaseWhen {
+            $this->conditions[] = [
+                $this->_condition(func_get_args()),
+                ($then = (new SqlCaseWhen($this)))
+            ];
 
             return $then;
         }
 
-        public function else(mixed $value) {
+        public function else(mixed $value): static {
             $this->else = $value;
 
             return $this;

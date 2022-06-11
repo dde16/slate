@@ -1,6 +1,6 @@
 <?php
 
-class Boolean extends ScalarType implements Slate\Data\ISizeStaticallyAttainable {
+class Boolean extends ScalarType implements Slate\Data\Contract\ISizeStaticallyAttainable {
     const NAMES            = ["bool", "boolean"];
     const VALIDATOR        = "is_bool";
     const CONVERTER        = "boolval";

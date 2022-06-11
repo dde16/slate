@@ -4,6 +4,10 @@ final class Obj extends CompoundType {
     const NAMES            = ["object"];
     const VALIDATOR        = "is_object";
 
+    public static function isCallable(object $obj): bool {
+        return is_callable($obj) && static::hasPublicMethod($obj, "__invoke");
+    }
+
     public static function map(object $object, Closure $callback): object {
         foreach(get_object_vars($object) as $key => $value) {
             $object->{$key} = $callback($value, $key);

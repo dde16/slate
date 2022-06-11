@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Type {
     use Slate\Sql\Clause\TSqlCharacterSetClause;
@@ -26,11 +26,8 @@ namespace Slate\Sql\Type {
             }
 
             if($this->charLength !== null && $this->octetLength !== null) {
-
                 $this->bytesPerChar = (int)($this->octetLength / $this->charLength);
             }
-
-
 
             $this->default = $array["default"];
         }
@@ -70,19 +67,13 @@ namespace Slate\Sql\Type {
 
         public function toSqlValue(mixed $value): string {
             if(\Any::isCompound($value)) {
-                if(($value = json_encode($value)) === false) {
-                    throw new \Error("Unable to json encode array/object.");
-                }
+                $value = \Json::tryEncode($value);
             }
 
-            if(is_string($value)) {
-                if((mb_strlen($value, "utf-8") * $this->bytesPerChar) > ($this->octetLength)) {
-                    throw new \Error("Unable to convert string to sql value as it exceeds the maximum length.");
-                }
-            }
-            else {
-                $value = \Str::val($value);
-            }
+            if(is_string($value) ? (mb_strlen($value, "utf-8") * $this->bytesPerChar) > ($this->octetLength) : false)
+                throw new \Error("Unable to convert string to sql value as it exceeds the maximum length.");
+
+            $value = \Str::val($value);
 
             return $value;
         }
@@ -103,7 +94,7 @@ namespace Slate\Sql\Type {
             return $this->bytesPerChar;
         }
 
-        public function build(): array {
+        public function buildSql(): array {
             return [
                 $this->datatype . ($this->charLength !== null ? "({$this->charLength})" : ""),
             ];

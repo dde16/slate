@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Statement {
     use Slate\Sql\SqlStatement;
@@ -20,7 +20,7 @@ namespace Slate\Sql\Statement {
             return $this;
         }
 
-        public function build(): array {
+        public function buildSql(): array {
             return [
                 "LOCK TABLES",
                 \Arr::join(

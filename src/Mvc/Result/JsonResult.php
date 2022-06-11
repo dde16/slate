@@ -1,7 +1,7 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Mvc\Result {
-    use Slate\Data\IArrayForwardConvertable;
+    use Slate\Data\Contract\IArrayForwardConvertable;
 
     class JsonResult extends DataResult {
         protected array|object $data;

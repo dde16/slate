@@ -32,6 +32,110 @@ final class Arr extends CompoundType {
     public const RECURSIVE_BOTTOM_UP = (1<<0);
     public const RECURSIVE_TOP_DOWN = (1<<1);
 
+    /**
+     * Remove a value from an array.
+     *
+     * @param array $array
+     * @param mixed $element
+     * @param boolean $strict
+     *
+     * @return void
+     */
+    public static function remove(array &$array, mixed $element, bool $strict = false): void {
+        $key = array_search($element, $array, $strict);
+
+        unset($array[$key]);
+    }
+
+    /**
+     * Map an array's keys by reference.
+     *
+     * @param array $array
+     * @param Closure $callback
+     *
+     * @return void
+     */
+    public static function mapKeys(array &$array, Closure $callback): void {
+        foreach($array as $fromKey => $value) {
+            $toKey = $callback($value, $fromKey);
+
+            unset($array[$fromKey]);
+
+            $array[$toKey] = $value;
+        }
+    }
+
+    /**
+     * Map an array's values by reference.
+     *
+     * @param array $array
+     * @param Closure $callback
+     *
+     * @return void
+     */
+    public static function mapValues(array &$array, Closure $callback): void {
+        foreach($array as $key => $value) {
+            $array[$key] = $callback($value, $key);
+        }
+    }
+
+    public static function fromAdjacencyList(
+        array $values,
+        array $adjacencyList
+    ) {
+        $adjacencyList = new \Slate\Data\Structure\AdjacencyList($adjacencyList);
+
+        $rootKeys = \Arr::reverse($adjacencyList->getRootKeys());
+    
+        $root = [];
+        $refs = [&$root];
+        $stack = new SplStack();
+        $continue = true;
+    
+        while($continue) {
+            if($stack->isEmpty() && !\Arr::isEmpty($rootKeys)) {
+                $stack->push(null);
+                $stack->push(array_pop($rootKeys));
+            }
+    
+            if($continue = !$stack->isEmpty()) {
+                $ref = &$refs[array_key_last($refs)];
+                $parentKey = $stack->pop();
+    
+                if ($parentKey !== null) {
+    
+                    $childKeys = \Arr::always($adjacencyList[$parentKey] ?? []);
+    
+                    if(!\Arr::isEmpty($childKeys)) {
+                        foreach($childKeys as $childKey) {
+                            $stack->push(null);
+                            $stack->push($childKey);
+                        }
+                    }
+    
+                    $ref[$parentKey] = $values[$parentKey];
+                    $refs[] = &$ref[$parentKey];
+                }
+                else {
+                    array_pop($refs);
+                }
+            }
+        } 
+    
+        return $root;
+    }
+
+    public static function andList(array $array, string $delimiter = ", "): string {
+        return !empty($array) ? (implode($delimiter, array_slice($array, 0, -1)) . (count($array) > 1 ? " and " : "") . \Arr::last($array)) : null;
+    }
+
+    /**
+     * Get the remaining values of a generator as a new generator.
+     *
+     * @param Generator $generator
+     *
+     * @return Generator
+     */
     public static function continueGenerator(Generator $generator): Generator {
         while($generator->valid()) {
             yield $generator->current();
@@ -39,13 +143,18 @@ final class Arr extends CompoundType {
         }
     }
 
+    /**
+     * Convert a generator to an array.
+     *
+     * @param Generator $generator
+     *
+     * @return array
+     */
     public static function fromGenerator(Generator $generator): array {
         $buffer = [ ];
 
-        while($generator->valid()) {
-            $buffer[] = $generator->current();
-            $generator->next();
-        }
+        foreach(\Arr::continueGenerator($generator) as $value)
+            $buffer[] = $value;
 
         return $buffer;
     }
@@ -100,37 +209,6 @@ final class Arr extends CompoundType {
 
                     return [$toKey, $value];
                 }
-            }
-        );
-    }
-
-    /**
-     * Convert from an aggregated list to an associative array.
-     * For example:
-     * "key.0"   => "x"
-     * "value.0" => "y"
-     * 
-     * Equates to
-     * ["x" => "y"]
-     * 
-     * @param string $keyPrefix
-     * @param string $valuePrefix
-     * 
-     * @return array
-     */
-    public static function fromList (array|ArrayAccess $array, string $keyPrefix, string $valuePrefix): array {
-        return \Arr::mapAssoc(
-            \Arr::filter(
-                $array,
-                function($key) use($keyPrefix) {
-                    return \Str::startswith($key, $keyPrefix);
-                },
-                \Arr::FILTER_KEY
-            ),
-            function($key) use($array, $keyPrefix, $valuePrefix) {
-                return [$array[$key], $array[
-                    $valuePrefix.\Str::afterFirst($key, $keyPrefix)
-                ]];
             }
         );
     }
@@ -233,23 +311,6 @@ final class Arr extends CompoundType {
     }
 
     /**
-     * Get all values that are above a certain threshold.
-     * 
-     * @param array $array
-     * @param int|float $threshold
-     * 
-     * @return array
-     */
-    public static function threshold (array|ArrayAccess $array, int|float $threshold): array {
-        return \Arr::filter(
-            $array,
-            function($value) use($threshold){ 
-                return $value >= $threshold;
-            }
-        );
-    }
-
-    /**
      * Get the total depth of an array.
      * 
      * @param array $array
@@ -293,26 +354,6 @@ final class Arr extends CompoundType {
     }
 
     /**
-     * Checks if a given array starts with another.
-     * 
-     * @param array $array
-     * @param array $start
-     * @return bool
-     */
-    public static function startswith (array|ArrayAccess $array, array $start): bool {
-        $slice = \Arr::slice($array, 0, count($start));
-
-        return $slice == $start;
-    }
-
-    /**
-     * Alias of array_intersect_assoc
-     */
-    public static function intersectAssoc (array|ArrayAccess $array, array ...$arrays): array {
-        return array_intersect_assoc($array, ...$arrays);
-    }
-
-    /**
      * Checks whether all of the array's elements matches a given condition callback.
      * 
      * @param array    $array
@@ -340,8 +381,7 @@ final class Arr extends CompoundType {
      * @return bool
      */
     public static function any($array, Closure $callback = null): bool {
-        if ($callback === NULL)
-            $callback = function ($value) { return($value == true); };
+        $callback ??= fn(mixed $value): bool => $value == true;
 
         $any = false;
 
@@ -371,20 +411,15 @@ final class Arr extends CompoundType {
      * @return bool
      */
     public static function isAccessible(mixed $any): bool {
-        if(is_object($any)) { $any = get_class($any); }
-        if(is_array($any))  { return true; }
+        if(is_object($any))
+            $any = get_class($any);
         
-        if(is_string($any)) {
-            if(class_exists($any)) {
-                return \Cls::hasInterface($any, ArrayAccess::class);
-            }
-        }
-        // else {
-        //     throw new \InvalidArgumentException(
-        //         "Value passed to is_array_accessible is not a class name or an object."
-        //     );
-        // }
+        if(is_array($any))
+            return true;
         
+        if(is_string($any) ? class_exists($any) : false)
+            return $any instanceof ArrayAccess;
+
         return false;
     }
 
@@ -514,7 +549,7 @@ final class Arr extends CompoundType {
 
         foreach($array as $key => &$value) {
             $path[] = $key;
-            $strpath .= \Arr::join($path, ".");
+            $strpath = \Arr::join($path, ".");
 
             if(is_array($value)) {
                 if($flags & \Arr::DOTS_EVAL_ARRAY) {
@@ -580,15 +615,6 @@ final class Arr extends CompoundType {
     }
 
     /**
-     * On missing keys, call the callback provided.
-     */
-    public static function missing (array|ArrayAccess $array, array $keys, \Closure $callback): array {
-        foreach($keys as $key) if(!\Arr::hasKey($array, $key)) $array[$key] = $callback($key);
-
-        return $array;
-    }
-
-    /**
      * Find the key of a value in a given array.
      * 
      * @see array_search
@@ -601,24 +627,6 @@ final class Arr extends CompoundType {
      */
     public static function find (array|ArrayAccess $array, $value, bool $strict = FALSE): string|int|bool {
         return array_search($value, $array, $strict);
-    }
-
-    /**
-     * Find the keys of a value in a given array.
-     * 
-     * @param array           $array
-     * 
-     * @return string|int
-     */
-    public static function findAll($array, mixed $search, bool $strict = FALSE): array {
-        $entries = [];
-
-        foreach($array as $key => $value) {
-            if($strict ? ($value === $search) : ($value == $search))
-                $entries[] = $key;
-        }
-
-        return $entries;
     }
 
     /**
@@ -673,7 +681,7 @@ final class Arr extends CompoundType {
     public static function firstEntry(array|ArrayAccess|Traversable $array, Closure $filter = null): array|null {
         if($filter === NULL && !(is_object($array) ? \Cls::implements($array, Traversable::class) : false)) {
             $firstKey = array_key_first($array);
-            $firstValue = $array[$firstKey];
+            $firstValue = &$array[$firstKey];
         }
         else {
             foreach($array as $key => $value) {
@@ -696,7 +704,7 @@ final class Arr extends CompoundType {
      * 
      * @return mixed
      */
-    public static function first (array|ArrayAccess|Traversable $array, Closure $filter = null): mixed {
+    public static function &first (array|ArrayAccess|Traversable $array, Closure $filter = null): mixed {
         return ($entry = \Arr::firstEntry($array, $filter)) !== null ? $entry[1] : null;
     }
 
@@ -724,43 +732,6 @@ final class Arr extends CompoundType {
      */
     public static function padRight (array|ArrayAccess $array, $value, int $length): array { 
         return array_pad($array, $length, $value);
-    }
-
-    /**
-     * Repeat a given value an N number of times.
-     * 
-     * @param mixed $value
-     * @param int   $length
-     * 
-     * @return array
-     */
-    public static function repeat($value, int $length): array {
-        return array_fill(0, $length, $value);
-    }
-
-    /**
-     * Alias of 'range'
-     * 
-     * @param int|float $start
-     * @param int|float $end
-     * @param int|float $step
-     * 
-     * @return array
-     */
-    public static function arange(int|float $start, int|float $end, int|float $step = 1): array {
-        return range($start, $end, $step);
-    }
-
-    /**
-     * Alias of 'range' with no step option.
-     * 
-     * @param int|float $start
-     * @param int|float $end
-     * 
-     * @return array
-     */
-    public static function range(int $start, int $end): array {
-        return range($start, $end, 1);
     }
 
     /**
@@ -840,46 +811,7 @@ final class Arr extends CompoundType {
 
         return $fallback;
     }
-
  
-    /**
-     * Get the given offsets from an array and pass as arguments into the callback.
-     *
-     * @param  mixed $array
-     * @param  mixed $offsets
-     * @param  mixed $callback
-     * @param  mixed $options
-     * 
-     * @return array|null
-     */
-    public static function use (array|ArrayAccess $array, string|array $offsets, callable $callback = null, array $options = []): array|null {
-        if(is_string($offsets)) {
-            $offsets = [$offsets];
-        }
-
-        if(\Arr::isEmpty($offsets)) {
-            $offsets = \Arr::keys($array);
-        }
-
-        $offsets = \Arr::mapAssoc(
-            $offsets,
-            function($offset, $value) use(&$array, &$options) {
-                return [$value, \Arr::get($array, $value, $options)];
-            }
-        );
-
-        if(is_callable($callback)) {
-            \Fnc::call(
-                $callback,
-                \Arr::values($offsets)
-            );
-        }
-        else {
-            return $offsets;
-        }
-
-        return null;
-    }
 
     public static function getMultiSource (array|ArrayAccess $arrays, string $key, array $options = []): mixed {
         $important = @$options["important"];
@@ -1009,19 +941,6 @@ final class Arr extends CompoundType {
         }
     }
 
-
-    /**
-     * Get the middle value in a given array.
-     * 
-     * @param array $array
-     * @param int   $round  What method of rounding to find the middle index.
-     * 
-     * @return mixed
-     */
-    public static function centre (array|ArrayAccess $array, int $round = \Math::ROUND_HALF_UP): mixed {
-        return $array[\Arr::middle($array, $round)];
-    }
-
     /**
      * Alias of 'array_slice'
      * 
@@ -1048,7 +967,7 @@ final class Arr extends CompoundType {
     public static function lastEntry($array, Closure $filter = null): ?array {
         if($filter === NULL) {
             $lastKey = array_key_last($array);
-            $lastValue = $array[$lastKey];
+            $lastValue = &$array[$lastKey];
         }
         else {
             foreach($array as $key => $value) {
@@ -1058,8 +977,6 @@ final class Arr extends CompoundType {
                 }
             }
         }
-
-
 
         return $lastKey !== null ? [$lastKey, $lastValue] : null;
     }
@@ -1084,7 +1001,7 @@ final class Arr extends CompoundType {
      * 
      * @return mixed
      */
-    public static function last (array|ArrayAccess $array, Closure|string $filter = null): mixed {
+    public static function &last (array|ArrayAccess $array, Closure|string $filter = null): mixed {
         return ($entry = \Arr::lastEntry($array, $filter)) !== null ? $entry[1] : null;
     }
 
@@ -1259,26 +1176,6 @@ final class Arr extends CompoundType {
 
         return $value;
     }
-
-    /**
-     * Move the slice of one array to another position.
-     * 
-     * @param array $array
-     * @param int   $from
-     * @param int   $to
-     * 
-     * @return array
-     */
-    public static function move (array|ArrayAccess $array, int $from, int $to): array {
-        $element = $array[$from];
-
-        $array = \Arr::splice($array, $from, $to - 1);
-        $start = \Arr::slice($array, $from, $to);
-        $start[] = $element;
-        $end = \Arr::slice($array, $to);
-
-        return \Arr::merge($start, $end);
-    }
     
     /**
      * Alias of 'array_pop'
@@ -1305,7 +1202,7 @@ final class Arr extends CompoundType {
      * 
      * @return array
      */
-    public static function cluster (array|ArrayAccess $array, Closure $callback, bool $preserve = true): array {
+    public static function groupBy(array|ArrayAccess $array, Closure $callback, bool $preserve = true): array {
         $clusters = [];
         $pkey = 0;
 
@@ -1388,37 +1285,12 @@ final class Arr extends CompoundType {
         );
     }
 
-    /**
-     * An extended version of 'array_column' which, upon a null key, will append normally.
-     * 
-     * @param array $entries
-     * @param int   $indexKey
-     * @param int   $valueKey
-     * 
-     * @return array
-     */
-    public static function column (array|ArrayAccess $entries, int $indexKey, int $valueKey): array {
-        $counter = 0;
-        $array = [];
-
-        foreach($entries as $entry) {
-            $index  = $entry[$indexKey];
-            $value  = $entry[$valueKey];
-
-            if($index === null)
-                $index = $counter++;
-
-            $array[$index] = $value;
-        }
-
-        return $array;
-    }
 
     /**
      * Alias of 'array_map' with reordered parameters.
      * 
      * @param array    ...$arrays
-     * @param Closure $callback
+     * @param Closure|int|string $callback
      */
     public static function map(): array {
         $arguments = \func_get_args();
@@ -1448,29 +1320,6 @@ final class Arr extends CompoundType {
      */
     public static function flip (array|ArrayAccess $array): array {
         return array_flip($array);
-    }
-
-    /**
-     * Get the median of an array.
-     * 
-     * @param array $array
-     * 
-     * @return mixed
-     * 
-     * TODO: remove
-     */
-    public static function median (array|ArrayAccess $array): mixed {
-        $array = \Arr::sort($array);
-        $middle = \Arr::centre($array);
-
-        return $middle;
-    }
-
-    /**
-     * Alias of array_count_values
-     */
-    public static function tally(array|ArrayAccess $array) {
-        return array_count_values($array);
     }
 
     /**
@@ -1540,12 +1389,13 @@ final class Arr extends CompoundType {
         return (array_sum($array) / count($array));
     }
 
-    public static function maxEntry(array|ArrayAccess $array, Closure $callback) {
+    public static function maxEntry(array|ArrayAccess $array, Closure $callback = null): array {
         $maxIndex = null;
         $maxValue = 0;
 
+
         foreach($array as $index => $anon) {
-            $value = $callback($anon);
+            $value = $callback ? $callback($anon) : $anon;
 
             if($value > $maxValue) {
                 $maxIndex = $index;
@@ -1640,40 +1490,30 @@ final class Arr extends CompoundType {
      * 
      * @return array
      */
-    public static function propogateColumn (array|ArrayAccess $array, int $keyIndex, int $valueIndex): array {
-        $assoc = [];
+    public static function column (array|ArrayAccess $entries, int|string $keyIndex = 0, int|string $valueIndex = 1, bool $append = false, bool $propogate = false, bool $singularise = false): array {
+        $counter = 0;
+        $array = [];
 
-        foreach($array as $entry) {
-            list($key, $value) = $entry;
+        foreach($entries as $entry) {
+            $key = $entry[$keyIndex];
+            $value = $entry[$valueIndex];
 
-            if(!(is_string($key) || is_int($key)))
+            if($key === null && $append)
+                $key = $counter++;
+
+            if(!is_int($key) && !is_string($key)) {
                 throw new \Error("Keys must be integers or strings.");
+            }
 
-            $assoc[$key][] = $value;
+            if($propogate)
+                $array[$key][] = $value;
+            else
+                $array[$key] = $value;
         }
 
-        return \Arr::map($assoc, function($value) {
+        return $propogate && $singularise ? \Arr::map($array, function($value) {
             return count($value) > 1 ? $value : $value[0];
-        });
-    }
-
-
-    /**
-     * Remove the keys of an array and order it.
-     * 
-     * @param array $array
-     * @param array $order The keys to order by.
-     * 
-     * @return array
-     */
-    public static function unkey (array|ArrayAccess $array, array $order): array {
-        $output = [];
-
-        foreach($order as $key) {
-            $output[] = $array[$key];
-        }
-
-        return $output;
+        }) : $array;
     }
 
 
@@ -1823,7 +1663,7 @@ final class Arr extends CompoundType {
      * 
      * @return array
      */
-    public static function every (array|ArrayAccess $array, int $interval): array {
+    public static function every(array|ArrayAccess $array, int $interval, bool $remaining = false): array {
         $nth = [];
         $rest = [];
         $index = 0;
@@ -1843,7 +1683,7 @@ final class Arr extends CompoundType {
             }
         }
 
-        return $nth;
+        return $remaining ? [$nth, $rest] : $nth;
     }
 
     /**
@@ -1855,7 +1695,7 @@ final class Arr extends CompoundType {
      * 
      * @return array
      */
-    public static function nmap($array, int|\Closure $interval, \Closure $callback): array {
+    public static function nthMap($array, int|\Closure $interval, \Closure $callback): array {
         if($interval instanceof \Closure)
             $interval = $interval();
 
@@ -1869,22 +1709,6 @@ final class Arr extends CompoundType {
         }
 
         return $array;
-    }
-
-    /**
-     * Get the types within a given array.
-     * 
-     * @param array $array
-     * @param array $arguments
-     * 
-     * @return array
-     */
-    public static function getTypes (array|ArrayAccess $array, array $arguments = []): array {
-        return \Arr::map(
-            $array, function($value) use(&$arguments) {
-                return \Fnc::call([\Any::class, "getType"], \Arr::merge([$value], $arguments));
-            }
-        );
     }
 
     /**
@@ -1952,6 +1776,19 @@ final class Arr extends CompoundType {
         return array_reverse($array, $preserve);
     }
 
+    public static function delimit(array|ArrayAccess $array, mixed $glue): array {
+        $intermediate = [];
+
+        foreach($array as $value) {
+            $intermediate[] = $value;
+            $intermediate[] = $glue;
+        }
+
+        unset($intermediate[array_key_last($intermediate)]);
+
+        return $intermediate;
+    }
+
     /**
      * Alias of 'implode'
      * 
@@ -1965,18 +1802,17 @@ final class Arr extends CompoundType {
     public static function join (array|ArrayAccess $array, string $glue = ""): string {
         return implode(
             $glue,
-            \Arr::values(\Arr::filter(
-                $array,
-                function($value) {
-                    return $value !== NULL;
-                }
-            ))
+            \Arr::values(
+                \Arr::filter(
+                    $array,
+                    fn(mixed $value): bool => $value !== NULL
+                )
+            )
         );
     }
 
     /**
-     * Gives all possible chunks of a given within an an array which
-     * overlap.
+     * Gives all possible chunks of a given within an an array which overlap.
      * 
      * @param array $array
      * @param int   $chunk
@@ -2059,21 +1895,19 @@ final class Arr extends CompoundType {
      * 
      * @return array
      */
-    public static function lead (array|ArrayAccess|\Generator $array, bool $generator = false): \Generator|array {
-        $groups = \Arr::leadGenerator($array);
-
-        
+    public static function lead (array|ArrayAccess|\Generator $array, bool $generator = false, bool $reference = false): \Generator|array {
+        $groups = \Arr::leadGenerator($array, $reference);
 
         return !$generator ? iterator_to_array($groups) : $groups;
     }
 
-    public static function leadGenerator (array|ArrayAccess|Generator $array): \Generator {
+    public static function leadGenerator (array|ArrayAccess|Generator $array, bool $reference = false): \Generator {
         $arraySize = \Arr::count($array);
 
         $lastIndex = 0;
 
         for($currentIndex = 1; $currentIndex < $arraySize; $currentIndex++) {
-            yield [$array[$lastIndex], $array[$currentIndex]];
+            yield $reference ? [&$array[$lastIndex], &$array[$currentIndex]] : [$array[$lastIndex], $array[$currentIndex]];
 
             $lastIndex = $currentIndex;
         }

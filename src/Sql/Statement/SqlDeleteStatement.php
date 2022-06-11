@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Statement {
     use Slate\Sql\SqlConstruct;
@@ -13,9 +13,7 @@ namespace Slate\Sql\Statement {
     use Slate\Sql\Clause\TSqlOrderByClause;
     use Slate\Sql\Clause\TSqlLimitClause;
 
-    use Slate\Facade\DB;
     use Slate\Facade\App;
-    use Slate\Sql\ISqlResultProvider;
     use Slate\Sql\SqlModifier;
 
     class SqlDeleteStatement extends SqlStatement  {
@@ -30,7 +28,7 @@ namespace Slate\Sql\Statement {
             | SqlModifier::IGNORE
         ;
     
-        public function build(): array {
+        public function buildSql(): array {
             return [
                 "DELETE",
                 ...$this->buildModifiers([
@@ -46,9 +44,7 @@ namespace Slate\Sql\Statement {
         }
 
         public function go(): bool  {
-            $conn = App::conn($this->conn);
-
-            return $conn->prepare($this->toString())->execute();
+            return $this->conn->prepare($this->toSql())->execute();
         }
     }
 }

@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Exception {
 
@@ -6,37 +6,45 @@ use SplFileInfo;
     use Throwable;
 
 class IOException extends SlateException {
-        public const ERROR_DIR_NOT_FOUND     = (1<<0);
-        public const ERROR_FILE_NOT_FOUND    = (1<<1);
-        public const ERROR_PATH_NOT_FOUND    = 
+        public const ERROR_DIR_NOT_FOUND      = (1<<0);
+        public const ERROR_FILE_NOT_FOUND     = (1<<1);
+        public const ERROR_PATH_NOT_FOUND     = 
             IOException::ERROR_DIR_NOT_FOUND
             | IOException::ERROR_FILE_NOT_FOUND;
         
-        public const ERROR_DIR_OPEN_FAILURE  = (1<<2);
-        public const ERROR_FILE_OPEN_FAILURE = (1<<3);
-        public const ERROR_PATH_OPEN_FAILURE = 
+        public const ERROR_DIR_OPEN_FAILURE   = (1<<2);
+        public const ERROR_FILE_OPEN_FAILURE  = (1<<3);
+        public const ERROR_PATH_OPEN_FAILURE  = 
             IOException::ERROR_DIR_OPEN_FAILURE
             | IOException::ERROR_FILE_OPEN_FAILURE;
 
-        public const ERROR_FILE_IS_DIR_MISMATCH = (1<<4);
-        public const ERROR_DIR_IS_FILE_MISMATCH = (1<<5);
+        public const ERROR_FILE_IS_DIR_MISMATCH  = (1<<4);
+        public const ERROR_DIR_IS_FILE_MISMATCH  = (1<<5);
 
-        public const ERROR_UNRESOLVABLE_PATH    = (1<<6);
-        public const ERROR_UNSAFE_PATH          = (1<<7);
+        public const ERROR_UNRESOLVABLE_PATH     = (1<<6);
+        public const ERROR_UNSAFE_PATH           = (1<<7);
 
-        public const ERROR_LOCK_FAILURE         = (1<<8);
-        public const ERROR_LOCK_CONFLICT        = (1<<9);
+        public const ERROR_LOCK_FAILURE          = (1<<8);
+        public const ERROR_LOCK_CONFLICT         = (1<<9);
 
-        public const ERROR_UNLOCK_FAILURE       = (1<<9);
+        public const ERROR_UNLOCK_FAILURE        = (1<<9);
 
-        public const ERROR_RENAME_FAILURE       = (1<<10);
-        public const ERROR_COPY_FAILURE         = (1<<11);
+        public const ERROR_RENAME_FAILURE        = (1<<10);
+        public const ERROR_COPY_FAILURE          = (1<<11);
+        public const ERROR_DELETION_FAILURE      = (1<<12);
+        public const ERROR_LINK_FAILURE          = (1<<13);
+        public const ERROR_UNLINK_FAILURE        = (1<<14);
 
-        public const ERROR_FILE_OPEN_ASSERTION  = (1<<12);
-        public const ERROR_DIR_OPEN_ASSERTION   = (1<<13);
+        public const ERROR_FILE_OPEN_ASSERTION   = (1<<15);
+        public const ERROR_DIR_OPEN_ASSERTION    = (1<<16);
+
+        public const ERROR_UNEXPECTED_DIR_FOUND  = (1<<17);
+        public const ERROR_UNEXPECTED_PATH_FOUND = (1<<18);
+        public const ERROR_UNEXPECTED_FILE_FOUND = (1<<19);
 
         public const ERROR_MESSAGES       = [
             IOException::ERROR_DEFAULT                => "Unknown IO error while accessing '{path}'.",
+
             IOException::ERROR_DIR_NOT_FOUND          => "Directory at '{path}' doesn't exist.",
             IOException::ERROR_FILE_NOT_FOUND         => "File at '{path}' doesn't exist.",
             IOException::ERROR_PATH_NOT_FOUND         => "Path '{path}' doesn't exist.",
@@ -58,9 +66,16 @@ class IOException extends SlateException {
 
             IOException::ERROR_RENAME_FAILURE         => "Unable to rename file from '{from}' to '{to}'.",
             IOException::ERROR_COPY_FAILURE           => "Unable to copy file from '{from}' to '{to}'.",
+            IOException::ERROR_DELETION_FAILURE       => "Unable to delete file '{from}'.",
+            IOException::ERROR_LINK_FAILURE           => "Unable to link file '{from}' to '{to}'.",
+            IOException::ERROR_UNLINK_FAILURE         => "Unable to unlink file '{path}'.",
 
             IOException::ERROR_FILE_OPEN_ASSERTION    => "File '{path}' has not yet been opened or has closed prematurely.",
             IOException::ERROR_DIR_OPEN_ASSERTION     => "Directory '{path}' has not yet been opened or has closed prematurely.",
+
+            IOException::ERROR_UNEXPECTED_DIR_FOUND   => "Directory '{path}' exists where not expected to.",
+            IOException::ERROR_UNEXPECTED_FILE_FOUND  => "File '{path}' exists where not expected to.",
+            IOException::ERROR_UNEXPECTED_PATH_FOUND  => "Path '{path}' doesn't exist.",
         ];
         
         public function __construct(string|array $argument = null, int $code = 0, ?Throwable $previous = null) {

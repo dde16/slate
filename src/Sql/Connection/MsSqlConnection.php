@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Connection {
 
@@ -8,7 +8,7 @@ final class MsSqlConnection extends SqlConnection {
         public const NAME   = "mssql";
         public const PREFIX = "sqlsrv";
 
-        public const TOKEN_IDENTIFIER_DELIMITER = '[]';
+        public const IDENTIFIER = '[]';
     }
 }
 

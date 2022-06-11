@@ -1,25 +1,18 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Statement {
-    use Slate\Sql\SqlConstruct;
     use Slate\Sql\SqlStatement;
-
-    
-    
-    
-
     use Slate\Sql\Clause\TSqlFromClause;
     use Slate\Sql\Clause\TSqlSetClause;
     use Slate\Sql\Clause\TSqlWhereClause;
     use Slate\Sql\Clause\TSqlOrderByClause;
     use Slate\Sql\Clause\TSqlLimitClause;
-
-    use Slate\Facade\DB;
-    use Slate\Facade\App;
-    use Slate\Sql\ISqlResultProvider;
     use Slate\Sql\SqlModifier;
+    use Slate\Sql\Statement\Trait\TSqlTableStatement;
 
     class SqlUpdateStatement extends SqlStatement  {
+        use TSqlTableStatement;
+
         public const MODIFIERS = SqlModifier::LOW_PRIORITY | SqlModifier::IGNORE;
 
         use TSqlWhereClause;
@@ -28,10 +21,10 @@ namespace Slate\Sql\Statement {
         use TSqlLimitClause;
         use TSqlSetClause;
     
-        public function build(): array {
+        public function buildSql(): array {
             return [
                 "UPDATE",
-                $this->buildFroms(),
+                $this->name,
                 $this->buildModifier(SqlModifier::LOW_PRIORITY),
                 $this->buildModifier(SqlModifier::IGNORE),
                 $this->buildSetClause(),

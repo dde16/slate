@@ -1,25 +1,21 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Neat\Attribute {
-
-    use ReflectionProperty;
     use Slate\Metalang\MetalangAttribute;
-    use Slate\Metalang\MetalangDesign;
     use Slate\Neat\Entity;
     use Slate\Neat\EntityDesign;
+    use Slate\Sql\Medium\SqlTable;
 
     class OneToAny extends MetalangAttribute {
         public ?string $foreignImmediateClass;
         public ?string $foreignImmediateProperty;
     
         public string $localProperty;
-        public bool $localBelongsToForeign;
     
         public function __construct(string $localProperty, array $foreignRelalationship) {
             $this->localProperty = $localProperty;
-            $this->localBelongsToForeign = false;
-            $this->foreignImmediateClass = false;
-            $this->foreignImmediateProperty = false;
+            $this->foreignImmediateClass = null;
+            $this->foreignImmediateProperty = null;
             $this->setForeignRelationship($foreignRelalationship);
         }
 
@@ -46,6 +42,14 @@ namespace Slate\Neat\Attribute {
         public function getForeignDesign(): EntityDesign {
             return $this->getForeignClass()::design();
         }
+
+        public function getForeignTable(): SqlTable {
+            return $this->getForeignDesign()->invokeStaticMethod("table");
+        }
+
+        public function getForeignColumn(): string {
+            return $this->getForeignDesign()->getColumnProperty($this->getForeignProperty())->getColumnName();
+        }
     
         public function setForeignRelationship(array $foreignRelationship): void {
             list($foreignClass, $foreignProperty) = $foreignRelationship;
@@ -71,15 +75,6 @@ namespace Slate\Neat\Attribute {
             $this->foreignImmediateProperty = $foreignProperty;
         }
 
-        public function localBelongsToForeign(): bool {
-            $foreignDesign = $this->getForeignDesign();
-
-            if($foreignColumn = $foreignDesign->getAttrInstance(Column::class, $this->getForeignProperty())) {
-                return $foreignColumn instanceof PrimaryColumn;
-            }
-
-            return false;
-        }
     }
 }
 

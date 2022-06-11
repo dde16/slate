@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Type {
 
@@ -51,10 +51,10 @@ namespace Slate\Sql\Type {
          */
         public abstract function getScalarType(): string;
         
-        public abstract function build(): array;
+        public abstract function buildSql(): array;
     
-        public function toString(): string {
-            return \Arr::join(\Arr::filter($this->build()), " ");
+        public function toSql(): ?string {
+            return \Arr::join(\Arr::filter($this->buildSql()), " ");
         }
 
         public static function fromString(SqlColumn $column, string $test): static {

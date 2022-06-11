@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Data\Iterator {
     interface IMatchingIterator {
@@ -19,10 +19,11 @@ namespace Slate\Data\Iterator {
          * 
          * @param string $match The string to be matched at the start of the source
          * @param bool   $revert Whether to revert on an unsuccessful match
+         * @param bool   $exact  Whether the match should be exact
          * 
          * @return bool
          */
-        public function match(string $match): bool;
+        public function match(string $match, bool $exact): bool;
     }
 }
 

@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Data\Repository {
 
@@ -7,30 +7,39 @@ namespace Slate\Data\Repository {
 
     use DateTimeInterface;
     use DateInterval;
+    use Slate\Data\Trait\TRepositoryExpirable;
     use Slate\IO\File;
 
     trait TFileSystemRepository {
+        use TRepositoryExpirable;
+
         /** 
          * The directory where the Cache will be situated.
          * 
          * @see Slate\IO\Directory
          */
         protected Directory $directory;
+
+        /**
+         * The algorithm to use to derive the filename from the key.
+         *
+         * @var string
+         */
+        protected string $alg;
     
         /**
          * @param string $directory Path to the directory.
          */
-        public function __construct(string $directory, string $serializer = "json", bool $autoforget = true) {
+        public function __construct(string $directory, string $serializer = "json", ?string $alg = "sha256", bool $autoforget = true) {
             parent::__construct($serializer, $autoforget);
 
             $this->directory = new Directory($directory);
             $this->directory->open(create: true);
 
+            $this->alg = $alg;
         }
     
         public function flush(): bool {
-            // $wasOpen = $this->isOpen();
-
             if($this->directory->delete()) {
                 $this->directory->open(create: true);
     
@@ -60,7 +69,7 @@ namespace Slate\Data\Repository {
         }
     
         public function forget(string $key): bool {
-            return $this->directory->delete($this->derive($key));
+            return $this->directory->deleteFile($this->derive($key));
         }
 
         public function expired(string|File $key): bool {
@@ -178,7 +187,7 @@ namespace Slate\Data\Repository {
         }
     
         public function derive(string $key): string {
-            return hash("sha256", $key);
+            return $this->alg !== null ? hash($this->alg, $key) : $key;
         }
     }
 }

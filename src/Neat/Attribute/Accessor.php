@@ -1,11 +1,13 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Neat\Attribute {
     use Attribute;
-    use ReflectionMethod;
     use Slate\Metalang\Prefab\MetalangNamedAttribute;
-    use Slate\Metalang\MetalangDesign;
 
+    /**
+     * Defines the base class for the Getter and Setter 
+     * Attributes.
+     */
     #[Attribute(Attribute::TARGET_METHOD)]
     abstract class Accessor extends MetalangNamedAttribute {
         protected ?string $for;

@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Neat {
 
@@ -89,7 +89,7 @@ namespace Slate\Neat {
         public function toArray(array $properties): array {
             return \Arr::mapAssoc(
                 \Arr::associate($properties, null),
-                function($fromKey, $toKey) use($properties) {
+                function($fromKey, $toKey) {
                     if($toKey === null)
                         $toKey = $fromKey;
                     
@@ -104,6 +104,7 @@ namespace Slate\Neat {
                     }
                     else {
                         $value =  $this->__getx($fromKey);
+
 
                         if($toKey instanceof Closure) {
                             $value = $toKey($value);

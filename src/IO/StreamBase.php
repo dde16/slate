@@ -1,8 +1,11 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\IO {
     use Slate\Exception\PathNotFoundException;
     use Slate\Exception\IOException;
+    use Slate\IO\Contract\IStreamAuditable;
+    use Slate\IO\Contract\IStreamIO;
+    use Slate\IO\Contract\IStreamSeekable;
 
     abstract class StreamBase implements IStreamAuditable, IStreamSeekable, IStreamIO {
         const BUFFER_SIZE = 8192;
@@ -74,6 +77,18 @@ namespace Slate\IO {
                     "{} is required to be open.",
                     static::class
                 ));
+        }
+
+        public function assertClosed(string $message = null): void {
+            if($this->isOpen())
+                throw new \Error($message ?? \Str::format(
+                    "{} is required to be closed.",
+                    static::class
+                ));
+        }
+
+        public function setBlocking(bool $enable): bool {
+            return stream_set_blocking($this->getResource(), $enable);
         }
     }
 }

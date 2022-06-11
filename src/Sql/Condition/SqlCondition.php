@@ -1,11 +1,12 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Condition {
 
     use Closure;
     use Slate\Facade\Sql;
+    use Slate\Sql\Contract\ISqlable;
 
-    class SqlCondition {
+    class SqlCondition implements ISqlable {
         protected array $conditions = [];
 
         protected function _condition(array $arguments) {
@@ -81,7 +82,12 @@ namespace Slate\Sql\Condition {
             return $this->condition(func_get_args(), "OR");
         }
 
-        public function toString(): ?string {
+        public function buildSql(): ?array
+        {
+            return [];
+        }
+
+        public function toSql(): ?string {
             return !\Arr::isEmpty($this->conditions) ? \Arr::join(
                 \Arr::slice(
                     \Arr::flatten(
@@ -89,18 +95,18 @@ namespace Slate\Sql\Condition {
                             $this->conditions,
                             function($condition){
                                 if(is_object($condition[0])) {
-                                    $condition[0] = "(".$condition[0]->toString().")";
+                                    $condition[0] = "(".$condition[0]->toSql().")";
                                 }
 
                                 if(is_object($condition[1])) {
-                                    $condition[1] = "(".$condition[1]->toString().")";
+                                    $condition[1] = "(".$condition[1]->toSql().")";
                                 }
                                 else if(is_array($condition[1])) {
                                     $condition[1] = \Arr::join(
                                         \Arr::map(
                                             $condition[1],
                                             function($condition) {
-                                                return is_object($condition) ? $condition->toString() : $condition;
+                                                return is_object($condition) ? $condition->toSql() : $condition;
                                             }
                                         ),
                                         " "

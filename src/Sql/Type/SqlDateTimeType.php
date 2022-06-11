@@ -1,21 +1,31 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Type {
 
     use Slate\Exception\ParseException;
     use DateTime;
+    use Error;
+    use PDOException;
 
     class SqlDateTimeType extends SqlType implements ISqlTypeBackwardConvertable, ISqlTypeForwardConvertable {
         public const FORMAT = "Y-m-d H:i:s";
+        public const FORMAT_EXTENDED = "Y-m-d H:i:s\.u";
         public const DATE   = TRUE;
         public const TIME   = TRUE;
 
-        protected int $precision;
+        protected ?int $precision;
         
         public function fromArray(array $array): void {
             parent::fromArray($array);
-            
-            // $this->precision = \Integer::tryparse($array["precision"]);
+
+            if($array["precision"] !== null) {
+                $this->precision = \Integer::tryparse($array["precision"]);
+            }
+            else {
+                $this->precision = 0;
+            }
+
+
 
             $this->size = strlen((new DateTime())->format(static::FORMAT));
         }
@@ -35,14 +45,14 @@ namespace Slate\Sql\Type {
             }
             else if(is_float($value)) {
                 $subseconds = $value % 1;
-                $seconds = $value - $subseconds;
+                $seconds = intval($value - $subseconds);
 
                 $datetime->setTimestamp($seconds);
 
                 $datetime->setTime(
-                    $datetime->format("H"), 
-                    $datetime->format("i"), 
-                    $datetime->format("s"),
+                    \Integer::tryparse($datetime->format("H")), 
+                    \Integer::tryparse($datetime->format("i")), 
+                    \Integer::tryparse($datetime->format("s")),
                     $subseconds
                 );
             }
@@ -53,8 +63,9 @@ namespace Slate\Sql\Type {
                 $datetime = null;
             }
 
-            if($datetime)
-                return $datetime->format(static::FORMAT);
+            if($datetime) {
+                return $datetime->format($this->precision > 0 ? static::FORMAT_EXTENDED : static::FORMAT);
+            }
             
             throw new \Error(\Str::format(
                 "Unsupported conversion type from {} to {}.",
@@ -65,7 +76,16 @@ namespace Slate\Sql\Type {
 
         public function fromSqlValue(string $value, string $target): mixed {
             $datetime = (new DateTime());
-            $datetime = $datetime->createFromFormat(static::FORMAT, $value);
+
+            if($this->precision > 0) {
+                $datetime = $datetime->createFromFormat(static::FORMAT_EXTENDED, substr($value, 0, -2));
+            }
+            else {
+                $datetime = $datetime->createFromFormat(static::FORMAT, $value);
+            }
+
+            if($datetime === false)
+                throw new PDOException("Unable to parse datetime string '$value'.");
 
             if(static::DATE === FALSE)
                 $datetime->setDate(1970, 1, 1);
@@ -95,7 +115,7 @@ namespace Slate\Sql\Type {
             return $value;
         }
 
-        public function build(): array {
+        public function buildSql(): array {
             return [
                 $this->datatype
             ];

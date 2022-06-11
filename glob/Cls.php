@@ -21,6 +21,35 @@ final class Cls extends \Slate\Utility\Facade {
     }
 
     /**
+     * Assert that a given class has a constant.
+     * 
+     * @param string $class
+     * @param string $constant
+     * 
+     * @throws RuntimeException
+     * 
+     * @return void
+     */
+    public static function assertHasConstant(string $class, string $constant, string $type = \Any::class) {
+
+        assert(
+            (
+                \Cls::hasConstant($class, $constant)
+                    ? $type::validate($class::$constant)
+                    : false
+            ),
+            new RuntimeException(
+                "Class constant $class::$constant must exist"
+                    . (
+                        $type !== \Any::class
+                            ? " and be of type {$type::NAMES[0]}."
+                            : "."
+                    )
+            )
+        );
+    }
+
+    /**
      * Check whether a given class has a public method.
      *
      * @param string $class

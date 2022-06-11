@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Data\Iterator {
     use ArrayAccess;
@@ -6,8 +6,8 @@ namespace Slate\Data\Iterator {
     use Slate\Data\Iterator\IExtendedIterator;
     use Slate\Data\Iterator\IMatchingIterator;
     use Slate\Data\TOffsetExtended;
-    use Slate\IO\IStreamReadable;
-    use Slate\IO\IStreamWriteable;
+    use Slate\IO\Contract\IStreamReadable;
+    use Slate\IO\Contract\IStreamWriteable;
 
     /**
      * A file-like iterator for strings.

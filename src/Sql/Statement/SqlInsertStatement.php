@@ -1,21 +1,11 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Statement {
-    use Slate\Sql\SqlConstruct;
     use Slate\Sql\SqlStatement;
-
-    
-    
-
     use Slate\Sql\Clause\TSqlIntoClause;
     use Slate\Sql\Clause\TSqlOnDuplicateKeyUpdateClause;
-
-    use Slate\Facade\DB;
     use Slate\Facade\Sql;
     use Slate\Facade\App;
-    use Slate\Sql\ISqlResultProvider;
-
-    use Slate\Sql\Expression\TSqlColumnsExpression;
     use Slate\Sql\SqlModifier;
 
 class SqlInsertStatement extends SqlStatement  {
@@ -27,8 +17,7 @@ class SqlInsertStatement extends SqlStatement  {
 
         public const MODIFIERS = SqlModifier::LOW_PRIORITY | SqlModifier::HIGH_PRIORITY | SqlModifier::IGNORE;
     
-    
-        public function build(): array {
+        public function buildSql(): array {
             return [
                 "INSERT",
                 ($this->buildModifier(SqlModifier::LOW_PRIORITY)
@@ -85,9 +74,7 @@ class SqlInsertStatement extends SqlStatement  {
         }
 
         public function go(): bool  {
-            $conn = App::conn($this->conn);
-
-            return $conn->prepare($this->toString())->execute();
+            return $this->conn->prepare($this->toSql())->execute();
         }
     }
 }

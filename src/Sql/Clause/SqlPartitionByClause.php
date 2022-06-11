@@ -1,8 +1,8 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Clause {
 
-    use Slate\Data\IStringForwardConvertable;
+    use Slate\Data\Contract\IStringForwardConvertable;
     use Slate\Sql\SqlClause;
 
     class SqlPartitionByClause extends SqlClause {
@@ -12,11 +12,13 @@ namespace Slate\Sql\Clause {
             $this->expr = $expr;
         }
 
-        public function toString(): string {
-            return \Arr::join(\Arr::filter([
-                "PARTITION BY",
-                (is_object($this->expr) ? $this->expr->toString() : $this->expr)
-            ]), " ");
+        public function buildSql(): ?array {
+            $expr = (is_object($this->expr) ? $this->expr->toString() : $this->expr);
+
+            if(empty($expr))
+                return null;
+
+            return ["PARTITION BY", $expr];
         }
     }
 }

@@ -1,8 +1,9 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\IO {
-
     use Closure;
+    use Slate\File\Rotation\FileRotator;
+    use Slate\File\Rotation\LoggerRotator;
     use Slate\Utility\Log;
 
     class Logger extends Log {

@@ -1,17 +1,65 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql {
 
     use Closure;
     use Generator;
     use PDO;
-    use Slate\Data\IStringForwardConvertable;
+    use PDOException;
+    use Slate\Data\Contract\IStringForwardConvertable;
+    use Slate\Sql\Medium\SqlSchema;
+    use Slate\Sql\Medium\SqlTable;
 
-    abstract class SqlConnection extends PDO {
+    use Slate\Sql\Statement\Contract\ISqlDeletable;
+    use Slate\Sql\Statement\Contract\ISqlInsertable;
+    use Slate\Sql\Statement\Contract\ISqlSchemaAlterable;
+    use Slate\Sql\Statement\Contract\ISqlSchemaCreatable;
+    use Slate\Sql\Statement\Contract\ISqlSchemaDroppable;
+    use Slate\Sql\Statement\Contract\ISqlSelectable;
+    use Slate\Sql\Statement\Contract\ISqlTableAlterable;
+    use Slate\Sql\Statement\Contract\ISqlTableCreatable;
+    use Slate\Sql\Statement\Contract\ISqlTableDroppable;
+    use Slate\Sql\Statement\Contract\ISqlTableLockable;
+    use Slate\Sql\Statement\Contract\ISqlUpdatable;
+
+    use Slate\Sql\Statement\Trait\TSqlAlterStatement;
+    use Slate\Sql\Statement\Trait\TSqlCreateStatement;
+    use Slate\Sql\Statement\Trait\TSqlDeleteStatement;
+    use Slate\Sql\Statement\Trait\TSqlDropStatement;
+    use Slate\Sql\Statement\Trait\TSqlInsertStatement;
+    use Slate\Sql\Statement\Trait\TSqlLockTablesStatement;
+    use Slate\Sql\Statement\Trait\TSqlSelectStatement;
+    use Slate\Sql\Statement\Trait\TSqlUpdateStatement;
+    use Slate\Sql\Statement\Trait\TSqlShowStatement;
+
+    abstract class SqlConnection
+        extends PDO
+        implements
+            ISqlDeletable,
+            ISqlInsertable,
+            ISqlSchemaAlterable,
+            ISqlSchemaCreatable,
+            ISqlSchemaDroppable,
+            ISqlSelectable,
+            ISqlTableAlterable,
+            ISqlTableCreatable,
+            ISqlTableDroppable,
+            ISqlTableLockable,
+            ISqlUpdatable
+    {
+        use TSqlAlterStatement;
+        use TSqlCreateStatement;
+        use TSqlDeleteStatement;
+        use TSqlDropStatement;
+        use TSqlInsertStatement;
+        use TSqlLockTablesStatement;
+        use TSqlSelectStatement;
+        use TSqlUpdateStatement;
+        use TSqlShowStatement;
+
         public const PREFIX = NULL;
         public const NAME = NULL;
-        
-        public const TOKEN_IDENTIFIER_DELIMITER = NULL;
+        public const IDENTIFIER = NULL;
 
         public    string  $hostname;
         public    string  $username;
@@ -56,20 +104,43 @@ namespace Slate\Sql {
             );
         }
 
-        public function table(string $schema, string $table, Closure $callback = null): SqlTable {
-            return $this->schema($schema)->table($table, $callback);
+        public function table(string $ref, string $subref = null): SqlTable {
+            if($subref === null) {
+                $table = $ref;
+
+                if(($schema = $this->getDefaultSchema()) === null) {
+                    throw new PDOException("No default schema.");
+                }
+            }
+            else {
+                $schema = $ref;
+                $table  = $subref;
+            }
+
+            return $this->schema($schema)->table($table);
         }
 
-        public function schema(string $name, Closure $callback = null): SqlSchema {
+        public function hasSchema(string $name): bool {
+            return \Arr::hasKey($this->schema, $name);
+        }
+
+        public function discard(): void {
+            foreach($this->schema as $schema) {
+                $schema->discard();
+            }
+        }
+
+        public function schema(string $name): SqlSchema {
             $schema = &$this->schema[$name];
 
             if($schema === null)
                 $schema = new SqlSchema($this, $name);
 
-            if($callback)
-                $callback($schema);
-
             return $schema;
+        }
+
+        public function getDefaultSchema(): ?string {
+            return $this->database;
         }
         
 
@@ -128,11 +199,31 @@ namespace Slate\Sql {
             }
         }
 
+        /**
+         * Unwrap a wrapped identifier.
+         *
+         * @param string $token
+         *
+         * @return array
+         */
+        public function unwrap(string $token): array {
+            [$prefix, $centre, $suffix] = \Str::divide(static::IDENTIFIER);
+
+            return \Arr::map(
+                \Str::split($token, "."),
+                fn(string $token): string => \Str::removeSuffix(\Str::removePrefix($token, $prefix), $suffix)
+            );
+        }
+
+        /**
+         * Wrap a series of tokens into an identifier.
+         *
+         * @param string ...$tokens
+         *
+         * @return string
+         */
         public function wrap(string ...$tokens): string {
-            return \Arr::join(\Arr::map(
-                $tokens,
-                fn($token) => \Str::wrapc($token, static::TOKEN_IDENTIFIER_DELIMITER)
-            ), ".");
+            return \Arr::join(\Arr::map($tokens, fn(string $token): string => \Str::wrapc($token, static::IDENTIFIER)), ".");
         }
 
         public function multiquery(array|string $queries, bool $rows = false, bool $aggr = false): Generator {
@@ -210,10 +301,27 @@ namespace Slate\Sql {
         //     return $statement;
         // }
 
+        public function transact(Closure $closure): void {
+            $this->beginTransaction();
+
+            try {
+                $closure();
+            }
+            catch(\PDOException $e) {
+                if(!$this->rollBack())
+                    throw new \Error("Unable to rollback.");
+
+                throw $e;
+            }
+
+            $this->commit();
+        }
+
         public function soloquery(mixed $query, bool $aggr = true): \Generator {
             $statement = $this->prepare($query);
             
             try {
+
                 if($statement->execute()) {
                     while($row = $statement->fetch(PDO::FETCH_ASSOC)) {
                         yield $row;

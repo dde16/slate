@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Foundation {
 
@@ -12,13 +12,15 @@ namespace Slate\Foundation {
         public const PROVIDERS = [
             \Slate\Foundation\Provider\ConfigurationProvider::class,
             \Slate\Foundation\Provider\ConnectionProvider::class,
+            \Slate\Foundation\Provider\ShmProvider::class,
             \Slate\Foundation\Provider\QueueProvider::class,
             \Slate\Foundation\Provider\RepositoryProvider::class
         ];
 
         public function root(string $root = null): ?string {
-            if($root === null)
+            if ($root === null) {
                 return $this->root;
+            }
 
             $this->root = $root;
 
@@ -27,27 +29,34 @@ namespace Slate\Foundation {
 
         public function __construct(string $root) {
             $this->root = $root;
+
+            $injectProviders = Env::var("apps")->fallback([])->array();
+
             $providers = [
                 ...static::PROVIDERS,
-                ...(@(Env::array("apps") ?? [])[static::class] ?? [])
+                ...(@$injectProviders["*"]) ?? [],
+                ...(@$injectProviders[static::class]) ?? []
             ];
 
-            foreach($providers as $providerClass) {
+            foreach ($providers as $providerClass) {
                 $providerInstance = &$this->providers[$providerClass];
 
-                if($providerInstance === null)
+                if ($providerInstance === null) {
                     $providerInstance = new $providerClass($this);
+                }
 
-                if(\Cls::hasMethod($providerClass, "register"))
+                if (\Cls::hasMethod($providerClass, "register")) {
                     $providerInstance->register();
+                }
             }
 
 
-            foreach($providers as $providerClass) {
+            foreach ($providers as $providerClass) {
                 $providerInstance = &$this->providers[$providerClass];
 
-                if(\Cls::hasMethod($providerClass, "boot"))
+                if (\Cls::hasMethod($providerClass, "boot")) {
                     $providerInstance->boot();
+                }
             }
         }
     }

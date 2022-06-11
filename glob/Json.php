@@ -1,6 +1,4 @@
 <?php
-
-
 class Json {
     public static function parse(string $json, bool $assoc = true, int $depth = 512, int $flags = 0): array {
         $json = json_decode($json, $assoc, $depth, $flags);
@@ -15,6 +13,26 @@ class Json {
 
     public static function tryparse(string $json, bool $assoc = true, int $depth = 512, int $flags = 0): mixed {
         list($json, $error) = \Json::parse($json, $assoc, $depth, $flags);
+
+        if($error !== null)
+            throw $error;
+
+        return $json;
+    }
+
+    public static function encode(mixed $value, int $depth = 512, int $flags = 0): array {
+        $json = json_encode($value, $flags, $depth);
+
+        $hasError = (json_last_error() !== JSON_ERROR_NONE && $json === false);
+
+        return [
+            $json,
+            $hasError ? new Error(json_last_error_msg() . " while encoding json.", json_last_error()) : null 
+        ];
+    }
+
+    public static function tryEncode(mixed $value, int $depth = 512, int $flags = 0): string {
+        list($json, $error) = \Json::encode($value, $depth, $flags);
 
         if($error !== null)
             throw $error;

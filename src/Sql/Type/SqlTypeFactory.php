@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Type {
     use Slate\Utility\Factory;
@@ -91,6 +91,7 @@ class SqlTypeFactory extends Factory {
             "mysql.blob"             => SqlCharacterType::class,
             "mysql.mediumblob"       => SqlCharacterType::class,
             "mysql.longblob"         => SqlCharacterType::class,
+            "mysql.multipolygon"     => SqlCharacterType::class,
 
             "mysql.tinytext"         => MySqlTinyTextType::class,
             "mysql.text"             => MySqlSmallTextType::class,

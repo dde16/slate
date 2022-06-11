@@ -1,8 +1,8 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Clause {
 
-use Slate\Data\IStringForwardConvertable;
+use Slate\Data\Contract\IStringForwardConvertable;
 
 trait TSqlOrderByClause {
         public array $orderBy = [];

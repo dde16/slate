@@ -1,22 +1,19 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Lang\Interpreter {
     use Slate\Metalang\MetalangClass;
-
     use Slate\Lang\Interpreter\InterpreterDesign;
-    
-    use Slate\Data\Iterator\StringIterator;
-    use Slate\IO\File;
-    use Slate\Lang\Interpreter\ICodeable;
 
-abstract class InterpreterClass extends MetalangClass {
+    abstract class InterpreterClass extends MetalangClass {
         public const DESIGN = InterpreterDesign::class;
 
         public function interpret(object &$code, array &$arguments = []) {
-            $this->code         = $code;
-            $this->tokenMatches = $this->tokenise(true);
+            $this->code = $code;
             
-            return $this->evaluate($this->parse(), $arguments);
+            return $this->evaluateTree(
+                $this->parse(),
+                $arguments
+            );
         }
     }
 }

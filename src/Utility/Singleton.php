@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Utility {
 
@@ -19,8 +19,8 @@ namespace Slate\Utility {
         public const DEFAULT = NULL;
 
         /**
-         * Tells the singleton whether it has to be manually initialised and not
-         * initialised through a method call.
+         * Tells the singleton whether it has to be manually initialised, not
+         * automatically initialised through a method call.
          * 
          * @var bool
          */
@@ -29,14 +29,14 @@ namespace Slate\Utility {
         /**
          * Container to store the singleton classes.
          *
-         * @var array<string,string>
+         * @var array<string,Singleton|string>
          */
         private static $singletons = [];
     
         /**
          * Container to store the singleton instances.
          * 
-         * @var array<string,object>
+         * @var array<string,Singleton>
          */
         private static $instances = [];
     

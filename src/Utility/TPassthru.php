@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Utility {
 
@@ -10,7 +10,7 @@ namespace Slate\Utility {
             $only = \Cls::getConstant(static::class, "PASSTHRU_METHODS", "*");
             $returnThisOn = \Cls::getConstant(static::class, "PASSTHRU_RETURN_THIS");
 
-            if($only === "*" ? true : ($only !== null ? !\Arr::contains($only, $method) : false))
+            if(is_string($only) ? \Str::match($only) : ($only !== null ? !\Arr::contains($only, $method) : false))
                 throw new UndefinedRoutineException([static::class, $method], UndefinedRoutineException::ERROR_UNDEFINED_METHOD);
 
             $result = $this->{$passthru}->{$method}(...$arguments);

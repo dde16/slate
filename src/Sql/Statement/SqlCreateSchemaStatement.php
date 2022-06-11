@@ -1,31 +1,22 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Statement {
 
     use Slate\Sql\Clause\TSqlCharacterSetClause;
     use Slate\Sql\Clause\TSqlCollateClause;
-    use Slate\Sql\Clause\TSqlCommentClause;
-    use Slate\Sql\Clause\TSqlMediumClause;
-    
-    
-    
     
     use Slate\Sql\SqlModifier;
     use Slate\Sql\SqlStatement;
+    use Slate\Sql\Statement\Trait\TSqlSchemaStatement;
 
     class SqlCreateSchemaStatement extends SqlStatement {
         use TSqlCharacterSetClause;
         use TSqlCollateClause;
+        use TSqlSchemaStatement;
 
         public const MODIFIERS = SqlModifier::IF_NOT_EXISTS;
 
-        protected string $name;
-
-        public function __construct(string $name) {
-            $this->name = $name;
-        }
-
-        public function build(): array {
+        public function buildSql(): array {
             return [
                 "CREATE SCHEMA",
                 $this->buildModifier(SqlModifier::IF_NOT_EXISTS),

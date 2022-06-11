@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Metalang {
     use Closure;
@@ -50,7 +50,7 @@ namespace Slate\Metalang {
                 if($this->passthru)
                     $this->passthru->{$name} = $value;
                 else
-                    $this->passthru = $value;
+                    $this->{$name} = $value;
             }
             else {
                 $this->setters[$name]->call($this, $value);

@@ -1,17 +1,19 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Connection {
     use Error;
     use Slate\Facade\DB;
     use Slate\Sql\SqlConnection;
+    use Slate\Sql\SqlIndex;
+    use Slate\Sql\Statement\SqlSelectStatement;
 
     final class MySqlConnection extends SqlConnection {
         public const NAME   = "mysql";
         public const PREFIX = "mysql";
-
-        public const TOKEN_IDENTIFIER_DELIMITER = '``';
+        public const IDENTIFIER = '``';
 
         public function schematic(string $schema, string $table, bool $types = false): array {
+            throw new Error();
             $map = [];
 
             $columnQuery = DB::select([

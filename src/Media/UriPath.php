@@ -1,9 +1,9 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Media {
 
     use Slate\Data\BasicArray;
-    use Slate\Data\IStringForwardConvertable;
+    use Slate\Data\Contract\IStringForwardConvertable;
     use Slate\Data\Iterator\ArrayExtendedIterator;
     use Slate\Data\TStringNativeForwardConvertable;
     use Slate\Exception\ParseException;
@@ -20,6 +20,7 @@ namespace Slate\Media {
 
         public array $items = [];
         public bool $relative = false;
+        public bool $leadingSlash = false;
 
         public function __construct(string $path, bool $assert = false) {
             $this->setPath($path, $assert);
@@ -45,6 +46,8 @@ namespace Slate\Media {
          */
         public function setPath(string $path, bool $assert = false): void {
             $this->relative = $path[0] !== "/" && !\Str::startswith($path, ".");
+
+            $this->leadingSlash = \Str::endswith($path, "/");
 
             $iterator = new ArrayExtendedIterator(\Str::split(\Str::trimAffix($path, "/"), "/"));
 
@@ -132,7 +135,7 @@ namespace Slate\Media {
         public function getDirectory(): ?string {
             $diritems = \Arr::slice($this->items, 0, -1);
 
-            return !\Arr::isEmpty($diritems) ? ((!$this->relative ? "/" : "").\Arr::join($diritems, "/")) : false;
+            return !\Arr::isEmpty($diritems) ? ((!$this->relative ? "/" : "").\Arr::join($diritems, "/")) : null;
         }
 
         /**
@@ -167,7 +170,7 @@ namespace Slate\Media {
         }
 
         public function toString(string $delimiter = "/"): string {
-            return (!$this->relative ? $delimiter : "").\Arr::join($this->items, $delimiter);
+            return (!$this->relative ? $delimiter : "").\Arr::join($this->items, $delimiter).($this->leadingSlash ? '/': '');
         }
     }
 }

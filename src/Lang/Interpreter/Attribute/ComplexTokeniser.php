@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Lang\Interpreter\Attribute {
     use Attribute;
@@ -9,7 +9,7 @@ namespace Slate\Lang\Interpreter\Attribute {
         protected int $token;
 
         public function getKeys(): string|array {
-            return $this->token;
+            return strval($this->token);
         }
 
         public function __construct(int $token) {

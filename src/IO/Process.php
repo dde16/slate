@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\IO {
     class Process {
@@ -75,7 +75,7 @@ namespace Slate\IO {
 
         }
 
-        public function close(): bool {
+        public function close(): int {
             $this->stdin->close();
             $this->stdout->close();
             $this->stderr->close();

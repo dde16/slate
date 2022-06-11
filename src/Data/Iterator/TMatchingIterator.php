@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Data\Iterator {
 
@@ -39,7 +39,7 @@ use Generator;
         }
 
         /** @see IMatchingIterator::match() */
-        public function match(string $match): bool {
+        public function match(string $match, bool $exact = true): bool {
             $matchLength = strlen($match);
 
             $this->anchor();
@@ -47,15 +47,22 @@ use Generator;
             $data = $this->read($matchLength);
 
             if($data !== null) {
-                if(($data === $match)) {
+                if(!$exact) {
+                    $match = strtolower($match);
+                    $data  = strtolower($data);
+                }
+
+                if($data === $match) {
                     return true;
                 }
             }
+            
             $this->revert();
 
             return false;
         }
 
+        //TODO: use better algorithm
         public function search(string $search): Generator {
             $line    = 0;
 

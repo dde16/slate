@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Data\Iterator {
     use Generator;
@@ -60,7 +60,7 @@ namespace Slate\Data\Iterator {
                     if($currentKey !== false)
                         yield([$currentPath, $currentValue]);
 
-                    if(is_array($currentValue) || (is_object($currentValue) ? (get_class($currentValue) === stdClass::class) : false))  {
+                    if(is_array($currentValue) || (is_object($currentValue) ? (get_class($currentValue) === \stdClass::class) : false))  {
                         $queue->enqueue([null, null]);
 
                         $currentValueIterator = new ArrayAssociativeIterator($currentValue);

@@ -1,8 +1,8 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql {
 
-    use Slate\Data\IStringForwardConvertable;
+    use Slate\Data\Contract\IStringForwardConvertable;
     use Slate\Data\TStringNativeForwardConvertable;
     use Slate\Sql\Clause\SqlOrderByClause;
     use Slate\Sql\Clause\SqlPartitionByClause;

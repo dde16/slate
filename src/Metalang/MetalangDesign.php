@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Metalang {
 
@@ -141,7 +141,7 @@ namespace Slate\Metalang {
             return $this->getMethod($method)->invokeArgs($object, $arguments);
         }
     
-        public function getAttrInstance(string|array $classes, string $key, bool $subclasses = true): MetalangAttribute|null {
+        public function getAttrInstance(string|array $classes, string|int $key, bool $subclasses = true): MetalangAttribute|null {
             $attribute = null;
 
             if(is_string($classes)) $classes = [$classes];

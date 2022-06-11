@@ -1,10 +1,11 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Mvc {
 
     use Closure;
     use Slate\Exception\PregException;
     use Slate\Media\Uri;
+    use Slate\Media\UriPath;
 
     class RouteUri extends Uri {
         public const PARAMETER_PATTERN      =
@@ -146,7 +147,7 @@ namespace Slate\Mvc {
 
         public function slashes(): int {
             $slashes = 
-                \Str::count($this->getPath(), "/")
+                \Str::count($this->getPath()->toString(), "/")
                 - \Arr::count(\Arr::filter(
                     $this->params,
                     fn($param) => !(!$param["optional"] && $param["leading_slash"] )
@@ -157,12 +158,12 @@ namespace Slate\Mvc {
 
         public function pattern(array $wheres = []): string {
             return \Str::replaceManyAt(
-                $this->getPath(),
+                $this->getPath()->toString(),
                 \Arr::mapAssoc(
                     $this->params,
                     function($paramName, $paramOptions) use($wheres) {
                         return [
-                            null,
+                            $paramName,
                             [
                                 "(?:"
                                     . ($paramOptions["optional"] || $paramOptions["leading_slash"] ? "/" : "")
@@ -183,10 +184,7 @@ namespace Slate\Mvc {
             );
         }
 
-        public function match(string|Uri $uri, array $wheres = []): ?array {
-            if(is_string($uri))
-                $uri = new Uri($uri);
-
+        public function match(string|UriPath $uri, array $wheres = []): ?array {
             $requiredAbsentParams = \Arr::filter(
                 $this->params,
                 fn($param) => $param["ambiguous"] ? (@$wheres[$param["name"]] === null) : false
@@ -213,7 +211,7 @@ namespace Slate\Mvc {
 
             $match = [];
 
-            if(preg_match("!^{$pattern}$!", $uri->getPath(), $match, PREG_UNMATCHED_AS_NULL)) {
+            if(preg_match("!^{$pattern}$!", $uri->toString(), $match, PREG_UNMATCHED_AS_NULL)) {
                 $values = [];
 
                 foreach($this->params as $param)

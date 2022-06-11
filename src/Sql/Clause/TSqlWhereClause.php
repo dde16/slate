@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Clause {
     use Slate\Sql\Carry\SqlCarryCondition;
@@ -30,7 +30,7 @@ namespace Slate\Sql\Clause {
         
         
         public function buildWhereClause(): string|null {
-            return $this->wheres !== null ? ("WHERE " . \Str::wrapc($this->wheres->toString(), "()")) : null;
+            return $this->wheres !== null ? ("WHERE " . \Str::wrapc($this->wheres->toSql(), "()")) : null;
         }
     }
 }

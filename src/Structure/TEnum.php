@@ -1,11 +1,10 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Structure {
-
     use ReflectionClass;
     use RuntimeException;
 
-trait TEnum {
+    trait TEnum {
         /**
          * Ensure the class is not instantiable by default.
          */

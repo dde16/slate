@@ -1,8 +1,9 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Http {
     use Slate\Structure\Enum;
 
+    //TODO: include experimental
     class HttpCode extends Enum {
         // [Informational 1xx]
         const CONTINUE                        = 100;

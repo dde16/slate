@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Statement {
 
@@ -11,12 +11,16 @@ namespace Slate\Sql\Statement {
     use Slate\Sql\Clause\TSqlMediumClause;
     use Slate\Sql\Expression\SqlConstraintBlueprint;
     use Slate\Sql\SqlColumn;
+    use Slate\Sql\SqlConnection;
     use Slate\Sql\SqlModifier;
     use Slate\Sql\SqlStatement;
     use Slate\Sql\SqlConstraint;
     use Slate\Sql\SqlIndex;
+    use Slate\Sql\Statement\Trait\TSqlTableStatement;
 
-class SqlCreateTableStatement extends SqlStatement {
+    class SqlCreateTableStatement extends SqlStatement {
+        use TSqlTableStatement;
+
         use TSqlCharacterSetClause;
         use TSqlCollateClause;
         use TSqlCommentClause;
@@ -36,7 +40,6 @@ class SqlCreateTableStatement extends SqlStatement {
             | SqlModifier::ENCRYPTION
         ;
 
-        protected string $name;
 
         protected array  $columns = [];
         protected array  $constraints = [];
@@ -62,10 +65,6 @@ class SqlCreateTableStatement extends SqlStatement {
             $this->avgRowLength = $length;
 
             return $this;
-        }
-
-        public function __construct(string $name) {
-            $this->name = $name;
         }
 
         public function constraint(SqlConstraint $constraint = null): SqlConstraint {
@@ -103,6 +102,20 @@ class SqlCreateTableStatement extends SqlStatement {
                 ;
         }
 
+        public function buildConstraints(): ?string {
+            return
+                !\Arr::isEmpty($this->constraints)
+                    ? \Arr::list(
+                        \Arr::map(
+                            $this->constraints,
+                            fn(SqlConstraint $constraint): string => $constraint->toString()
+                        ),
+                        ","
+                    )
+                    : null
+                ;
+        }
+
         public function buildIndexes(): ?string {
             return
                 !\Arr::isEmpty($this->indexes)
@@ -117,9 +130,12 @@ class SqlCreateTableStatement extends SqlStatement {
                 ;
         }
 
-        public function build(): array {
+        public function buildSql(): array {
             $columns = $this->buildColumns();
             $indexes = $this->buildIndexes();
+            $constraints = $this->buildConstraints();
+
+            $definitions = [$columns, $indexes, $constraints];
 
             return [
                 "CREATE",
@@ -127,8 +143,8 @@ class SqlCreateTableStatement extends SqlStatement {
                 "TABLE",
                 $this->buildModifier(SqlModifier::IF_NOT_EXISTS),
                 $this->name,
-                (\Arr::any([$columns, $indexes])
-                    ? \Str::wrapc(\Arr::join([$columns, $indexes], ", "), "()")
+                (\Arr::any($definitions)
+                    ? \Arr::list($definitions, ", ", listWrap: "()")
                     : null
                 ),
                 $this->buildLikeClause(),

@@ -1,20 +1,15 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql {
 
     use Slate\Facade\DB;
-    use Slate\Sql\Clause\TSqlCharacterSetClause;
-    use Slate\Sql\Clause\TSqlCollateClause;
     use Slate\Sql\Clause\TSqlCommentClause;
     use Slate\Sql\Clause\TSqlEngineAttributeClause;
+    use Slate\Sql\Condition\SqlCondition;
     use Slate\Sql\Constraint\SqlForeignKeyConstraint;
-    use Slate\Sql\Constraint\SqlPrimaryKeyConstraint;
-    use Slate\Sql\Constraint\SqlUniqueConstraint;
-    use Slate\Sql\Expression\SqlColumnBlueprint;
-    use Slate\Sql\Expression\SqlConstraintBlueprint;
-    use Slate\Sql\Type\SqlCharacterType;
-    use Slate\Sql\Type\SqlDateTimeType;
-    use Slate\Sql\Type\SqlNumericType;
+    use Slate\Sql\Medium\SqlTable;
+    use Slate\Sql\Trait\TSqlModifierMiddleware;
+    use Slate\Sql\Trait\TSqlModifiers;
     use Slate\Sql\Type\SqlTypeFactory;
     use Slate\Sql\Type\SqlType;
 
@@ -55,30 +50,36 @@ namespace Slate\Sql {
 
         public bool $buildIgnoreKeys = false;
 
-        public function __construct(?SqlTable $table = null) {
+        public function __construct(SqlTable $table, string $name) {
             $this->table  = $table;
+            $this->name = $name;
         }
 
-        public function references(string $foreignSchema, string $foreignTable, string $foreignColumn): static {
+        public function references(
+            string $foreignSchema,
+            string $foreignTable,
+            string $foreignColumn,
+            string $onUpdate = "RESTRICT",
+            string $onDelete = "RESTRICT"
+        ): static {
             $this->foreignColumn = $foreignColumn;
             $this->foreignSchema = $foreignSchema;
             $this->foreignTable = $foreignTable;
 
+            $this->foreignKeyConstraint = new SqlForeignKeyConstraint($this);
+            $this->foreignKeyConstraint->fromArray([
+                "foreign_column" => $foreignColumn,
+                "foreign_schema" => $foreignSchema,
+                "foreign_table" => $foreignTable,
+                "on_delete" => $onDelete,
+                "on_update" => $onUpdate
+            ]);
+
             return $this;
-        }
-
-        public function index(string $type = null): SqlIndex {
-            $this->index = new SqlIndex($this, "{$this->table->schema()->name()}_{$this->table->name()}_{$this->name}_IDX", $type);
-
-            return $this->index;
         }
 
         public function getName(): string {
             return $this->name;
-        }
-
-        public function setName(string $name): void {
-            $this->name = $name;
         }
 
         public function conn(): SqlConnection {
@@ -125,7 +126,22 @@ namespace Slate\Sql {
 
         /** Foreign Key */
         public function isForeignKey(): bool {
-            return $this->foreignKey;
+
+            return 
+                $this->conn()
+                    ->select()
+                    ->from("information_schema.KEY_COLUMN_USAGE as KCU")
+                    ->innerJoin("information_schema.REFERENTIAL_CONSTRAINTS as RC", function(SqlCondition $join) {
+                        return 
+                            $join
+                                ->where("RC.CONSTRAINT_SCHEMA", "=", DB::raw("KCU.TABLE_SCHEMA"))
+                                ->where("RC.TABLE_NAME", "=", DB::raw("KCU.TABLE_NAME"))
+                                ->where("RC.CONSTRAINT_NAME", "=", DB::raw("KCU.CONSTRAINT_NAME"))
+                            ;
+                    })
+                    ->where("KCU.COLUMN_NAME", "=", $this->getName())
+                    ->exists()
+            ;
         }
         
         public function getForeignSchema(): string|null {
@@ -141,10 +157,12 @@ namespace Slate\Sql {
         }
 
         public function isGenerated(): bool {
+            throw new \Error();
             return $this->generated;
         }
 
         public function isKey(): bool {
+            throw new \Error();
             return $this->isPrimaryKey() || $this->isUniqueKey();
         }
 
@@ -154,6 +172,11 @@ namespace Slate\Sql {
          * @return boolean
          */
         public function isPrimaryKey(): bool {
+            throw new \Error();
+            $primaryConstraint = $this->table->getConstraint("PRIMARY");
+
+            return $primaryConstraint !== null ? \Arr::contains($primaryConstraint->getColumns(), $this->getName()) : false;
+
             return $this->primaryKey;
         }
 
@@ -194,6 +217,7 @@ namespace Slate\Sql {
          * @return boolean
          */
         public function isIncremental(): bool {
+            throw new \Error();
             return $this->incremental;
         }
 
@@ -225,6 +249,7 @@ namespace Slate\Sql {
          * @return integer|null
          */
         public function getAutoIncrement(): int {
+            throw new \Error();
             if(!$this->incremental)
                 throw new \Error("This column is not incremental.");
 
@@ -245,6 +270,7 @@ namespace Slate\Sql {
          * @return boolean
          */
         public function isNullable(): bool {
+            throw new \Error();
             return $this->nullable;
         }
         
@@ -318,14 +344,14 @@ namespace Slate\Sql {
         public function fromArray(array $array): void {
             $this->name = $array["name"];
 
-            $this->nullable      = $array["nullable"] === "YES";
+            $this->nullable      = $array["nullable"];
 
             $this->primaryKey    = $array["key"] === "PRI";
             $this->uniqueKey     = $array["key"] === "UNI";
             $this->incremental   = $array["extra"] === "auto_increment";
             $this->generated     = $array["extra"] === "VIRTUAL GENERATED";
 
-            $this->autoIncrement = $array["autoIncrement"];
+            $this->autoIncrement = intval($array["autoIncrement"]) ;
 
             $this->type =  SqlTypeFactory::create($this->table->conn()::NAME.".".$array["datatype"], [$this]);
             $this->type->fromArray($array);
@@ -339,7 +365,7 @@ namespace Slate\Sql {
             $this->collation = $array["collation"];
         }
 
-        public function build(): array {
+        public function buildSql(): array {
             return [
                 $this->table->conn()->wrap($this->name),
                 $this->type->toString(),

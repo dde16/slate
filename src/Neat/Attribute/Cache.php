@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Neat\Attribute {
     use Attribute;
@@ -7,7 +7,7 @@ namespace Slate\Neat\Attribute {
     use Slate\Facade\App;
     use Slate\Metalang\MetalangDesign;
 
-#[Attribute(Attribute::TARGET_METHOD)]
+    #[Attribute(Attribute::TARGET_METHOD)]
     class Cache extends MetalangAttribute {    
         protected string $repo;
         protected ?float    $ttl = null;

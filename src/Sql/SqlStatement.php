@@ -1,9 +1,12 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql {
 
-    use Slate\Data\IStringForwardConvertable;
+    use Slate\Data\Contract\IStringForwardConvertable;
     use Slate\Facade\App;
+    use Slate\Sql\Trait\TSqlModifierMiddleware;
+    use Slate\Sql\Trait\TSqlModifiers;
+    use Slate\Sql\Trait\TSqlUsingConnection;
 
     abstract class SqlStatement extends SqlConstruct {
         use TSqlUsingConnection;
@@ -14,13 +17,17 @@ namespace Slate\Sql {
 
         public const MODIFIERS = 0;
 
+        public function __construct(SqlConnection $conn) {
+            $this->conn = $conn;
+        }
+
         public function var(string $name, string|IStringForwardConvertable $value = "NULL"): static {
             $this->variables[$name] = $value;
 
             return $this;
         }
 
-        public function toString(): string {
+        public function toSql(): string {
             return 
                 \Arr::join(
                     [
@@ -30,14 +37,14 @@ namespace Slate\Sql {
                                 fn($name, $value) => [$name, "SET @$name = " . (is_object($value) ? $value->toString() : $value) . ";"]
                             )
                         ),
-                        parent::toString()
+                        parent::toSql()
                     ],
                     "\n"
                 );
         }
 
         public function go(): bool {
-            return $this->conn()->prepare($this->toString())->execute();
+            return $this->conn()->prepare($this->toSql())->execute();
         }
 
         

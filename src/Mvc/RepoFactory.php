@@ -1,10 +1,10 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Mvc {
 
     use Slate\Data\Repository\FileSystemEncryptedRepository;
     use Slate\Data\Repository\FileSystemRepository;
-    use Slate\IO\SysvSharedMemoryRepository;
+    use Slate\Sysv\SysvSharedMemoryRepository;
     use Slate\Utility\Factory;
 
     class RepoFactory extends Factory {

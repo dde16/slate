@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Neat\Implementation {
 
@@ -39,7 +39,17 @@ namespace Slate\Neat\Implementation {
             object|null $context,
             object $next
         ): array {
-            if(($macro = @static::$macros[static::class][$name]) !== null)
+            $macro = @static::$macros[static::class][$name];
+
+            if($macro === null) {
+                $class = \Arr::first(array_keys(static::$macros), fn(string $class): bool => is_subclass_of(static::class, $class));
+
+                if($class !== null) {
+                    $macro = static::$macros[$class][$name];
+                }
+            }
+
+            if($macro !== null)
                 return [true, $context ? $macro->call($context, ...$arguments) : $macro(...$arguments)];
 
             return $next($name, $arguments);

@@ -1,9 +1,9 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Utility {
     use Closure;
     use DateTime;
-    use Slate\IO\IStreamWriteable;
+    use Slate\IO\Contract\IStreamWriteable;
     use Throwable;
 
     class Log {
@@ -70,6 +70,14 @@ namespace Slate\Utility {
         protected array  $formatter;
         protected int    $level;
 
+        /**
+         * Log::__construct
+         *
+         * @param array $streams   Any streams you want to output your log line to
+         * @param array $formatter An effective tuple that takes a master/fallback message as its first element and as the second, a key value pair for messages specific to the log level.
+         * @param array $context   Any context that can be static (scalar values) or dynamic (closures) that will be formatted onto the format message.
+         * @param int   $level     The level that the logger will output at.
+         */
         public function __construct(
             array $streams,
             array $formatter = [
@@ -148,7 +156,7 @@ namespace Slate\Utility {
             $this->log(Log::ERROR, $object);
         }
 
-        public function throw(Throwable $throwable, int $level = Log::CRITICAL) {
+        public function throw(Throwable $throwable, int $level = Log::CRITICAL): void {
             $tb = "    ";
             $this->log(
                 $level,

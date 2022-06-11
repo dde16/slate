@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Lang\Interpreter\Attribute {
     use Attribute;
@@ -9,11 +9,8 @@ namespace Slate\Lang\Interpreter\Attribute {
     #[Attribute(Attribute::TARGET_CLASS_CONSTANT)]
     class CompoundToken extends ExpressionToken {
 
-        public function __construct(string ...$expressions) {
-            
-            foreach($expressions as $token)
-                if(!is_string($token))
-                    throw new \Error("Array provided to CompoundToken must contain strings exclusively.");
+        public function __construct(string|int ...$expressions) {
+            $expressions = \Str::fromByteArray($expressions);
             
             /** Sort in length order */
             uasort($expressions, fn($a, $b) => strlen($b) - strlen($a));

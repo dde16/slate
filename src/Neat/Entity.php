@@ -1,11 +1,16 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Neat {
-
     use Closure;
+    use Error;
+    use PDOStatement;
+    use ReflectionClass;
+    use RuntimeException;
+    use SebastianBergmann\Environment\Runtime;
     use Slate\Facade\DB;
     use Slate\Facade\Security;
     use Slate\Facade\App;
+    use Slate\Mvc\Env;
     use Slate\Neat\Attribute\Column as ColumnAttribute;
     use Slate\Neat\Attribute\Scope as ScopeAttribute;
 
@@ -14,29 +19,27 @@ namespace Slate\Neat {
     use Slate\Utility\TSnapshot;
     use Slate\Utility\ISnapshotExplicit;
     use Slate\Neat\Attribute\Alias;
+    use Slate\Neat\Attribute\OneToMany;
+    use Slate\Neat\Attribute\OneToOne;
+    use Slate\Neat\Attribute\PrimaryColumn;
     use Slate\Neat\Implementation\TScopeAttributeImplementation;
     use Slate\Neat\Implementation\TColumnAttributeImplementation;
-    use Slate\Neat\EntityMarker;
+    use Slate\Sql\Medium\SqlSchema;
+    use Slate\Sql\Medium\SqlTable;
     use Slate\Sql\SqlConnection;
-    use Slate\Sql\SqlSchema;
-    use Slate\Sql\SqlTable;
+    use Slate\Sql\SqlRaw;
 
-class Entity extends Model implements ISnapshotExplicit {
+    /**
+     * @method void commit()
+     */
+    class Entity extends Model implements ISnapshotExplicit {
         public const DESIGN  = EntityDesign::class;
 
-        use TScopeAttributeImplementation;
         use TColumnAttributeImplementation;
         
         use TSnapshot;
 
-        protected int   $marker = EntityMarker::DEFAULT;
-        protected ?array $initial   = null;
-
-        public const REF_SQL            = (1<<0);
-        public const REF_RESOLVED       = (1<<1);
-        public const REF_ITEM_WRAP      = (1<<2);
-        public const REF_OUTER_WRAP     = (1<<3);
-        public const REF_NO_WRAP        = (1<<4);
+        private ?array $initial = null;
 
         public static function conn(bool $fallback = true): ?SqlConnection {
             return (($name = \Cls::getConstant(static::class, "CONN")) !== null)
@@ -63,17 +66,25 @@ class Entity extends Model implements ISnapshotExplicit {
         }
 
         public static function where(): EntityQuery {
-            return(static::query())->where(...\func_get_args());
+            return (static::query())->where(...\func_get_args());
         }
 
-        public static function query(): EntityQuery { 
+        /**
+         * @return EntityQuery
+         */
+        public static function query() {
             return(new EntityQuery(static::class));
         }
 
         public static function plan(array $plan): EntityQuery {
-            return(new EntityQuery(static::class, $plan));
+            return static::query()->plan($plan);
         }
 
+        /**
+         * Get all models for this entity.
+         *
+         * @return static[]
+         */
         public static function all(): array {
             return(static::query()->get());
         }
@@ -81,8 +92,9 @@ class Entity extends Model implements ISnapshotExplicit {
         public static function first(): object|null {
             $query = static::query();
 
-            if(func_num_args() > 0)
+            if (func_num_args() > 0) {
                 $query->where(...func_get_args());
+            }
 
             return $query->first();
         }
@@ -92,7 +104,9 @@ class Entity extends Model implements ISnapshotExplicit {
         }
 
         public static function table(): SqlTable {
-            return static::schema()->table(static::TABLE);
+            $schema = static::schema();
+            
+            return $schema->table(static::TABLE);
         }
 
         public function revert(): void {
@@ -101,16 +115,17 @@ class Entity extends Model implements ISnapshotExplicit {
         }
 
         public function fromSqlRow(array $array): void {
-            if($this->initial === null)
+            if ($this->initial === null) {
                 $this->initial = $array;
+            }
 
-            foreach($array as $columnName => $propertyValue) {
-                if(($columnAttribute = static::design()->getColumn($columnName)) !== null) {
+            foreach ($array as $columnName => $propertyValue) {
+                if (($columnAttribute = static::design()->getColumn($columnName)) !== null) {
                     $propertyName = $columnAttribute->parent->getName();
 
                     $sqlType = $columnAttribute->getColumn(static::class)->getType();
 
-                    if($sqlType === null) {
+                    if ($sqlType === null) {
                         throw new \Error(
                             \Str::format(
                                 "Column {}::\${}({}) has doesn't have a type defined.",
@@ -121,26 +136,24 @@ class Entity extends Model implements ISnapshotExplicit {
                         );
                     }
 
-                    if($columnAttribute->parent->hasType()) {
+                    if ($columnAttribute->parent->hasType()) {
                         $phpType = $columnAttribute->parent->getType()->getName();
 
-                        if(!\class_exists($phpType)) {
-                            if(($nativeType = \Type::getByName($phpType)) === null) {
+                        if (!\class_exists($phpType)) {
+                            if (($nativeType = \Type::getByName($phpType)) === null) {
                                 throw new \Error("Unknown type '" . $phpType . "'.");
                             }
-                        }
-                        else {
+                        } else {
                             $nativeType = $phpType;
                         }
     
-                        if(\Cls::hasInterface($sqlType::class, ISqlTypeBackwardConvertable::class) && $propertyValue !== null) {
+                        if ($sqlType instanceof ISqlTypeBackwardConvertable && $propertyValue !== null) {
                             try {
                                 $propertyValue = $sqlType->fromSqlValue($propertyValue, $nativeType);
-                            }
-                            catch(\Throwable $throwable) {
+                            } catch (\Throwable $throwable) {
                                 throw new \Error(\Str::format(
                                     "Error while trying to convert {}: {}",
-                                    static::ref($columnAttribute->getColumnName()),
+                                    $columnAttribute->getColumnName(),
                                     $throwable->getMessage()
                                 ), 0, $throwable);
                             }
@@ -149,6 +162,7 @@ class Entity extends Model implements ISnapshotExplicit {
                         unset($phpType);
                         unset($nativeType);
                     }
+
 
                     $this->__set($propertyName, $propertyValue);
                 }
@@ -160,249 +174,229 @@ class Entity extends Model implements ISnapshotExplicit {
 
             return \Arr::mapAssoc(
                 $this->toArray(
-                    $properties ?: \Arr::map(
+                    $properties ?? \Arr::map(
                         $columns,
                         fn($column) => $column->parent->getName()
                     )
                 ),
-                function($propertyName, $propertyValue) use($columns) {
-                    $propertyColumn = $columns[$propertyName];
-                    $propertyColumnType = $propertyColumn->getColumn(static::class)->getType();
+                function($propertyName, $propertyValue) use ($columns) {
+                    $propertyColumnAttribute = $columns[$propertyName];
+                    $propertyColumn = $propertyColumnAttribute->getColumn(static::class);
+                    $propertyColumnType = $propertyColumn->getType();
 
-                    if($propertyValue !== null ? \Cls::hasInterface($propertyColumnType, ISqlTypeForwardConvertable::class) : false) {
+                    if ($propertyValue !== null ? \Cls::hasInterface($propertyColumnType, ISqlTypeForwardConvertable::class) : false) {
                         $propertyValue = $propertyColumnType->toSqlValue($propertyValue);
                     }
-                    else if(!$propertyColumn->isIncremental() && !$propertyColumn->isNullable()) {
-                        throw new \Error(\Str::format(
-                            "Property column '{}::\${}' cannot be null.",
-                            static::class,
-                            $propertyName
-                        ));
-                    }
+                    // else if(!$propertyColumn->isIncremental() && !$propertyColumn->isNullable()) {
+                    //     throw new \Error(\Str::format(
+                    //         "Property column '{}::\${}' cannot be null.",
+                    //         static::class,
+                    //         $propertyName
+                    //     ));
+                    // }
 
                     $propertyValue = Security::sanitise($propertyValue, ["'"]);
 
-                    return [$propertyColumn->getColumnName(), $propertyValue];
+                    return [$propertyColumnAttribute->getColumnName(), $propertyValue];
                 }
             );
         }
 
         public function getPrimaryKey(): int|string|float {
-            return $this->{static::design()->getPrimaryKey()->parent->getName()};
+            $primaryKeys = array_values(static::design()->getPrimaryKeys());
+
+            if (count($primaryKeys) > 1) {
+                throw new RuntimeException("Unable to get the model primary key value as this entity has multiple primary keys.");
+            }
+
+            return $this->{$primaryKeys[0]->parent->getName()};
         }
 
         public static function scope(string $name, array $arguments): ?EntityStaticCarry {
-            if(static::design()->getAttrInstance(ScopeAttribute::class, $name) !== null) {
+            if (static::design()->getAttrInstance(ScopeAttribute::class, $name) !== null) {
                 return static::{$name}(...$arguments);
             }
 
             return null;
         }
 
-        #[Alias("commit")]
-        public static function commitEntity(array|Closure $filter = null, bool $changed = true): int {
-            $entities = static::class === Entity::class ? \Arr::filter(
-                EntityDesign::$designs,
-                function($design) {
-                    return $design->isQueryable();
-                }
-            ) : [static::design()];
+        public static function getChangeColumns(array $models) {
+            $design = static::design();
 
-            if(is_array($filter)) {
-                $objectIds = \Arr::map($filter, function($obj) {
-                    return spl_object_id($obj);
-                });
+            $nonNullableColumns = \Arr::filter(
+                $design->getAttrInstances(ColumnAttribute::class),
+                fn(ColumnAttribute $column): bool => $column instanceof PrimaryColumn || !($column->parent->getType()->allowsNull())
+            );
+            $aggregateColumns = $nonNullableColumns;
 
-                $filter = function($class, $instance) use($objectIds) {
-                    return \Arr::contains($objectIds, spl_object_id($instance));
-                };
-            }
+            foreach ($models as $model) {
+                $modelChanges = $model->getChanges();
 
-            $committed = 0;
-
-            foreach($entities as $entityDesign) {
-                $entityClass = $entityDesign->getName();
-                $entityModels = $entityDesign->getInstances();
-
-                $primaryKeyColumn = $entityDesign->getPrimaryKey();
-                $primaryKeyProperty = $primaryKeyColumn->parent->getName();
-
-                $entityNonNullableColumns = \Arr::filter(
-                    $entityDesign->getAttrInstances(
-                        ColumnAttribute::class
-                    ),
-                    function($column) {
-                        return $column->isPrimaryKey() || !$column->isNullable();
+                $entityModelColumns = \Arr::filter(
+                    $design->getAttrInstances(ColumnAttribute::class),
+                    function($column) use ($nonNullableColumns, $modelChanges) {
+                        return
+                            \Arr::hasKey($nonNullableColumns, $column->parent->getName())
+                            || \Arr::contains($modelChanges, $column->parent->getName());
                     }
                 );
-                $entityAggregateColumns = $entityNonNullableColumns;
 
-                $insertModels = [];
-                $insertModelRows   = [];
+                $aggregateColumns = (\Arr::merge($aggregateColumns, $entityModelColumns));
+            }
 
-                $updateModelRows   = [];
+            return $aggregateColumns;
+        }
 
-                foreach($entityModels as $entityModelId => $entityModel) {
-                    $entityModelInsert = false;
+        #[Alias("insert")]
+        public static function insertModels(array $models): int {
+            $insertCount = 0;
 
-                    $entityModelCommit = $entityModel->isMarkedWith(EntityMarker::UPSERT) || ($changed && $entityModel->hasChanged());
+            if (!\Arr::isEmpty($models)) {
+                $conn = static::conn();
 
-                    if($filter !== null)
-                        $entityModelCommit = $entityModelCommit && $filter($entityClass, $entityModel);
+                $insertColumns = static::getChangeColumns($models);
 
-                    if($entityModelCommit) {
-                        $entityModelWhatsChanged = $entityModel->whatsChanged();
+                $primaryKeyColumnAttributes = static::design()->getPrimaryKeys();
+                $incrementalColumnAttribute = \Arr::first(
+                    $primaryKeyColumnAttributes,
+                    fn(PrimaryColumn $column): bool => $column->isIncremental()
+                );
 
-                        $entityModelColumns = \Arr::filter(
-                            $entityDesign->getAttrInstances(
-                                ColumnAttribute::class
-                            ),
-                            function($column) use($entityNonNullableColumns, $entityModelWhatsChanged) {
-                                return
-                                    \Arr::hasKey($entityNonNullableColumns, $column->parent->getName())
-                                    || \Arr::contains($entityModelWhatsChanged, $column->parent->getName());
-                            }
-                        );
-
-                        $entityAggregateColumns = (\Arr::merge($entityAggregateColumns, $entityModelColumns));
-
-                        if($entityModel->{$primaryKeyProperty} === null) {
-                            if($primaryKeyColumn->isIncremental() === false) {
-                                throw new \Error(\Str::format(
-                                    "Property column '{$primaryKeyProperty}' cannot be null."
-                                ));
-                            }
-
-                            $entityModelInsert = true;
-                        }
-
-                        $entityModelRow = \Arr::mapAssoc(
-                            $entityModel->toArray(
-                                \Arr::values(
-                                    \Arr::map(
-                                        $entityModelColumns,
-                                        function($column) {
-                                            return $column->parent->getName();
-                                        }
-                                    )
-                                )
-                            ),
-                            function($propertyName, $propertyValue) use($entityModelColumns) {
-                                $propertyColumn = $entityModelColumns[$propertyName];
-                                $propertyColumnType = $propertyColumn->getColumn(static::class)->getType();
-
-                                if($propertyValue !== null ? \Cls::hasInterface($propertyColumnType, ISqlTypeForwardConvertable::class) : false) {
-                                    $propertyValue = $propertyColumnType->toSqlValue($propertyValue);
-                                }
-                                else if(!$propertyColumn->isIncremental() && !$propertyColumn->isNullable()) {
-                                    throw new \Error(\Str::format(
-                                        "Property column '{}::\${}' cannot be null.",
-                                        static::class,
-                                        $propertyName
-                                    ));
-                                }
-
-                                $propertyValue = Security::sanitise($propertyValue, ["'"]);
-
-                                return [$propertyColumn->getColumnName(), $propertyValue];
-                            }
-                        );
-
-                        $entityModel->snap(store: true);
-
-                        if($entityModelInsert) {
-                            $insertModels[] = $entityModel;
-                            $insertModelRows[] = $entityModelRow;
-                        }
-                        else {
-                            $updateModelRows[] = $entityModelRow;
-                        }
+                $insertColumnsMap = \Arr::mapAssoc(
+                    $insertColumns,
+                    function($_, $column) {
+                        return [$column->getColumnName(), $column->getColumnName()];
                     }
+                );
+                
+                $insertColumnsProperties = \Arr::values(
+                    \Arr::map(
+                        $insertColumns,
+                        fn($column): string => $column->parent->getName()
+                    )
+                );
+    
+                $insertRows    = [];
+                $insertQueries = [];
+    
+                foreach ($models as $insertModel) {
+                    $insertRows[] = \Arr::rearrange($insertModel->toSqlRow($insertColumnsProperties), $insertColumnsMap, function(string $key): SqlRaw {
+                        return DB::raw(static::conn()->wrap($key));
+                    });
                 }
 
-                $entityColumnsMap = \Arr::mapAssoc(
-                    $entityAggregateColumns,
+                $insertStatement = DB::insert()
+                    ->into(static::table()->fullname())
+                    ->rows($insertRows)
+                ;
+
+                $insertQueries[] = $insertStatement->toSql().";";
+
+                if ($incrementalColumnAttribute !== null) {
+                    $insertQueries[] = 
+                        ["SELECT LAST_INSERT_ID();", function($statement) use ($models, $incrementalColumnAttribute) {
+                            $lastId = $statement->fetchColumn(0);
+                            $count = count($models);
+
+                            for ($id = 0; $id < $count; $id++) {
+                                $models[($count - 1) - $id]->{$incrementalColumnAttribute->parent->getName()} = $lastId - $id;
+                            }
+                        }]
+                    ;
+                }
+                
+                $insertQueries[] = [
+                    "SELECT ROW_COUNT() as row_count;",
+                    function(PDOStatement $statement) use (&$insertCount): void {
+                        $insertCount = $statement->fetchColumn(0);
+                    }
+                ];
+
+                $conn->transact(function() use ($conn, $insertQueries): void {
+                    $conn->cbMultiquery($insertQueries);
+                });
+            }
+
+            return $insertCount;
+        }
+
+        #[Alias("upsert")]
+        #[Alias("commit")]
+        #[Alias("update")]
+        public static function upsertModels(array $models): int {
+            $insertModels = [];
+            $updateModels = [];
+
+            $primaryKeyColumnAttributes = static::design()->getPrimaryKeys();
+
+            foreach ($models as $model) {
+                if (\Arr::any($model->toArray(\Arr::values(\Arr::map($primaryKeyColumnAttributes, fn(ColumnAttribute $column): string => $column->parent->getName()))), Closure::fromCallable('is_null'))) {
+                    $insertModels[] = $model;
+                } else {
+                    $updateModels[] = $model;
+                }
+            }
+
+            return static::updateModels($updateModels) + static::insertModels($insertModels);
+        }
+
+        public static function updateModels(array $models): int {
+            $updateCount = 0;
+
+            if (!\Arr::isEmpty($models)) {
+                $conn = static::conn();
+                $updateColumns = static::getChangeColumns($models);
+
+                $updateColumnsMap = \Arr::mapAssoc(
+                    $updateColumns,
                     function($_, $column) {
                         return [$column->getColumnName(), $column->getColumnName()];
                     }
                 );
 
+                $updateRows    = [];
+                $updateQueries = [];
 
-                $conn = App::conn(\Cls::getConstant(static::class, "CONN"));
+                $updateColumnsProperties = \Arr::values(
+                    \Arr::map(
+                        $updateColumns,
+                        fn($column): string => $column->parent->getName()
+                    )
+                );
 
-                $multiquery = [];
-
-                if(!\Arr::isEmpty($insertModels)) {
-                    $insertStatement  = DB::insert()->into($entityClass::table()->fullname());
-
-                    $insertColumnsMap = \Arr::except($entityColumnsMap, $primaryKeyColumn->getColumnName());
-
-                    $insertStatement->rows(
-                        \Arr::map(
-                            $insertModelRows,
-                            function($insertModelRow) use($insertColumnsMap) {
-                                return \Arr::rearrange($insertModelRow, $insertColumnsMap, function($key) {
-                                    return DB::raw("`$key`");
-                                });
-                            }
-                        )
-                    );
-
-                    $multiquery[] = $insertStatement->toString().";";
-
-                    if($primaryKeyColumn->isIncremental()) {
-                        $multiquery[] = 
-                            ["SELECT LAST_INSERT_ID();", function($statement) use($insertModels, $primaryKeyColumn, $primaryKeyProperty) {
-                                $lastId = $statement->fetchColumn(0);
-
-                                $count = count($insertModels);
-
-                                for($id = 0; $id < $count; $id++) {
-                                    $insertModels[($count - 1) - $id]->{$primaryKeyProperty} = $lastId - $id;
-                                }
-                            }]
-                        ;
-                    }
+                foreach ($models as $updateModel) {
+                    $updateRows[] = \Arr::rearrange($updateModel->toSqlRow($updateColumnsProperties), $updateColumnsMap, function(string $key): SqlRaw {
+                        return DB::raw(static::conn()->wrap($key));
+                    });
                 }
 
-                if(!\Arr::isEmpty($updateModelRows)) {
-                    $updateStatement  = DB::insert()->into($entityClass::table()->fullname())->conflictMirror();
-
-                    $rows = \Arr::map(
-                        $updateModelRows,
-                        function($updateModelRow) use($entityColumnsMap, $primaryKeyProperty) {
-                            return \Arr::rearrange($updateModelRow, $entityColumnsMap, function($key) {
-                                return DB::raw("`$key`");
-                            });
-                        }
-                    );
-
-                    $updateStatement->rows($rows);
-
-                    $multiquery[] = $updateStatement->toString().";";
-                }
-
-
-                if(!\Arr::isEmpty($multiquery)) {
-                    $conn->beginTransaction();
-
-                    try {
-                        $conn->cbMultiquery($multiquery);
+                $updateQueries[] = 
+                    $conn
+                        ->insert()
+                        ->into(static::table()->fullname())
+                        ->rows($updateRows)
+                        ->conflictMirror()
+                        ->toSql()
+                    .";"
+                ;
+                
+                $updateQueries[] = [
+                    "SELECT ROW_COUNT() as row_count;",
+                    function(PDOStatement $statement) use (&$updateCount): void {
+                        $updateCount = $statement->fetchColumn(0);
                     }
-                    catch(\PDOException $e) {
-                        if(!$conn->rollBack())
-                            throw new \Error("Unable to rollback.");
+                ];
 
-                        throw $e;
-                    }
+                $conn->transact(function() use ($conn, $updateQueries): void {
+                    $conn->cbMultiquery($updateQueries);
+                });
 
-                    $conn->commit();
+                foreach ($models as $model) {
+                    $model->snap(store: true);
                 }
-                    
-                $committed += count($insertModelRows) + count($updateModelRows);
             }
 
-            return $committed;
+            return $updateCount;
         }
         
         /**
@@ -410,45 +404,79 @@ class Entity extends Model implements ISnapshotExplicit {
          */
         #[Alias("delete")]
         public static function deleteStatic(string|int|Closure $filter): bool {
-            if(!static::design()->isQueryable())
+            if (!static::design()->isQueryable()) {
                 throw new \Error("This Entity is not queryable, as it lacks a schema and or table.");
+            }
 
             $design = static::design();
 
-            if(is_scalar($filter)) {
-                $filter = function($condition) use($filter, $design) {
+            if (is_scalar($filter)) {
+                $filter = function($condition) use ($filter, $design) {
                     return $condition->where($design->getPrimaryKey()->getColumnName(), $filter);
                 };
             }
 
-            return DB::delete(static::ref())->where($filter)->go();
+            return DB::delete(static::table()->fullname())->where($filter)->go();
         }
 
         #[Alias("delete")]
         public function deleteInstance(): void {
             $design = static::design();
 
-            static::deleteStatic(function($condition) use($design) {
-                $primaryKeyColumn = $design->getPrimaryKey();
+            static::deleteStatic(function($condition) use ($design) {
+                foreach ($design->getPrimaryKeys() as $primaryKeyColumn) {
+                    $condition->where($primaryKeyColumn->getColumnName(), $this->{$primaryKeyColumn->parent->getName()});
+                }
 
-                return $condition->where(static::ref($primaryKeyColumn->getColumnName()), $this->getPrimaryKey());
+                return $condition;
             });
 
             $this->__destruct();
         }
 
-        public function isMarkedWith(int $marker): bool {
-            return $this->marker === $marker;
-        }
-
+        #[Alias("save")]
+        #[Alias("upsert")]
         #[Alias("commit")]
-        public function commitInstance(): int {
-            return static::commitEntity([$this]);
+        public function commitInstance(): bool {
+            return static::updateModels([$this]) === 1 ? true : false;
         }
 
+        #[Alias("insert")]
+        public function insertInstance(): bool {
+            return static::insertModels([$this]) === 1 ? true : false;
+        }
+
+        /**
+         * Count the number of models for a given entity.
+         *
+         * @return integer
+         */
         public static function count(): int {
             return static::query()->count();
         }
+
+        public function hasMany(string $local, array $related): OneToMany {
+            $reflection = new ReflectionClass(OneToMany::class);
+
+            $instance = $reflection->newInstanceWithoutConstructor();
+            $instance->setParent(static::design()->getMethod(callerof(__FUNCTION__)["function"])->construct());
+            $instance->__construct($local, $related);
+            
+            return $instance;
+        }
+
+        // public function hasManyThrough(string $key, array $pivot, string $foreign, array $related) {
+        //     $this->hasManyThrough(
+        //         "uid",
+        //         [DpdbMediaTag::class, "media_uid"],
+        //         "person_uid",
+        //         [DpdbPerson::class, "uid"],
+        //     );
+        // }
+
+        // public function hasOne(): OneToOne {
+
+        // }
     }
 }
 

@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Facade {
 
@@ -13,23 +13,8 @@ namespace Slate\Facade {
                 case "string":
                     $output = $input;
 
-                    if($escape === null ? !\Arr::isEmpty($escape) : false) {
-                        $output = preg_replace_callback(
-                            "/(\\\\)*(" . \Arr::join(\Arr::map($escape, Closure::fromCallable('preg_quote')), "|") . ")/",
-                            function($matches) use($escape) {
-                                $match = $matches[2];
-                                $escapes = $matches[1];
-
-                                if(empty($escapes))
-                                    $escapes = "\\";
-
-                                if(strlen($escapes) % 2 === 0)
-                                    $escapes .= "\\";
-    
-                                return $escapes.$match;
-                            },
-                            $input
-                        );
+                    if($escape !== null ? !\Arr::isEmpty($escape) : false) {
+                        $output = \Str::escape($input, $escape);
                     }
     
                     switch($html) {

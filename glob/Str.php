@@ -1,8 +1,5 @@
 <?php
 
-use Slate\Data\Iterator\StringIterator;
-use Slate\Interface\IStringForwardConvertable;
-use Slate\Interface\IStringBackwardConvertable;
 
 abstract class Str extends ScalarType {
     use \Slate\Utility\TMacroable;
@@ -10,8 +7,8 @@ abstract class Str extends ScalarType {
     public const NAMES            = ["string", "str"];
     public const VALIDATOR        = "is_string";
     public const CONVERTER        = "strval";
-    public const CONVERT_FORWARD  = [ IStringForwardConvertable::class, "toString" ];
-    public const CONVERT_BACKWARD = [ IStringForwardConvertable::class, "fromString" ];
+    public const CONVERT_FORWARD  = [ \Slate\Data\IStringForwardConvertable::class, "toString" ];
+    public const CONVERT_BACKWARD = [ \Slate\Data\IStringForwardConvertable::class, "fromString" ];
 
     public const ASCII_LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
     public const ASCII_UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -48,6 +45,10 @@ abstract class Str extends ScalarType {
         "\v" => "\\v",
         "\0" => "\\0"
     ];
+
+    public static function match(string $string, string $pattern): bool {
+        return fnmatch($pattern, $string);
+    }
 
     public static function formatDateInterval(
         DateInterval $interval,
@@ -108,6 +109,10 @@ abstract class Str extends ScalarType {
         return \Arr::join(\Arr::slice($interval, 0, -1), $listDelimiter) . ($lastListDelimiter ? $lastListDelimiter : $listDelimiter).\Arr::last($interval);
     }
 
+    public static function fromByteArray(array $bytes) {
+        return \Arr::map($bytes, fn(string|int $byte): string => is_int($byte) ? chr($byte) : $byte);
+    }
+
     public static function toIntegers(string $bytes, int $bitsize = 8): array {
         return \Arr::map(
             \Str::split($bytes, $bitsize / 8),
@@ -130,7 +135,7 @@ abstract class Str extends ScalarType {
     public static function escape(string $string, array $escape = ["\"", "'", "`", "\\"]): string {
         return preg_replace_callback(
             "/(\\\\)*(" . \Arr::join(\Arr::map($escape, Closure::fromCallable('preg_quote')), "|") . ")/",
-            function($matches) use($escape) {
+            function($matches) {
                 $match = $matches[2];
                 $escapes = $matches[1];
 
@@ -448,15 +453,13 @@ abstract class Str extends ScalarType {
         );
     }
 
-    public static function divide(string $source): array {
-        $source = \Str::split($source);
-        $middle = \Arr::middle($source);
-        $prefix = \Str::join(\Arr::slice($source, 0, $middle));
-        $suffix = \Str::join(\Arr::slice($source, $middle));
-
-        return [$prefix, $suffix];
-    }
-
+    /**
+     * Convert a string to its character codes.
+     *
+     * @param string $source
+     *
+     * @return array
+     */
     public static function ord(string $source): array {
         return \Arr::map(\Str::split($source), Closure::fromCallable('ord'));
     }
@@ -474,16 +477,7 @@ abstract class Str extends ScalarType {
         $array = [];
 
         if (is_int($splitter)) {
-
-
             return $source !== "" ? str_split($source, $splitter) : [];
-
-            // for($index = 0; $index < $length; $index++) {
-            //     if ($index % $splitter === 0) {
-            //         $substring = substr($source, $index, $splitter);
-            //         $array[] = $substring;
-            //     }
-            // }
         }
         else if(is_string($splitter)) {
             $array = \Str::explode($source, $splitter);
@@ -569,52 +563,6 @@ abstract class Str extends ScalarType {
         return $format;
     }
 
-    public static function extract(string $string, string $format, string $pattern = "[[:print:]]+"): array {
-        $index = 0;
-        $extract  = [];
-
-        $regex = "/^" . preg_replace_callback(
-            \Str::FORMAT_PATTERN,
-            function($matches) use(&$index, &$extract, $pattern) {
-                $value = $matches[0];
-                $key = $matches["key"];
-
-                if(\Str::isEmpty($key)) {
-                    $key = strval($index);
-                }
-                
-                $index++;
-
-                if(\Arr::hasKey($extract, $key)) {
-                    throw new Error(
-                        \Str::format(
-                            "Duplicate key '{}'.",
-                            $key
-                        )
-                    );
-                }
-
-                $extract[$key] = null;
-
-                return "(?'key_$key'" . $pattern . ")";
-            },
-            $format
-        ) . "$/";
-
-        $matches = [];
-
-        if(preg_match($regex, $string, $matches)) {
-            $extract = \Arr::mapAssoc(
-                $extract,
-                function($key, $_) use(&$matches) {
-                    return [$key, $matches["key_".$key]];
-                }
-            );
-        }
-
-        return $extract;
-    }
-
     public static function pluralise(string $string, string $suffix, int $count) {
         return \Str::format($string, [ "i" => $count ]) . ($count > 1 || $count === 0 ? $suffix : "");
     }
@@ -654,17 +602,29 @@ abstract class Str extends ScalarType {
         return str_pad($string, $length, $pad, $type);
     }
 
-    public static function wrapc(string $source, string $wrapper): string {
-        $wrapper = \Str::split($wrapper);
-        $middle = \Arr::middle($wrapper);
-        $prefix = \Str::join(\Arr::slice($wrapper, 0, $middle));
-        $suffix = \Str::join(\Arr::slice($wrapper, $middle));
-
-        return \Str::val($prefix) . \Str::val($source) . \Str::val($suffix);
+    public static function divide(string $string): array {
+        $centreOffset = strlen($string) / 2;
+        $prefixOffset = $centreOffset;
+        $suffixOffset = $centreOffset;
+    
+        $centre = "";
+    
+        if(\Math::mod($centreOffset, 1) != 0) {
+            $centreOffset = intval($centreOffset);
+            $centre = substr($string, intval($centreOffset), 1);
+            $suffixOffset++;
+        }
+    
+        $prefix = substr($string, 0, $prefixOffset);
+        $suffix = substr($string, $suffixOffset);
+    
+        return [$prefix, $centre, $suffix];
     }
 
-    public static function quote(string $source): string {
-        return \Str::wrap($source, "'");
+    public static function wrapc(string $source, string $wrapper): string {
+        [$prefix, $centre, $suffix] = \Str::divide($wrapper);
+
+        return $prefix.\Str::val($source).$centre.$suffix;
     }
 
     public static function addPrefix(string $source, string $prefix): string {
@@ -739,6 +699,23 @@ abstract class Str extends ScalarType {
     public static function removePrefix(string $source, string $prefix): string {
         if(\Str::startswith($source, $prefix)) {
             return substr($source, \Str::len($prefix));
+        }
+
+        return $source;
+    }
+
+    
+    public static function removeSuffixes(string $source, array $suffixes): string {
+        foreach($suffixes as $index => $suffix)
+            $source = \Str::removeSuffix($source, $suffix);
+
+        return $source;
+    }
+    
+    public static function trimSuffixes(string $source, array $suffixes): string {
+
+        while (\Str::endswith($source, $suffixes)) {
+            $source = \Str::removeSuffixes($source, $suffixes);
         }
 
         return $source;
@@ -866,66 +843,70 @@ abstract class Str extends ScalarType {
         return strval($value);
     }
 
-    public static function tokenise(string $string, array $tokens, callable $callback = null): array {
-        return static::tokenize($string, $tokens, $callback);
-    }
-
-    public static function tokenize(string $string, array $tokens, callable $callback = null): array {
-        $pattern = \Str::wrapc(
-            \Arr::join(
-                \Arr::map(
-                    \Arr::keys($tokens),
-                    'preg_quote'
-                ),
-                "|"
-            ),
-            "/()/"
-        );
-
-        return \Arr::values(\Arr::map(
-            \Arr::filter(preg_split(
-                $pattern, $string,
-                -1,
-                PREG_SPLIT_DELIM_CAPTURE
-            ), \Fnc::not('is_empty')),
-            function($value) use ($tokens, $callback) {
-                $token = $tokens[$value];
-
-                if($token !== NULL) return $callback !== null ? $callback($token) : $token;
-
-                return $value;
+    /**
+     * Determine multiple common prefiexes amongst a collection of strings.
+     * 
+     * @param array $strings
+     * 
+     * @return array
+     */
+    public static function getPrefixes(array $strings, bool $relative = false): array {
+        $lengths = \Arr::map($strings, Closure::fromCallable('strlen'));
+    
+        [$target, $length] = \Arr::maxEntry($lengths);
+        $prefixes = [];
+        $prefix = "";
+        $lastMatches = 0;
+    
+        for($index = 0; $index < $length; $index++) {
+            $char = $strings[$target][$index];
+            $filtered = \Arr::filter($strings, fn(int $key): bool => $index <= $lengths[$key], \Arr::FILTER_KEY);
+    
+            if(count($filtered) > 0) {
+                $matches = \Arr::count($filtered, fn(string $string): bool => $string[$index] === $char);
+    
+                if($matches < $lastMatches) {
+                    $prefixes[] = $prefix;
+    
+                    if($relative)
+                        $prefix = "";
+                }
+    
+                if($matches > 1)
+                    $prefix .= $char;
+    
+                if($matches === 1)
+                    break;
+    
+                $lastMatches = $matches;
             }
-        ));
+        }
+    
+        return $prefixes;
     }
 
     /**
      * Determine a common prefix amongst a collection of strings.
      *
      * @param array $strings
-     * @return array
+     * @return string
      */
-    public static function getPrefix(array $strings): array {
+    public static function getPrefix(array $strings): ?string {
         $length = \Arr::min(\Arr::map($strings, Closure::fromCallable('strlen')));
-        $prefix = "";
+        $prefix = null;
 
         for($index = 0; $index < $length; $index++) {
             $char = $strings[0][$index];
 
             if(\Arr::all(\Arr::slice($strings, 1), fn(string $string): bool => $string[$index] === $char)) {
-                $prefix .= $char;
+                $prefix = ($prefix ?? "") . $char;
             }
             else {
                 break;
             }
         }
 
-        return [
-            $prefix,
-            \Arr::map(
-                $strings,
-                fn(string $string): string => (!\Str::isEmpty($string) ? \Str::removePrefix($string, $prefix) : $string)
-            )
-        ];
+        return $prefix ;
     }
 
     public static function upper(string $source): string {

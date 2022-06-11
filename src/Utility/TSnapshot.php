@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Utility {
     trait TSnapshot {
@@ -103,7 +103,7 @@ namespace Slate\Utility {
             return $this->snap(store: false)[0] !== $this->objectSnapshot;
         }
 
-        public function whatsChanged(array $options = []): array {
+        public function getChanges(array $options = []): array {
             if(@$options["properties"] === null && $this->objectSnapshot !== null)
                 $options["properties"] = \Arr::keys($this->propertySnapshots);
 

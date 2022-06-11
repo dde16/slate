@@ -1,35 +1,15 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Facade {
     use Slate\Utility\Facade;
     use Slate\Mvc\Env;
-
-    use Slate\Sql\Statement\TSqlSelectStatement;
-    use Slate\Sql\Statement\TSqlDeleteStatement;
-    use Slate\Sql\Statement\TSqlInsertStatement;
-    use Slate\Sql\Statement\TSqlUpdateStatement;
-    use Slate\Sql\Statement\TSqlDropStatement;
-    use Slate\Sql\Statement\TSqlAlterStatement;
-    use Slate\Sql\Statement\TSqlCreateStatement;
-    use Slate\Sql\Statement\TSqlLockTablesStatement;
-
-    use Slate\Sql\Connection\MySqlConnection;
-    use Slate\Sql\SqlConnection;
-    use Slate\Sql\SqlConnectionFactory;
+    use Slate\Sql\Connection\SqlConnectionFactory;
     use Slate\Sql\SqlRaw;
     
     final class DB extends Facade {
-
-        use TSqlSelectStatement;
-        use TSqlDeleteStatement;
-        use TSqlUpdateStatement;
-        use TSqlInsertStatement;
-        use TSqlDropStatement;
-        use TSqlAlterStatement;
-        use TSqlCreateStatement;
-        use TSqlLockTablesStatement;
-
-        public const SUPPORTED = ["mysql"];
+        public static function __callStatic(string $name, array $arguments): mixed {
+            return App::conn()->{$name}(...$arguments);
+        }
 
         public static function raw(string $content): SqlRaw {
             return(new SqlRaw($content));
@@ -44,9 +24,6 @@ namespace Slate\Facade {
         }
 
         public static function import(string $driver, bool $default = false): void {
-            if(!\Arr::contains(DB::SUPPORTED, $driver))
-                throw new \Error("SQL server '$driver' is unsupported.");
-
             static::add(
                 $driver,
                 SqlConnectionFactory::create($driver, [

@@ -1,12 +1,10 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Neat\Attribute {
     use Attribute;
-    use ReflectionProperty;
-    use Slate\Metalang\MetalangDesign;
 
-#[Attribute(Attribute::TARGET_PROPERTY)]
-    class OneToMany extends OneToAny {        
+    #[Attribute(Attribute::TARGET_PROPERTY)]
+    class OneToMany extends OneToAny {
         public function __construct(
             string $localProperty,
             array $foreignRelalationship

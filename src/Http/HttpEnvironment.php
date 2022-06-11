@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Http {
 
@@ -20,7 +20,7 @@ abstract class HttpEnvironment {
         }
 
         public static function isLinux(): bool {
-            return \Str::upper(\Str::substr(PHP_OS, 0, 3));
+            return stristr(PHP_OS, 'LINUX') !== false;
         }
 
         public static function getRequestTimeFloat(): float {
@@ -35,7 +35,7 @@ abstract class HttpEnvironment {
             return extension_loaded($name);
         }
 
-        public static function getElapsedTime(int $precision = 4): int {
+        public static function getElapsedTime(int $precision = 4): int|float {
             return round(
                 microtime(true) - $_SERVER["REQUEST_TIME_FLOAT"],
                 $precision

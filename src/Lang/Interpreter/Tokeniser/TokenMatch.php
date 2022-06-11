@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 
 namespace Slate\Lang\Interpreter\Tokeniser {
@@ -48,8 +48,6 @@ namespace Slate\Lang\Interpreter\Tokeniser {
         }
 
         public function persistValue() {
-            
-
             $this->value = $this->getValue();
         }
 

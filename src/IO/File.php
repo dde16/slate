@@ -1,14 +1,13 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\IO {
 
     use Generator;
-    use Slate\Exception\PathNotFoundException;
     use Slate\Exception\IOException;
-
+    use Slate\File\Rotation\FileRotator;
     use Slate\Http\HttpEnvironment;
 
-    use Slate\IO\Mime;
+    use Slate\Media\Mime;
     use SplFileInfo;
 
     class File extends Stream {
@@ -81,13 +80,13 @@ namespace Slate\IO {
             $exists = $this->path->isFile();
             
             if($read && !$exists) {
-                \Path::touch($this->path);
+                \Path::touch($this->path->__toString());
             }
             else if($this->path->isDir()) {
                 throw new IOException([$this->path->__toString()], IOException::ERROR_FILE_IS_DIR_MISMATCH);
             }
 
-            $resource = fopen($this->path, $this->currentMode);
+            $resource = fopen($this->path->__toString(), $this->currentMode->__toString());
 
             if($resource === FALSE)
                 throw new IOException([$this->path->__toString()], IOException::ERROR_FILE_OPEN_FAILURE);
@@ -103,7 +102,7 @@ namespace Slate\IO {
         public function delete(): bool {
             $this->close();
             
-            return unlink($this->path);
+            return unlink($this->path->__toString());
         }
 
         public function isLocked(): bool {
@@ -112,7 +111,7 @@ namespace Slate\IO {
             if(flock($this->resource, LOCK_EX|LOCK_NB, $isLocked))
                 $this->unlock();
 
-            return intval($isLocked);
+            return boolval(intval($isLocked));
         }
 
         public function lock(int $operation = LOCK_EX|LOCK_NB): void {
@@ -154,8 +153,16 @@ namespace Slate\IO {
             $this->write($data.$delimiter);
         }
 
+        /**
+         * Iterate through the lines for this file.
+         *
+         * @param integer $count
+         * @param string $delimiter
+         * @param string|null $encoding
+         *
+         * @return Generator|string[]
+         */
         public function readlines(int $count = 1, string $delimiter = "\r\n", string $encoding = null): Generator {
-            $lines = [];
             $index = 0;
 
             while(($index < $count)) {
@@ -170,6 +177,13 @@ namespace Slate\IO {
             }
         }
 
+        /**
+         * Split a file by a delimiter.
+         *
+         * @param string $delimiter
+         *
+         * @return Generator|string[]
+         */
         public function split(string $delimiter = "\r\n"): Generator {
             while(!$this->isEof()) {
                 yield $this->readUntil($delimiter);
@@ -195,7 +209,7 @@ namespace Slate\IO {
             if($this->isOpen())
                 throw new IOException("Cannot copy a file while it is open.");
 
-            $sourcePath = $this->path;
+            $sourcePath = $this->path->__toString();
             $destinationPath = $destination;
 
             if(copy($sourcePath, $destinationPath)) {

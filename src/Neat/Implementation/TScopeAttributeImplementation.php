@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Neat\Implementation {
 
@@ -6,13 +6,20 @@ namespace Slate\Neat\Implementation {
     use Slate\Neat\ICarryAcknowledge;
     use Slate\Metalang\Attribute\HookCallStatic;
     use Slate\Metalang\Attribute\HookCall;
+    use Slate\Metalang\Attribute\HookGet;
     use Slate\Neat\Attribute\Scope;
     use Slate\Neat\EntityCarryQuery;
     use Slate\Neat\EntityQueryStaticCarry;
     use Slate\Neat\EntitySimpleQuery;
+    use Slate\Neat\EntityStaticCarry;
+    use Slate\Neat\InstanceCarry;
 
-trait TScopeAttributeImplementation {
-        // // First call
+    trait TScopeAttributeImplementation {
+        // #[HookGet(Scope::class)]
+        // public function implementEagerLoading(string $name, array $arguments, object $next): array {
+        //     return [];
+        // }
+
         #[HookCall(Scope::class)]
         public function implementInitialInstanceScope(string $name, array $arguments, object $next): array {
             return static::implementInitialSharedScope(
@@ -20,7 +27,7 @@ trait TScopeAttributeImplementation {
                 $arguments,
                 function()  {
                     $instance = &$this;
-                    return (new (Scope::use("instance.carry"))(new EntityCarryQuery(static::class), $instance));
+                    return (new InstanceCarry(new EntityCarryQuery(static::class), $instance));
                 },
                 function(string $name, array $arguments) {
                     return $this->{$name}(...$arguments);
@@ -35,7 +42,7 @@ trait TScopeAttributeImplementation {
                 $name,
                 $arguments,
                 function() {
-                    return (new (Scope::use("static.carry"))(new EntityCarryQuery(static::class), static::class));
+                    return (new EntityStaticCarry(new EntityCarryQuery(static::class), static::class));
                 },
                 function(string $name, array $arguments) {
                     return static::{$name}(...$arguments);
@@ -53,10 +60,6 @@ trait TScopeAttributeImplementation {
 
             if($relationship !== null || $scope !== null) {
                 $state = $create();
-
-                // if(\Cls::hasInterface($state->getPrimary(), ICarryAcknowledge::class)) {
-                //     $state->getPrimary()->acknowledgeScope($scope);
-                // }
 
                 if($relationship === null && $scope !== null) {
                     $return = $call($scope->parent->getName(), [$state->getPrimary(), ...$arguments]);

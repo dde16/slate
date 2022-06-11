@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 use Slate\Data\BasicArray;
@@ -600,7 +598,7 @@ final class ArrTest extends TestCase {
     }
 
     public function testArrayUnKey(): void {
-
+        
     }
 }
 

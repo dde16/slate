@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Foundation\Provider {
 
@@ -37,7 +37,11 @@ namespace Slate\Foundation\Provider {
                 }
             }
 
-            App::contingentMacro("repo", function(string $name = null): IRepository {
+            App::macro("repos", function(): array {
+                return array_keys($this->repositories);
+            });
+
+            App::macro("repo", function(string $name = null): IRepository {
                 $name = $name ?: $this->primaryRepository;
     
                 if(!\Arr::hasKey($this->repositories, $name)){

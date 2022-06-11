@@ -1,18 +1,14 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql {
     use Slate\Neat\Model;
-    use Slate\Data\IStringForwardConvertable;
+    use Slate\Data\Contract\IStringForwardConvertable;
     use Slate\Data\TStringNativeForwardConvertable;
+    use Slate\Sql\Contract\ISqlable;
+    use Slate\Sql\Trait\TSqliser;
 
-    abstract class SqlConstruct extends Model implements IStringForwardConvertable { 
-        use TStringNativeForwardConvertable;
-        
-        public abstract function build(): array;
-    
-        public function toString(): string {
-            return \Arr::join(\Arr::filter($this->build()), " ");
-        }
+    abstract class SqlConstruct implements ISqlable { 
+        use TSqliser;
     }
 }
 

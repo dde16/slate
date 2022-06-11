@@ -1,10 +1,12 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql {
 
+    use Slate\Sql\Trait\TSqlIndex;
+
     class SqlIndex extends SqlConstruct {
         use TSqlIndex {
-            TSqlIndex::build as buildIndex;
+            TSqlIndex::buildSql as buildIndex;
         }
         
         protected string $synonym = "INDEX";
@@ -31,7 +33,7 @@ namespace Slate\Sql {
             return $this;
         }
 
-        public function build(): array {
+        public function buildSql(): array {
             return [
                 $this->modifier,
                 ...$this->buildIndex()

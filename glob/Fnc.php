@@ -1,5 +1,9 @@
 <?php
 abstract class Fnc {
+    public static function recurse(Closure $closure): mixed {
+        return $closure($closure);
+    }
+
     /**
      * Chain a set of closures with the ability to jump further in the chain.
      *

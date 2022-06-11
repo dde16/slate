@@ -1,13 +1,16 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Media {
 
+    use Error;
     use Slate\Exception\ParseException;
 
-/**
+    /**
      * A class for handling and extending URIs and Filepaths.
      * Note; when handling dotlinks and noslash paths, it will not resolve them
      * to real paths and only provides combinational path logic.
+     * 
+     * TODO: add asserthas(parts)
      */
     class Uri {
         const SCHEME   = (1<<0);
@@ -76,27 +79,35 @@ namespace Slate\Media {
             return $this->toString();
         }
         
-        public function apply(string|Uri $uri): static {
-            $uri = is_string($uri) ? (new static($uri)) : (clone $uri); 
-            
-            if(!$this->host && $uri->host) {
-                $this->scheme = $uri->scheme;
-                $this->host   = $uri->host;
-                $this->user   = $uri->user;
-                $this->pass   = $uri->pass;
-                $this->port   = $uri->port;
+        /**
+         * Apply a parent uri to the current uri.
+         *
+         * @param string|Uri $uri
+         *
+         * @return static
+         */
+        public function apply(string|Uri $parentUri): void {
+            $parentUri = is_string($parentUri) ? (new static($parentUri)) : (clone $parentUri); 
+
+            if($differentHost = (($this->host && $parentUri->host) ? ($this->host !== $parentUri->host) : (!$this->host && $parentUri->host))) {
+                $this->scheme = $parentUri->scheme;
+                $this->host   = $parentUri->host;
+                $this->user   = $parentUri->user;
+                $this->pass   = $parentUri->pass;
+                $this->port   = $parentUri->port;
             }
 
-            if($this->path !== null) {
-                $this->path->apply($uri->path);
+            if($this->path !== null && !$differentHost && $parentUri->path !== null) {
+                $this->path->apply($parentUri->path);
             }
             else {
-                $this->path = $uri->path;
+                $this->path = $parentUri->path;
             }
 
-            $this->query = \Arr::merge($this->query, $uri->query);
+            if(!$differentHost)
+                $this->query = \Arr::merge($this->query, $parentUri->query);
 
-            return $uri;
+
         }
         
         public function getScheme(): ?string {
@@ -141,10 +152,12 @@ namespace Slate\Media {
             if($parsed === null)
                 throw new ParseException([$uri], ParseException::ERROR_URI_PARSE);
         
-            $parsed["pathIncludingQuery"] = $parsed["path"];
-        
-            if(\Arr::hasKey($parsed, "query"))
-                $parsed["pathIncludingQuery"] = $parsed["path"].\Str::afterLast($uri, $parsed["path"]);
+            if($parsed["path"] !== null) {
+                $parsed["pathIncludingQuery"] = $parsed["path"];
+            
+                if(\Arr::hasKey($parsed, "query"))
+                    $parsed["pathIncludingQuery"] = $parsed["path"].\Str::afterLast($uri, $parsed["path"]);
+            }
         
             return $parsed;
         }
@@ -172,8 +185,7 @@ namespace Slate\Media {
             }
 
             if($this->getPath() && \Integer::hasBits($flags, static::PATH)) {
-                $path = $this->path->toString($delimiter);
-                $url .= !\Str::isEmpty($url) ? \Path::normalise($path) : $path;
+                $url .= $this->path->toString($delimiter);
             }
             
             if(!\Arr::isEmpty($this->query) && \Integer::hasBits($flags, static::QUERY)) {

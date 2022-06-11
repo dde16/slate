@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Statement {
     use Slate\Facade\DB;
@@ -7,10 +7,9 @@ namespace Slate\Sql\Statement {
 trait TSqlSelectStatementChunk {
         public function chunk(int $size, int $from = 0) {
             $page = $from;
-            $conn = App::conn($this->conn);
 
             $statement = clone $this;
-            $statement = $conn->prepare(
+            $statement = $this->conn->prepare(
                 $statement->limit('?', '?')->toString(),
                 [\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true]
             );

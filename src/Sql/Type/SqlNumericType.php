@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Type {
 
@@ -60,10 +60,10 @@ namespace Slate\Sql\Type {
                 $value = $value->getTimestamp();
             }
             else if(is_int($value)) {
-                $value = \Str::val($value);
+                $value = strval($value);
             }
             else if(is_bool($value)) {
-                $value = intval($value);
+                $value = strval(intval($value));
             }
             else {
                 throw new \Error(\Str::format(
@@ -76,9 +76,10 @@ namespace Slate\Sql\Type {
             return $value;
         }
         
-        public function fromSqlValue(string $value, string $target): mixed {
+        public function fromSqlValue(string|int|float $value, string $target): mixed {
             switch($target) {
                 case \Str::class:
+                    $value = strval($value);
                     break;
                 case \Boolean::class:
                     $value = \Integer::tryparse($value) > 0;
@@ -110,7 +111,7 @@ namespace Slate\Sql\Type {
             return $value;
         }
 
-        public function build(): array {
+        public function buildSql(): array {
             $options = [$this->scale, $this->precision];
             
             if($options[0] === 0)

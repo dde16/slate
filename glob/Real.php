@@ -1,6 +1,6 @@
 <?php
 
-class Real extends ScalarType implements \Slate\Data\ISizeStaticallyAttainable {
+class Real extends ScalarType implements \Slate\Data\Contract\ISizeStaticallyAttainable {
     const NAMES            = ["float", "double", "real"];
     const GROUP            = ScalarType::class;
     const VALIDATOR        = "is_float";
@@ -91,10 +91,9 @@ class Real extends ScalarType implements \Slate\Data\ISizeStaticallyAttainable {
             case \Type::INTEGER:
                 return $percent / 100;
                 break;
-            case \Type::FLOAT:
-                return $percent;
-                break;
         }
+
+        return $percent;
     }
 }
 

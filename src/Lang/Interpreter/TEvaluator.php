@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Lang\Interpreter {
 
@@ -7,11 +7,13 @@ namespace Slate\Lang\Interpreter {
     use Generator;
     use Slate\Lang\Interpreter\Attribute\Evaluator;
 
-trait TEvaluator {
-        protected array $counters   = [];
+    trait TEvaluator {
+        protected array $constructCounters   = [];
+
+        public abstract function evaluate(array &$construct, array &$arguments): void;
         
-        protected function evaluateElement(array $construct, array &$arguments ) {
-            $this->counters["depth"][$construct[0]] += 1;
+        protected function evaluateConstruct(array $construct, array &$arguments ) {
+            // $this->constructCounters["depth"][$construct[0]] += 1;
 
             if($construct[1] !== null) {
                 if(is_object($construct[1]) ? \Cls::isSubclassInstanceOf($construct[1], [Generator::class]) : false) {
@@ -20,7 +22,7 @@ trait TEvaluator {
                     while($construct[1]->valid()) {
                         $child = &$construct[1]->current();
 
-                        $construct[1]->intermediate[$construct[1]->key()] = is_array($child) ? $this->evaluateElement($child, $arguments) : $child;
+                        $construct[1]->intermediate[$construct[1]->key()] = is_array($child) ? $this->evaluateConstruct($child, $arguments) : $child;
 
                         $construct[1]->next();
                     }
@@ -29,25 +31,17 @@ trait TEvaluator {
                 }
             }
 
-            if(($evaluator = static::design()->getAttrInstance(Evaluator::class, $construct[0]))) {
-                $this->counters["depth"][$construct[0]] -= 1;
-
-
-                $this->{$evaluator->parent->getName()}($construct, $arguments);
-            }
+            $this->evaluate($construct, $arguments);
 
             return $construct;
         }
     
-        protected function evaluate(Generator|array $parseTree, array &$arguments): Generator {
-            $this->counters["depth"] = [];
-            $this->counters["count"] = [];
+        protected function evaluateTree(Generator|array $parseTree, array &$arguments): Generator {
+            // $this->constructCounters["depth"] = [];
+            // $this->constructCounters["count"] = [];
 
             foreach($parseTree as $construct) {
-                yield $this->evaluateElement($construct, $arguments);
-                // debug(count($this->tokenMatches));
-                $this->tokenMatches->clear();
-                // debug(count($this->tokenMatches));
+                yield $this->evaluateConstruct($construct, $arguments);
             }
         }
     }

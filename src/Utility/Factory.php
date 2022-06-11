@@ -1,10 +1,10 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Utility {
 
-use ReflectionClass;
+    use ReflectionClass;
 
-abstract class Factory {
+    abstract class Factory {
         use TUninstantiable;
 
         public static function instantiate(string $class, $differentiator, array $arguments): object {

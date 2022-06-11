@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Statement {
 
@@ -6,6 +6,7 @@ namespace Slate\Sql\Statement {
     use Slate\Sql\Clause\TSqlRenameAuxiliariesClause;
     use Slate\Sql\Clause\TSqlRenameClause;
     use Slate\Sql\SqlColumn;
+    use Slate\Sql\SqlConnection;
     use Slate\Sql\SqlConstraint;
     use Slate\Sql\SqlIndex;
     use Slate\Sql\SqlModifier;
@@ -25,9 +26,16 @@ class SqlAlterTableStatement extends SqlStatement {
         public array $modifyColumns = [];
 
         protected string $table;
+        
+        public function __construct(SqlConnection $conn, string $ref, ?string $subref = null) {
+            parent::__construct($conn);
 
-        public function __construct(string $name) {
-            $this->table = $name;
+            $refs  = [$ref];
+
+            if($subref !== null)
+                $refs[] = $subref;
+
+            $this->table = $conn->wrap(...$refs);
         }
 
         public function modify(SqlColumn $column): static {
@@ -37,19 +45,7 @@ class SqlAlterTableStatement extends SqlStatement {
         }
 
         public function add(SqlColumn|SqlConstraint|SqlIndex $addition) {
-            $type = null;
-
-            if(\Cls::isSubclassInstanceOf($addition, SqlColumn::class)) {
-                $type = "COLUMN";
-            }
-            else if(\Cls::isSubclassInstanceOf($addition, SqlConstraint::class)) {
-                $type = "CONSTRAINT";
-            }
-            else if(\Cls::isSubclassInstanceOf($addition, SqlIndex::class)) {
-                $type = "INDEX";
-            }
-
-            $this->additions[] = [$type, $addition];
+            $this->additions[] = $addition;
 
             return $this;
         }
@@ -60,7 +56,7 @@ class SqlAlterTableStatement extends SqlStatement {
                     ? \Arr::join(
                         \Arr::map(
                             \Arr::values($this->additions),
-                            fn(array $entry): string => "ADD " . $entry[0] . " " . $entry[1]->toString()
+                            fn(SqlColumn|SqlConstraint|SqlIndex $addition): string => "ADD " . $addition->toSql()
                         ),
                         ", "
                     )
@@ -82,15 +78,28 @@ class SqlAlterTableStatement extends SqlStatement {
             );
         }
 
-        public function build(): array {
+        public function go(): bool {
+            if(\Arr::all([
+                $this->modifyColumns,
+                $this->additions,
+                $this->renames,
+                $this->drops
+            ], fn($array) => \Arr::isEmpty($array))) {
+                return true;
+            }
+
+            return parent::go();
+        }
+
+        public function buildSql(): array {
             $additions = $this->buildAdditions();
             $modified = $this->buildModifyColumns();
+            $drops = $this->buildDropAuxiliariesClause();
 
             return [
                 "ALTER TABLE",
                 $this->table,
-                $this->buildDropAuxiliariesClause(),
-                \Arr::join([$additions, $modified], ", "),
+                \Arr::join([$drops, $additions, $modified], ", "),
                 $this->buildRenameClause(),
                 $this->buildRenameAuxiliariesClause(),
                 $this->buildModifier(SqlModifier::FORCE)

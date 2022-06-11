@@ -1,9 +1,9 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Crypto {
 
     use Slate\Neat\Attribute\Getter;
-    use Slate\Neat\Attribute\ReadOnly;
+    use Slate\Neat\Attribute\SetOnce;
     use Slate\Neat\Attribute\Setter;
     use Slate\Neat\Model;
 
@@ -20,7 +20,7 @@ namespace Slate\Crypto {
         /**
          * @var int
          */
-        #[ReadOnly]
+        #[SetOnce]
         protected int       $ivlen;
         
         /**

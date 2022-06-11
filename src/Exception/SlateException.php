@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Exception {
 
@@ -48,7 +48,7 @@ namespace Slate\Exception {
                 "<br>".$tab."Http Message : ".\Str::wrap(HttpCode::message($httpCode), "'").
                 "<br>".$tab."Dev  Message : ".\Str::wrap($throwable->getMessage(), "'").
                 "<br>".$tab."File         : ".\Str::wrap($throwable->getFile(), "'").
-                "<br>".$tab."Line         : ".\Str::wrap($throwable->getLine(), "'").
+                "<br>".$tab."Line         : ".\Str::wrap(strval($throwable->getLine()), "'").
                 "<br>".$tab."Traceback".
                 "<br>".\Arr::join(\Arr::map(
                     \Str::replace(

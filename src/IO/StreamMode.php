@@ -1,9 +1,9 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\IO {
 
     use RuntimeException;
-    use Slate\Data\IStringForwardConvertable;
+    use Slate\Data\Contract\IStringForwardConvertable;
     use Slate\Data\TStringNativeForwardConvertable;
 
     class StreamMode implements IStringForwardConvertable {

@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Clause {
     use Slate\Sql\SqlClause;
@@ -13,10 +13,11 @@ namespace Slate\Sql\Clause {
             $this->orderDirection = $direction;
         }
 
-        public function toString(): string {
-            return $this->_buildOrderByClause();
-        }
+        public function buildSql(): ?array {
+            $sql = $this->_buildOrderByClause();
 
+            return $sql !== null ? [$sql]: null;
+        }
     }
 }
 

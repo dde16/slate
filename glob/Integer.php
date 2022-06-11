@@ -9,7 +9,7 @@ use Slate\Data\Iterator\ArrayExtendedIterator;
  * TODO: in the add with overflow detection - use & 1 << 63 to detect overflow
  * TODO: remove fromBase and toBase when the IntArray can perform these tasks
  */
-class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainable  {
+class Integer extends ScalarType implements \Slate\Data\Contract\ISizeStaticallyAttainable  {
     public const NAMES            = ["int", "integer"];
     public const GROUP            = ScalarType::class;
     public const VALIDATOR        = "is_int";
@@ -26,14 +26,14 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
 
     public const BYTE     = 0;
 
-    //SI
+    /** SI */
     public const KILOBYTE = 1 | \Integer::SI;
     public const MEGABYTE = 2 | \Integer::SI;
     public const GIGABYTE = 3 | \Integer::SI;
     public const TERABYTE = 4 | \Integer::SI;
     public const PETABYTE = 5 | \Integer::SI;
 
-    //IEC
+    /** IEC */
     public const KIBIBYTE = 1 | \Integer::IEC;
     public const MEBIBYTE = 2 | \Integer::IEC;
     public const GIBIBYTE = 3 | \Integer::IEC;
@@ -72,7 +72,7 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
     public const XOR = (1<<1);
     public const AND = (1<<2);
 
-    public static function decomposeUnit(int $unit) {
+    public static function decomposeUnit(int $unit): array {
         $spec = ($unit & static::IEC) ?: ($unit & static::SI);
 
         return [$unit ^ $spec, $spec];
@@ -120,7 +120,7 @@ class Integer extends ScalarType implements \Slate\Data\ISizeStaticallyAttainabl
         return [$value, $unit];
     }
 
-    public static function fromBinary(string $binary) {
+    public static function fromBinary(string $binary): int {
         $bitsize = strlen($binary);
         $integer = 0;
 

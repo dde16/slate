@@ -1,33 +1,8 @@
 <?php
 
-class Any extends \Slate\Utility\Facade {
-    /**
-     * Convert a value, if empty, to null.
-     * 
-     * @param mixed $value
-     * 
-     * @return mixed
-     */
-    public static function emptyAsNull(mixed $value): mixed {
-        if(is_string($value)) {
-            $value = !empty(trim($value)) ? $value : null;
-        }
-        else {
-            $value = !empty($value) ? $value : null;
-        }
-
-        return $value;
-    }
-
-    /**
-     * Perform a shallow copy for values taken by reference.
-     * 
-     * @param mixed $value
-     * 
-     * @return mixed
-     */
-    public static function copy(mixed $value): mixed {
-        return $value;
+class Any extends DataType {
+    public static function validate($value): bool {
+        return true;
     }
 
     /**

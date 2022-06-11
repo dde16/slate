@@ -1,10 +1,42 @@
 <?php
 
-/** Compound Type and Functions */
+/**
+ * Compound Type Class with Helper Definitions
+ */
 abstract class Compound extends DataType {
 
-    public static function modifyRecursive(object|array &$compound, Closure $callback, string $type = "bottom-top", array $path = []) {
+    public static function has(object|array &$compound, string $key) {
+        return is_object($compound) ? \Obj::hasProperty($compound, $key) : \Arr::hasKey($compound, $key);
+    }
 
+    public static function walkRecursiveThrough(object|array &$compound, array|string $through, Closure $callback) {
+        foreach(static::keys($compound) as $key) {
+            if(is_string($through))
+                $through = \Str::split($through, ".");
+
+            $fellback = false;
+
+            $value = \Compound::get($compound, [$key, ...$through], null, $fellback);
+
+            if(!$fellback)
+                $callback($key, $value);
+
+            if(\Any::isCompound($value))
+                static::walkRecursiveThrough($value, $through, $callback);
+        }
+    }
+
+    /**
+     * Modify a compound value recursively using a callback.
+     *
+     * @param object|array $compound
+     * @param Closure $callback
+     * @param string $type
+     * @param array $path
+     *
+     * @return void
+     */
+    public static function modifyRecursive(object|array &$compound, Closure $callback, string $type = "bottom-top", array $path = []) {
         foreach(static::keys($compound) as $key) {
             if(is_array($compound)) $value = &$compound[$key];
             else $value = &$compound->{$key};
@@ -39,17 +71,20 @@ abstract class Compound extends DataType {
         $length = count($path);
 
         if($length > 0) {
+            if(is_object($compound)) {
+                $target = &$compound->{$path[0]};
+            }
+            else if(is_array($compound)) {
+                $target = &$compound[$path[0]];
+            }
 
             if($length === 1) {
-                unset($compound[$path[0]]);
+                unset($target);
 
                 return true;
             }
-            else{
-                $target = &$compound[$path[0]];
-
-                if(\Any::isCompound($target))
-                    return \Compound::unset($target, \Arr::slice($path, 1));
+            else if(\Any::isCompound($target)) {
+                return \Compound::unset($target, \Arr::slice($path, 1));
             }
         }
 
@@ -63,16 +98,22 @@ abstract class Compound extends DataType {
      * @param array|string $path
      * @param mixed        $value
      * 
-     * @return object
+     * @return bool
      */
     public static function set(object|array &$compound, array|string $path, mixed $value, object|array|null $fallback = []): bool {
-        if(is_string($path))
+        if(is_string($path)) {
             $path = \Str::split($path, ".");
+        }
 
         $length = count($path);
 
         if($length > 0) {
-            $target = &$compound[$path[0]];
+            if(is_object($compound)) {
+                $target = &$compound->{$path[0]};
+            }
+            else if(is_array($compound)) {
+                $target = &$compound[$path[0]];
+            }
 
             if($length === 1) {
                 $target = $value;
@@ -102,25 +143,25 @@ abstract class Compound extends DataType {
      * @return object
      */
     public static function &get(object|array &$compound, array|string $path, mixed $fallback = null, bool &$fellback = false): mixed {
-        if(is_string($path))
+        if(is_string($path)) {
             $path = \Str::split($path, ".");
+        }
 
         $length = count($path);
 
         if($length > 0) {
-            $keyed = false;
+            $keyed = \Compound::has($compound, $path[0]);
 
             if(is_object($compound)) {
-                $keyed = property_exists($compound, $path[0]);
                 $value = &$compound->{$path[0]};
             }
             else if(is_array($compound)) {
-                $keyed = \Arr::hasKey($compound, $path[0]);
                 $value = &$compound[$path[0]];
             }
 
-            if($length === 1 && $keyed) {
+            if($length === 1 && ($keyed)) {
                 $fellback = false;
+
                 return $value;
             }
             else if(is_array($value) || is_object($value)) {
@@ -148,7 +189,7 @@ abstract class Compound extends DataType {
         if(!$fellback)
             \Compound::unset($compound, $path);
 
-        return \Any::copy($value);
+        return $value;
     }
 }
 

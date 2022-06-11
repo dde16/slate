@@ -1,10 +1,10 @@
-<?php
+<?php declare(strict_types = 1);
 
-namespace Slate\Utiltity {
+namespace Slate\Utility {
 
     use Slate\Exception\UndefinedRoutineException;
 
-trait TMultiPassthru {
+    trait TMultiPassthru {
         public function __call(string $method, array $arguments): mixed {
             $passthrus = \Cls::getConstant(static::class, "PASSTHRUS", []);
             $returnThisOn = \Cls::getConstant(static::class, "PASSTHRU_RETURN_THIS");
@@ -19,7 +19,7 @@ trait TMultiPassthru {
 
             $result = $this->{$passthru}->{$method}(...$arguments);
 
-            if($returnThisOn === "*" ? true : ($returnThisOn !== null ? \Arr::contains($returnThisOn, $method) : false))
+            if(is_string($returnThisOn) ? \Str::match($method, $returnThisOn) : ($returnThisOn !== null ? \Arr::contains($returnThisOn, $method) : false))
                 $result = $this;
 
             return $result;

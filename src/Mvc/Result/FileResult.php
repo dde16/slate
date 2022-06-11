@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Mvc\Result {
 
@@ -14,7 +14,7 @@ namespace Slate\Mvc\Result {
 
         public function __construct(string $path, string $mime = null, bool $bypass = true) {
             $this->file = new File($path);
-            $this->mime = ($mime ?: $this->file->getExtensionMime()) ?: "text/plain";
+            $this->mime = $mime ?? $this->file->getExtensionMime() ?? "text/plain";
 
             parent::__construct($bypass);
         }
@@ -23,23 +23,10 @@ namespace Slate\Mvc\Result {
             if(!$this->file->isOpen())
                 $this->file->open("r");
 
+            $response->headers["Content-Type"] = $this->mime;
             $this->file->pipe($response->getBody());
             $this->file->close();
         }
-
-        // protected function getContents() {
-        //     $this->data->open("r");
-
-        //     $data = $this->data->read();
-
-        //     $this->data->close();
-
-        //     return $data;
-        // }
-
-        // public function toString() {
-        //     return $this->getContents();
-        // }
     }
 }
 

@@ -1,10 +1,11 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\IO {
 
     use Closure;
     use Error;
     use Slate\Utility\Facade;
+    use Throwable;
 
     /**
      * Facade for buffer functions.
@@ -100,7 +101,7 @@ namespace Slate\IO {
          * 
          * @return bool
          */
-        public static function flush() {
+        public static function flush(): bool {
             return ob_flush();
         }
 
@@ -112,11 +113,18 @@ namespace Slate\IO {
          * 
          * @return string
          */
-        public static function wrap(Closure $function, Closure $callback = null) {
+        public static function wrap(Closure $function, Closure $callback = null): string {
             Buffer::start($callback);
             
-            \Fnc::call($function);
-            $data = Buffer::end(Buffer::PIPE | Buffer::CLEAN);
+            try {
+                $function();
+                
+                $data = Buffer::end(Buffer::PIPE | Buffer::CLEAN);
+            }
+            catch(Throwable $throwable) {
+                throw $throwable;
+            }
+            
 
             return $data;
         }

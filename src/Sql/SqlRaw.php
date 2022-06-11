@@ -1,15 +1,17 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql {
-    use Slate\Data\IStringForwardConvertable;
+    use Slate\Data\Contract\IStringForwardConvertable;
     use Slate\Data\TStringNativeForwardConvertable;
 
     class SqlRaw implements IStringForwardConvertable {
         use TStringNativeForwardConvertable;
 
-        public function __construct(
-            protected string $content
-        ) {}
+        protected string $content;
+
+        public function __construct(string $content) {
+            $this->content = $content;
+        }
 
         public function toString(): string {
             return $this->content;

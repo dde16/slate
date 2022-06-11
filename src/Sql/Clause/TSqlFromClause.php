@@ -1,15 +1,16 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Clause {
 
-    use Slate\Data\IStringForwardConvertable;
+    use Slate\Data\Contract\IStringForwardConvertable;
+    use Slate\Sql\Contract\ISqlable;
     use Slate\Sql\SqlReference;
     use Slate\Sql\SqlStatement;
 
 trait TSqlFromClause {
         protected array $froms = [];
 
-        public function from(string|IStringForwardConvertable $reference, string $as = null): static {
+        public function from(string|IStringForwardConvertable|ISqlable $reference, string $as = null): static {
             $from = $this->froms[] = new SqlReference($reference);
 
             if($as) $from->as($as);
@@ -17,7 +18,7 @@ trait TSqlFromClause {
             return $this;
         }
         
-        public function table(string|IStringForwardConvertable $reference, string $as = null): object {
+        public function table(string|IStringForwardConvertable|ISqlable $reference, string $as = null): object {
             return $this->from($reference, $as);
         }
 
@@ -32,7 +33,6 @@ trait TSqlFromClause {
                 ", "
             );
         }
-
         
         public function buildFromClause(): string|null {            
             return !\Arr::isEmpty($this->froms) ? "FROM " . $this->buildFroms() : null;

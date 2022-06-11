@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Lang\Interpreter {
 
@@ -10,115 +10,36 @@ namespace Slate\Lang\Interpreter {
     use Slate\Lang\Interpreter\Attribute\Token;
     use Slate\Lang\Interpreter\Tokeniser\TokenMatch;
     use Slate\Data\Iterator\BufferedIterator;
-    use Slate\Data\Iterator\StringIterator;
-    use Slate\IO\File;
 
     use Generator;
-    use Slate\Lang\Interpreter\ICodeable;
+    use Iterator;
+    use ParseError;
+    use RuntimeException;
+    use Slate\Exception\ParseException;
+    use Slate\Lang\Interpreter\Attribute\FallbackToken;
+    use Slate\Lang\Interpreter\Trait\TComplexTokeniser;
+    use Slate\Lang\Interpreter\Trait\TCompoundTokeniser;
+    use Slate\Lang\Interpreter\Trait\TLateTokeniser;
+    use Slate\Lang\Interpreter\Trait\TLiteralTokeniser;
+    use Slate\Lang\Interpreter\Trait\TRaisable;
+    use Slate\Lang\Interpreter\Trait\TRangeTokeniser;
 
     trait TTokeniser {
+        use TComplexTokeniser;
+        use TCompoundTokeniser;
+        use TLateTokeniser;
+        use TLiteralTokeniser;
+        use TRangeTokeniser;
+        use TRaisable;
+
         public object $code;
 
-        public function matchComplexToken(ComplexToken $definition): ?array {            
-            return $this->{$definition->getImplementor()->parent->getName()}();
-        }
+        public array $counters;
 
-        public function matchCompoundToken(CompoundToken $definition): ?array {
-            $this->code->anchor();
-
-            if(!$this->code->isEof()) {
-                $start = $this->code->tell();
-
-                foreach($definition->getExpression() as [$choice, $length]) {
-                    if(($match = $this->code->match($choice)) !== false) {
-                        return [$start, $length];
-                    }
-                }
-            }
-
-            $this->code->revert();
-
-            return null;
-        }
-
-        public function matchLateToken(LateToken $definition): ?array {
-            if(!$definition->isDefined())
-                throw new \Error(\Str::format(
-                    "Late token '{}' has not been defined.",
-                    $this->parent->getName()
-                ));
-
-            if(!$this->code->isEof()) {
-                $start = $this->code->tell();
-
-                if($this->code->match($definition->getExpression())) {
-                    return [$start, $definition->getLength()];
-                }
-            }
-
-            return null;
-
-        }
-
-        public function matchLiteralToken(LiteralToken $definition): ?array {
-            if(!$this->code->isEof()) {
-                $start = $this->code->tell();
-
-                if($this->code->match($definition->getExpression())) {
-                    return [$start, $definition->getLength()];
-                }
-            }
-
-            return null;
-        }
-
-        public function matchRangeToken(RangeToken $definition): ?array {
-            if(!$this->code->isEof()) {
-                $charLiteral = $this->code->current();
-    
-                if($charLiteral) {
-                    $charCode = ord($charLiteral);
-    
-                    if($charCode >= $definition->getFrom() && $charCode <= $definition->getTo()) {
-                        $this->code->next();
-                        return [$charLiteral, 1];
-                    }
-                }
-            }
-    
-            return null;
-        }
-
-        public function matchToken(Token|int $definition): ?array {
-            if(is_int($definition)) $definition = static::design()->tokens[$definition];
-
-            $match = null;
-
-            switch($definition::class) {
-                case ComplexToken::class:
-                    $match = $this->matchComplexToken($definition);
-                    break;
-                case CompoundToken::class:
-                    $match = $this->matchCompoundToken($definition);
-                    break;
-                case LateToken::class:
-                    $match = $this->matchLateToken($definition);
-                    break;
-                case LiteralToken::class:
-                    $match = $this->matchLiteralToken($definition);
-                    break;
-                case RangeToken::class:
-                    $match = $this->matchRangeToken($definition);
-                    break;
-            }
-                    
-            return $match;
-        }
-
-        public function getTokenGenerator(): Generator {
+        public function intialiseCounters(): void {
             $design  = static::design();
 
-            $counters = \Arr::merge(
+            $this->counters = \Arr::merge(
                 [ "pointer" => $this->code->tell() ],
                 \Arr::mapAssoc(
                     \Arr::merge(
@@ -131,121 +52,159 @@ namespace Slate\Lang\Interpreter {
                     }
                 )
             );
+        }
+
+        public function matchToken(Token|int $definition, bool $raise = false, bool $raiseEof = false): ?TokenMatch {
+            if(is_int($definition)) $definition = static::design()->tokens[$definition];
+
+            $match = null;
+            $eof   = $this->code->isEof();
+
+            switch(true) {
+                case \Cls::isSubclassInstanceOf($definition, ComplexToken::class):
+                    $match = $this->matchComplexToken($definition, $raiseEof);
+                    break;
+                case \Cls::isSubclassInstanceOf($definition, CompoundToken::class):
+                    $match = $this->matchCompoundToken($definition, $raiseEof);
+                    break;
+                case \Cls::isSubclassInstanceOf($definition, LateToken::class):
+                    $match = $this->matchLateToken($definition, $raiseEof);
+                    break;
+                case \Cls::isSubclassInstanceOf($definition, LiteralToken::class):
+                    $match = $this->matchLiteralToken($definition, $raiseEof);
+                    break;
+                case \Cls::isSubclassInstanceOf($definition, RangeToken::class):
+                    $match = $this->matchRangeToken($definition, $raiseEof);
+                    break;
+            }
+
+            if(($raise && !$match && !$eof)) 
+                $this->raiseNonMatch($definition);
+
+            if($match) {
+                list($pointer, $length) = $match;
+                
+                $match = new TokenMatch(
+                    code      : $this->code,
+                    id        : $definition->parent->getValue(),
+                    name      : $definition->parent->getName(),
+                    length    : $length,
+                    counters  : [
+                        "pointer" => $pointer
+                    ]
+                );
+            }
+
+            return $match;
+        }
+
+        public function updateCounters(int $tokenID): void {
+            $design  = static::design();
+
+            $currentCounted = 0;
+            $currentDecounted = 0;
+            
+            if($design->countTracked & $tokenID) {
+                $trackId = $design->countTrackedTokenMap[$tokenID];
+                
+                if(($currentCounted & $trackId) === 0) {
+                    $this->counters[$design->countTrackedMap[$trackId]]++;
+                    $currentCounted ^= $trackId;
+                }
+            }
+            
+            if($design->levelTrackedOpen & $tokenID) {                            
+                foreach($design->levelTrackedOpenMap[$tokenID] as $trackId) {
+                    if(($currentCounted & $trackId) === 0) {
+                        $this->counters[$design->levelTrackedMap[$trackId]]++;
+
+                        $currentCounted ^= $trackId;
+                    }
+                }
+            }
+            
+            if($design->levelTrackedClose & $tokenID) {
+                foreach($design->levelTrackedCloseMap[$tokenID] as $trackId) {
+                    if(($currentDecounted & $trackId) === 0) {
+                        $this->counters[$design->levelTrackedMap[$trackId]]--;
+
+                        $currentDecounted ^= $trackId;
+                    }
+                }
+            }
+            
+            if($design->levelTrackedResetOpen & $tokenID) {
+                foreach($design->levelTrackedResetOpenMap[$tokenID] as $counter) {
+                    $this->counters[$counter]++;
+                }
+            }
+
+            
+            if($design->levelTrackedTable & $tokenID) {
+                $this->counters[$design->levelTrackedTableMap[$tokenID]] = 0;
+            }
+            
+            foreach($design->levelTrackedTableMap as $trackName) {
+                $this->counters[$trackName]++;
+            }
+
+
+            if($design->levelTrackedResetClose & $tokenID) {
+                foreach($design->levelTrackedResetCloseMap[$tokenID] as $counter) {
+                    $this->counters[$counter] = 0;
+                }
+            }
+        }
+
+        public function getTokenGenerator(): Generator {
+            $design  = static::design();
+
+            $this->intialiseCounters();
 
             $lastPointer    = 0;
             $invalidToken   = false;
-            $currentToken   = 0;
-            $lastToken      = 0;
 
             while($invalidToken === false && !$this->code->isEof()) {
                 $tokenMatch = null;
 
+                foreach($design->tokens as $tokenID => $tokenDefinition) {
 
-                foreach($design->tokens as $tokenId => $tokenDefinition) {
                     if($tokenDefinition !== null) {
-                        $tokenRawMatch = null;
-                        $tokenRawMatch = $this->matchToken($tokenDefinition);
+                        $tokenMatch = $this->matchToken($tokenDefinition);
 
-                        if($tokenRawMatch !== null) {
-                            list($tokenMatchPointer, $tokenMatchLength) = $tokenRawMatch;
-
-                            $tokenMatch = new TokenMatch(
-                                code      : $this->code,
-                                id        : $tokenId,
-                                name      : $tokenDefinition->parent->getName(),
-                                length    : $tokenMatchLength,
-                                counters  : \Arr::merge(
-                                    $counters,
-                                    [ "pointer" => $tokenMatchPointer ]
-                                )
-                            );
-
-                            $currentToken = $tokenId;
-                            $currentCounted = 0;
-                            $currentDecounted = 0;
+                        if($tokenMatch !== null) {
+                            $this->updateCounters($tokenID);
                             
-                            if($design->countTracked & $tokenId) {
-                                $trackId = $design->countTrackedTokenMap[$tokenId];
-                                
-                                if(($currentCounted & $trackId) === 0) {
-                                    $counters[$design->countTrackedMap[$trackId]]++;
-                                    $currentCounted ^= $trackId;
-                                }
-                            }
-                            
-                            if($design->levelTrackedOpen & $tokenId) {                            
-                                foreach($design->levelTrackedOpenMap[$tokenId] as $trackId) {
-                                    if(($currentCounted & $trackId) === 0) {
-                                        $counters[$design->levelTrackedMap[$trackId]]++;
-
-                                        $currentCounted ^= $trackId;
-                                    }
-                                }
-                            }
-                            
-                            if($design->levelTrackedClose & $tokenId) {
-                                foreach($design->levelTrackedCloseMap[$tokenId] as $trackId) {
-                                    if(($currentDecounted & $trackId) === 0) {
-                                        $counters[$design->levelTrackedMap[$trackId]]--;
-
-                                        $currentDecounted ^= $trackId;
-                                    }
-                                }
-                            }
-                            
-                            if($design->levelTrackedResetOpen & $tokenId) {
-                                foreach($design->levelTrackedResetOpenMap[$tokenId] as $counter) {
-                                    $counters[$counter]++;
-                                }
-                            }
-
-                            
-                            if($design->levelTrackedTable & $tokenId) {
-                                $counters[$design->levelTrackedTableMap[$tokenId]] = 0;
-                            }
-                            
-                            foreach($design->levelTrackedTableMap as $trackTokenId => $trackName) {
-                                $counters[$trackName]++;
-                            }
-
-
-                            if($design->levelTrackedResetClose & $tokenId) {
-                                foreach($design->levelTrackedResetCloseMap[$tokenId] as $counter) {
-                                    $counters[$counter] = 0;
-                                }
-                            }
-                            
-                            if(!($design->ignoring & $tokenId)) {
+                            if(!($design->ignoring & $tokenID)) {
                                 yield $tokenMatch;
                             }
                             
-                            $counters["pointer"] = $this->code->tell();
+                            $this->counters["pointer"] = $this->code->tell();
                             
                             break;
                         }
                     }
                     else {
-                        throw new \Error("Token $tokenId has no definition.");
+                        throw new \Error("Token $tokenID has no definition.");
                     }
                 }
 
-                if($tokenMatch === null || $counters["pointer"] === $lastPointer) {
+                /**
+                 * If there is an invalid token or a pointer hasnt advanced (when the file isn't eof), raise an error.
+                 */
+                if(($tokenMatch === null || $this->counters["pointer"] === $lastPointer) && !$this->code->isEof()) {
                     $error = new \Error(
                         \Str::format(
                             "Invalid token '{}' at {}",
-                            htmlentities(\Str::swap(
-                                $this->code->current(),
-                                ["\r" => "\\r", "\f" => "\\f", "\n" => "\\n", "\t" => "\\t"],
-                            ), ENT_QUOTES),
-                            strval($counters["pointer"])
+                            htmlentities(\Str::controls($this->code->current()), ENT_QUOTES),
+                            strval($this->counters["pointer"])
                         )
                     );
 
                     throw $error;
                 }
 
-                $lastToken = $currentToken;
-                $lastPointer = $counters["pointer"];
+                $lastPointer = $this->counters["pointer"];
             }
         }
 
@@ -253,7 +212,7 @@ namespace Slate\Lang\Interpreter {
             return (new BufferedIterator($this->getTokenGenerator()));
         }
 
-        public function tokenise(bool $accumulative = false) {
+        public function tokenise(bool $accumulative = false): BufferedIterator|Iterator {
             return $accumulative ? $this->getTokenBufferedIterator() : $this->getTokenGenerator();
         }
     }

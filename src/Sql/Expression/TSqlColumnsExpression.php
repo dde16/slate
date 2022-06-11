@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Expression {
     use Slate\Sql\SqlReference;
@@ -6,7 +6,7 @@ namespace Slate\Sql\Expression {
     trait TSqlColumnsExpression {
         protected array $columns = [];
         
-        public function buildColumnsExpression() {
+        public function buildColumnsExpression(): string {
             return !\Arr::isEmpty($this->columns) ? \Arr::join(
                 \Arr::map(
                     $this->columns,
@@ -18,7 +18,7 @@ namespace Slate\Sql\Expression {
             ) : "*";
         }
 
-        public function column(string|object $reference, string $as = null): object {
+        public function column(string|object $reference, string $as = null): static {
             $column = $this->columns[] = new SqlReference($reference);
 
             if($as) $column->as($as);

@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Statement {
     use Slate\Facade\DB;
@@ -17,11 +17,9 @@ namespace Slate\Sql\Statement {
             $this->columns = $columns;
 
             $query->limit(1);
-            $query = DB::select()->column(Sql::exists($query), as: "`EXISTS`")->toString();
-            
-            $conn = App::conn($this->conn);
+            $query = DB::select()->column(Sql::exists($query), as: "`EXISTS`")->toSql();
 
-            return @$conn->soloquery($query)->current()["EXISTS"] ?: false;
+            return boolval(@($this->conn->soloquery($query)->current())["EXISTS"]);
         }
 
     }

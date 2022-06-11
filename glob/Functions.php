@@ -1,5 +1,29 @@
 <?php
 
+function cpassthru(object ...$items): \Slate\Data\Collection {
+    return collect($items)->passthru();
+}
+
+/**
+ * A function that will indent text for you if it is wrapped in a closure.
+ *
+ * @param Closure $callback
+ * @param integer $size
+ * @param string $char
+ *
+ * @return void
+ */
+function indent(Closure $callback, int $size = 4, string $char = " "): void {
+    $contents = \Slate\IO\Buffer::wrap($callback);
+
+    echo \Arr::join(
+        \Arr::map(
+            \Str::split(\Str::removeSuffix($contents, "\n"), "\n"),
+            fn(string $line): string => \Str::repeat($char, $size).$line),
+        "\n"
+    )."\n";
+}
+
 /**
  * Calculates the time elapsed for a given function.
  *
@@ -22,8 +46,8 @@ function elapsed(callable $callback, int $precision = 4): array {
 //     return $cond ? $val : null;
 // }
 
-function callerof(string $function = null, array $use = null): array|null {
-    $stack = $use === null ? debug_backtrace() : $use;
+function callerof(string $function = null, array $using = null): array|null {
+    $stack = $using === null ? debug_backtrace() : $using;
 
     if ($function == null) {
         // We need $function to be a function name to retrieve its caller. If it is omitted, then
@@ -126,6 +150,10 @@ function code(int $code): Slate\Mvc\Result\StatusCodeResult {
     return(new Slate\Mvc\Result\StatusCodeResult($code));
 }
 
+function app(): Slate\Foundation\App {
+    return Slate\Facade\App::instance();
+}
+
 function debug($value = "", $anonymous = null): void {
     $options = null;
     $newline = "\r\n";
@@ -147,6 +175,14 @@ function debug($value = "", $anonymous = null): void {
 
     if($options !== NULL) {
         $value = \Str::sanitise($value, $options);
+    }
+
+    $indentation = \Slate\Foundation\Console::getIndentation();
+
+    if($indentation > 0) {
+        $indent = \Str::repeat("    ", $indentation);
+
+        $value = $indent.\Str::removeSuffix(\Str::replace($value, "\n", "\n$indent"), $indent);
     }
 
     print($value);
@@ -186,6 +222,9 @@ function is_set($v): bool {
  */
 function rrmdir(string $basepath, bool $symlinks = false): bool {
     $directory = opendir($basepath);
+
+    if($directory === false)
+        throw new \Slate\Exception\IOException([$directory], \Slate\Exception\IOException::ERROR_DIR_OPEN_FAILURE);
 
     while(($file = readdir($directory)) !== false) {
         if (!\Str::isDotLink($file)) {
@@ -228,8 +267,8 @@ function env(string $offset, array $options = []): mixed {
  *
  * @return Slate\Sql\SqlSchema
  */
-function Schema(string $name): Slate\Sql\SqlSchema {
-    return new Slate\Sql\SqlSchema(Slate\Facade\App::conn(), $name);
+function Schema(string $name): Slate\Sql\Medium\SqlSchema {
+    return new Slate\Sql\Medium\SqlSchema(Slate\Facade\App::conn(), $name);
 }
 
 /**

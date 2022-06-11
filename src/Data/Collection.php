@@ -1,16 +1,10 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Data {
+    use Slate\Data\Contract\IArrayForwardConvertable;
 
-    use Closure;
-    use Slate\IO\File;
-
-    use Slate\Utility\TConvertable;
-    
-    use Slate\Data\IArrayConvertable;
-    
     // class Collection implements \ArrayAccess, \Iterator, \Countable, IArrayConvertable {
-    class Collection extends BasicArray implements IArrayConvertable {
+    class Collection extends BasicArray implements IArrayForwardConvertable {
         public const READABLE     = 0;
         public const WRITEABLE    = (1<<0);
         public const APPENDABLE   = (1<<1);
@@ -36,11 +30,10 @@ namespace Slate\Data {
             "diff"                   => "array_diff",
             "intersectAssoc"         => "array_intersect_assoc",
             "intersectKey"           => "array_intersect_key",
-            "intersectAssocCallback" => "array_intersect_uasso",
+            "intersectAssocCallback" => "array_intersect_uassoc",
             "intersectKeyCallback"   => "array_intersect_ukey",
             "intersect"              => "array_intersect",
             "firstKey"               => "array_key_first",
-            "lastKey"                => "array_key_last",
             "pop"                    => "array_pop",
             "product"                => "array_product",
             "rand"                   => "array_rand",
@@ -55,7 +48,6 @@ namespace Slate\Data {
             "mean"                   => [\Arr::class, "mean"],
             "min"                    => [\Arr::class, "min"],
             "max"                    => [\Arr::class, "max"],
-            "sum"                    => [\Arr::class, "sum"],
             "subtract"               => [\Arr::class, "subtract"],
             "entries"                => [\Arr::class, "entries"],
             "every"                  => [\Arr::class, "every"],
@@ -105,22 +97,15 @@ namespace Slate\Data {
             "slice"                  => "array_slice",
             "splice"                 => "array_splice",
             "shuffle"                => "shuffle",
-            "filter"                 => [\Arr::class, "filter"],
-            "reduce"                 => [\Arr::class, "reduce"],
-            "reverse"                => [\Arr::class, "reverse"],
             "decategorise"           => [\Arr::class, "decategorise"],
             "untokenize"             => [\Arr::class, "untokenize"],
             "tokenize"               => [\Arr::class, "tokenize"],
             "move"                   => [\Arr::class, "move"],
             "sort"                   => [\Arr::class, "sort"],
-            "merge"                  => [\Arr::class, "merge"],
-            "splice"                 => [\Arr::class, "splice"],
             "rekey"                  => [\Arr::class, "key"],
-            "slice"                  => [\Arr::class, "slice"],
             "dekey"                  => [\Arr::class, "values"],
             "mapAssoc"               => [\Arr::class, "mapAssoc"],
             "map"                    => [\Arr::class, "map"],
-            "cluster"                => [\Arr::class, "cluster"],
         ];
 
         /**
@@ -176,7 +161,7 @@ namespace Slate\Data {
             if($values !== NULL)
                 $this->fromArray($values);
         }
-
+        
         /**
          * Toggle passthru.
          *
@@ -193,59 +178,42 @@ namespace Slate\Data {
         public function var(string $name): FieldPrepped {
             return (new FieldPrepped($name))->from($this->items);
         }
-        
-        public function object(string $name, string|bool $assert = false): object {
+
+        public function inlinevar(string $name, string $method, string|bool $assert = false): mixed {
             $var = $this->var($name);
 
-            if($assert === false) $var->fallback(null);
-            else if($assert === true) $assert = null;
+            if(is_bool($assert)) {
+                if($assert === false)
+                    $var->fallback(null);
 
-            return $this->var($name)->object($assert);
+                $assert = null;
+            }
+
+            return $this->var($name)->{$method}($assert);
+        }
+        
+        public function object(string $name, string|bool $assert = false): object {
+            return $this->inlinevar($name, "object", $assert);
         }
         
         public function array(string $name, string|bool $assert = false): array {
-            $var = $this->var($name);
-
-            if($assert === false) $var->fallback(null);
-            else if($assert === true) $assert = null;
-
-            return $this->var($name)->array($assert);
+            return $this->inlinevar($name, "array", $assert);
         }
         
         public function bool(string $name, string|bool $assert = false): bool {
-            $var = $this->var($name);
-
-            if($assert === false) $var->fallback(null);
-            else if($assert === true) $assert = null;
-
-            return $this->var($name)->bool($assert);
+            return $this->inlinevar($name, "bool", $assert);
         }
         
         public function int(string $name, string|bool $assert = false): int {
-            $var = $this->var($name);
-
-            if($assert === false) $var->fallback(null);
-            else if($assert === true) $assert = null;
-
-            return $this->var($name)->int($assert);
+            return $this->inlinevar($name, "int", $assert);
         }
         
         public function string(string $name, string|bool $assert = false): string {
-            $var = $this->var($name);
-
-            if($assert === false) $var->fallback(null);
-            else if($assert === true) $assert = null;
-
-            return $this->var($name)->string($assert);
+            return $this->inlinevar($name, "string", $assert);
         }
         
         public function float(string $name, string|bool $assert = false): float {
-            $var = $this->var($name);
-
-            if($assert === false) $var->fallback(null);
-            else if($assert === true) $assert = null;
-
-            return $this->var($name)->float($assert);
+            return $this->inlinevar($name, "float", $assert);
         }
         
         /**

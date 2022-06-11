@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Http {
 
@@ -10,31 +10,29 @@ namespace Slate\Http {
     use Slate\Media\Uri;
     use Slate\Mvc\Route;
     use Slate\Neat\Attribute\Getter;
-    use Slate\Neat\Attribute\ReadOnly;
+    use Slate\Neat\Attribute\Property;
+    use Slate\Neat\Attribute\SetOnce;
     use Slate\Neat\Attribute\Setter;
 
     class HttpRequest extends HttpPacket {
-        #[ReadOnly]
-        protected string     $path;
-
-        #[ReadOnly]
+        #[SetOnce]
         protected int        $method;
 
-        #[ReadOnly]
+        #[SetOnce]
         protected float      $version;
         
-        #[ReadOnly]
+        #[SetOnce]
         protected $route = null;
 
-        #[ReadOnly]
+        #[SetOnce]
         protected ?Collection $parameters = null;
 
         protected ?StreamReader $bodyStream = null;
 
-        #[ReadOnly]
+        #[SetOnce]
         protected Collection $query;
 
-        #[ReadOnly]
+        #[SetOnce]
         protected Uri $uri;
 
         protected ?string $inputSource = null;

@@ -1,10 +1,10 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Sql\Clause {
     use Slate\Sql\Condition\SqlCondition;
 
     use Closure;
-    use Slate\Data\IStringForwardConvertable;
+    use Slate\Data\Contract\IStringForwardConvertable;
 
 trait TSqlJoinClause {
         protected array $joins = [];

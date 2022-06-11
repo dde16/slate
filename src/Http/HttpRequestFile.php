@@ -1,7 +1,7 @@
-<?php
+<?php declare(strict_types = 1);
 namespace Slate\Http {
     use Slate\IO\File;
-    use Slate\Neat\Attribute\ReadOnly;
+    use Slate\Neat\Attribute\SetOnce;
 
     class HttpRequestFile extends HttpFile {
         protected string $httpBasename;
@@ -31,6 +31,10 @@ namespace Slate\Http {
 
         public function getHttpError(): int {
             return $this->httpError;
+        }
+
+        public function raiseHttpError(): void {
+            
         }
 
         public function getHttpBasename(): string {

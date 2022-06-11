@@ -1,18 +1,16 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Mvc {
 
+    use Error;
     use RuntimeException;
-    use Slate\Data\IJitStructureItem;
     use Slate\Http\HttpMethod;
     use Slate\Http\HttpRequest;
-    use Slate\Http\HttpResponse;
     use Slate\Utility\TMacroable;
     use Slate\Utility\TObjectHelpers;
-    use SplStack;
     use UnexpectedValueException;
 
-    abstract class Route implements IJitStructureItem {
+    abstract class Route {
         use TMacroable;
         use TObjectHelpers;
 
@@ -20,6 +18,9 @@ namespace Slate\Mvc {
         public array    $mimes;
         public ?string  $name;
         public int      $size;
+
+        public array    $middleware;
+        public array    $withoutMiddleware;
 
         protected bool  $fallback;
 
@@ -31,8 +32,21 @@ namespace Slate\Mvc {
             $this->size     = $this->uri->slashes();
             $this->mimes    = [];
 
+            $this->middleware = [];
+            $this->withoutMiddleware = [];
+
             $this->name     = null;
             $this->fallback = $fallback;
+        }
+
+        public function https(): static {
+            $this->uri->scheme = "https";
+            return $this;
+        }
+
+        public function http(): static {
+            $this->uri->scheme = "http";
+            return $this;
         }
 
         public function methods(): int {
@@ -87,6 +101,10 @@ namespace Slate\Mvc {
             return $this->method("delete");
         }
 
+        public function acceptsProtocol(string $protocol): bool {
+            return $this->uri->scheme !== null ? $protocol === $this->uri->scheme : true;
+        }
+
         public function acceptsMethod(string|int $method): bool {
             if(is_string($method)) {
                 if(($method = HttpMethod::getValue(\Str::uppercase($method))) == null) {
@@ -105,7 +123,8 @@ namespace Slate\Mvc {
         public function accepts(HttpRequest $request): bool {
             return
                 $this->acceptsMethod($request->method)
-                &&  $this->acceptsMime(!empty($mime = $request->headers["content-type"]) ? \Str::trim(\Str::beforeFirst($mime, ";")) : null);
+                && $this->acceptsMime(!empty($mime = $request->headers["content-type"]) ? \Str::trim(\Str::beforeFirst($mime, ";")) : null)
+                && $this->acceptsProtocol($request->uri->scheme);
         }
 
         public function isFallback(): bool {
@@ -123,12 +142,16 @@ namespace Slate\Mvc {
         }
     
         public function match(HttpRequest $request, array $patterns = [], bool $bypass = false): array|null {
-            $controllerArguments = $this->uri->match($request->uri->getPath(), $patterns);
+            if(!$this->accepts($request) && !$this->fallback)
+                return null;
+
+            if(($controllerArguments = $this->uri->match($request->uri->getPath(), $patterns)) === null && !$this->fallback)
+                return null;
     
-            return ($controllerArguments !== null && $this->accepts($request)) || $this->fallback ? [
+            return [$this, [
                 "webpath"   => $request->uri->getPath(),
                 "arguments" => $controllerArguments ?? []
-            ] : null;
+            ]];
         }
     }
 }

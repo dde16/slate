@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Exception {
     class StackOverflowException extends SlateException {

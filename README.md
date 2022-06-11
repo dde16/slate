@@ -609,7 +609,7 @@ class User extends Entity {
     #[PrimaryColumn(type: "bigint unsigned", incremental: true)]
     public ?int $id = null;
 
-    #[UniqueColumn(type: "uuid")]
+    #[Column(type: "varchar(32)")]
     public string $uid;
 
     #[Column("user_name", type: "varchar(50)", index: "BTREE")]
@@ -945,7 +945,7 @@ FilePathInfo is not being used because it
 Slate has different types of repositories for different storage options
 - `Slate\Data\Repository\FileSystemRepository`
 - `Slate\Data\Repository\FileSystemEncryptedRepository`
-- `Slate\IO\SysvSharedMemoryRepository`
+- `Slate\Sysv\SysvSharedMemoryRepository`
 
 Only the FileSystem repositories are serialisable as it is not required for Sysv Memory Shares as PHP handles that for you.
 

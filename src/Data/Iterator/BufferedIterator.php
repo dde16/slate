@@ -1,10 +1,10 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Data\Iterator {
     use Generator;
     use Countable;
     use Iterator;
-    use Slate\Data\IArrayForwardConvertable;
+    use Slate\Data\Contract\IArrayForwardConvertable;
     use Slate\Data\Iterator\IExtendedIterator;
 
     /**
@@ -12,7 +12,11 @@ namespace Slate\Data\Iterator {
      * This is useful for applications that require backtracking, such as the Interpreter module.
      */
     final class BufferedIterator implements Countable, IExtendedIterator, IArrayForwardConvertable {
-        /** buffer result storage */
+        /**
+         * Buffer result storage.
+         *
+         * @var array
+         */
         protected array              $buffer;
 
         /**

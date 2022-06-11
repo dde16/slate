@@ -1,11 +1,14 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\IO {
 
     use Generator;
+    use Iterator;
     use Slate\Exception\IOException;
 
     use Slate\Data\Iterator\IExtendedIterator;
+    use Slate\IO\Directory\DirectoryOrderedIteratorFactory;
+    use Slate\IO\Directory\DirectoryOrderedIterator;
 
     /**
      * An OOP style directory handler.
@@ -34,7 +37,7 @@ namespace Slate\IO {
          *
          * @param  mixed $path Must be relative to directory.
          * @param  mixed $mode
-         * @return void
+         * @return File
          */
         public function openFile(string $path, ?string $mode = null): File {
             $path = $this->path . \Path::normalise($path);
@@ -58,8 +61,9 @@ namespace Slate\IO {
         public function createDirectory(string $path, int $permissions = null, bool $recursive = true): void {
             $fullpath = $this->path . \Path::normalise($path);
 
-            if(!mkdir($fullpath, $permissions ?? \Path::getPermissions($this->path), recursive: $recursive)) 
-                throw new IOException(["path" => $fullpath], IOException::ERROR_DIR_OPEN_FAILURE);
+            if(!\Path::isDir($fullpath))
+                if(!mkdir($fullpath, $permissions ?? \Path::getPermissions($this->path), recursive: $recursive)) 
+                    throw new IOException(["path" => $fullpath], IOException::ERROR_DIR_OPEN_FAILURE);
         }
 
         /**
@@ -70,7 +74,7 @@ namespace Slate\IO {
          * @return void
          */
         public function createFile(string $path, bool $createDir = false): void {
-            $fullpath = $this->path . \Path::normalise($path);
+            $fullpath = $this->getFullPath($path);
 
             if($createDir) {
                 if(\Path::isFile($fullpath)) {
@@ -83,7 +87,7 @@ namespace Slate\IO {
                 }
             }
 
-            \Path::touch($path);
+            \Path::touch($fullpath);
         }
         
         /**
@@ -108,7 +112,7 @@ namespace Slate\IO {
          * Delete a file within the current directory.
          *
          * @param  mixed $path Must be relative to directory.
-         * @return void
+         * @return bool
          */
         public function deleteFile(string $path = null): bool {
             $path = $this->path.\Path::normalise($path);
@@ -161,6 +165,10 @@ namespace Slate\IO {
         public function hasDirectory(string $path): bool {
             return \Path::isDirectory($this->path.\Path::normalise($path));
         }
+
+        public function hasDir(string $path): bool {
+            return $this->hasDirectory($path);
+        }
      
         /**
          * Open the directory.
@@ -196,6 +204,13 @@ namespace Slate\IO {
             return readdir($this->resource);
         }
 
+        public function order(string $order, string $direction = "desc"): DirectoryOrderedIterator {
+            /** @var DirectoryOrderedIterator */
+            $orderer = DirectoryOrderedIteratorFactory::create($order, [$this, $direction]);
+
+            return $orderer;
+        }
+
         /**
          * Iterate through files and directories within the parent directory.
          * Doesn't inclode dotlinks.
@@ -204,6 +219,8 @@ namespace Slate\IO {
          */
         public function walk(): Generator {
             if($this->resource !== NULL) {
+                rewind($this->resource);
+
                 while(($name = $this->read()) !== FALSE) {
                     if(!\Str::isDotlink($name)) {
                         $fullpath = $this->path . "/" . $name;

@@ -1,19 +1,19 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Http {
     use Slate\Data\Collection;
     use Slate\Neat\Attribute\Getter;
-    use Slate\Neat\Attribute\ReadOnly;
+    use Slate\Neat\Attribute\SetOnce;
     use Slate\Neat\Model;
 
     class HttpPacket extends Model {
-        #[ReadOnly]
+        #[SetOnce]
         protected Collection $headers;
         
-        #[ReadOnly]
+        #[SetOnce]
         protected Collection $cookies;
 
-        #[ReadOnly]
+        #[SetOnce]
         protected Collection $files;
 
         public function getHeader(string $name): mixed {

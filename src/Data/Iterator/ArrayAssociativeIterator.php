@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Data\Iterator {
     use ArrayIterator;
@@ -14,7 +14,7 @@ namespace Slate\Data\Iterator {
         protected array $array;
         protected int   $pointer = 0;
 
-        public function __construct(array $array = []) {
+        public function __construct(array &$array = []) {
             $this->array = $array;
         }
 

@@ -1,10 +1,11 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Data {
 
     use DateInterval;
     use DateTimeInterface;
     use Slate\Data\Repository\IRepository;
+    use Slate\Data\Repository\IRepositoryExpirable;
 
 /**
      * The Cache boilerplate class.
@@ -16,13 +17,6 @@ namespace Slate\Data {
             $this->autoforget = $autoforget;
         }
 
-        public function forever(string $key, mixed $value): void {
-            $this->until($key, $value);
-        }
-        
-        public function put(string $key, mixed $value, DateTimeInterface|DateInterval|int|float|null $ttl = null): void {
-            $this->until($key, $value, $ttl !== null ? \Real::fromDateTimeSpan($ttl) : null);
-        }
     }
 }
 

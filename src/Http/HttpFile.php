@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Http {
     use Slate\IO\File;
@@ -23,6 +23,7 @@ namespace Slate\Http {
             string $path,
             string $mime = null
         ) {
+
             parent::__construct($path);
 
             $this->httpField = $field;

@@ -1,11 +1,11 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Foundation\Provider {
 
     use Slate\Facade\App;
     use Slate\Foundation\Provider;
-    use Slate\IO\SysvSharedMemoryQueue;
-    use Slate\IO\SysvSharedMemoryTableQueue;
+    use Slate\Sysv\SysvSharedMemoryQueue;
+    use Slate\Sysv\SysvSharedMemoryTableQueue;
     use Slate\Mvc\Env;
     use Slate\Mvc\QueueFactory;
 
@@ -37,6 +37,10 @@ namespace Slate\Foundation\Provider {
                     throw new \Error("Configuration variable 'queues' must be of type array.");
                 }
             }
+
+            App::contingentMacro("queues", function(): array {
+                return \Arr::keys($this->queues);
+            });
 
             App::contingentMacro("queue", function(string $name = null): SysvSharedMemoryTableQueue|SysvSharedMemoryQueue|null {
                 return @$this->queues[$name ?: $this->primaryQueue];

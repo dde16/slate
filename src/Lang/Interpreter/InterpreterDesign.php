@@ -1,48 +1,50 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Lang\Interpreter {
     use ArrayAccess;
-
-    
+    use RuntimeException;
     use Slate\Lang\Interpreter\Attribute\Token as TokenAttribute;
     use Slate\Lang\Interpreter\Attribute\LiteralToken as TokenLiteralAttribute;
     use Slate\Lang\Interpreter\Attribute\RangeToken as TokenCharRangeAttribute;
+    use Slate\Lang\Interpreter\Attribute\FallbackToken as FallbackTokenAttribute;
     use Slate\Lang\Interpreter\Attribute\CompoundToken as TokenCompoundAttribute;
     use Slate\Lang\Interpreter\Attribute\ComplexToken as TokenComplexConstantAttribute;
     use Slate\Lang\Interpreter\Attribute\ComplexTokeniser as TokenComplexMethodAttribute;
     use Slate\Metalang\MetalangDesign;
 
 class InterpreterDesign extends MetalangDesign  {
-        public array  $tokens = [];
+        public array  $tokens                    = [];
 
-        public int    $ignoring              = 0;
-        public int    $tracking             = 0;
-        public int    $countTracked         = 0;
-        public array  $countTrackedMap      = [];
-        public int    $levelTrackedOpen       = 0;
-        public int    $levelTrackedClose      = 0;
+        public int    $ignoring                  = 0;
+        public int    $tracking                  = 0;
+        public int    $countTracked              = 0;
+        public array  $countTrackedMap           = [];
+        public int    $levelTrackedOpen          = 0;
+        public int    $levelTrackedClose         = 0;
 
-        public array  $levelTrackedMap        = [];
-        public array  $levelTrackedOpenMap    = [];
-        public array  $levelTrackedCloseMap   = [];
+        public array  $levelTrackedMap           = [];
+        public array  $levelTrackedOpenMap       = [];
+        public array  $levelTrackedCloseMap      = [];
 
-        public int    $levelTrackedTable            = 0;
-        public array  $levelTrackedTableMap        = [];
+        public int    $levelTrackedTable         = 0;
+        public array  $levelTrackedTableMap      = [];
 
-        public int    $levelTrackedResetOpen       = 0;
-        public int    $levelTrackedResetClose      = 0;
+        public int    $levelTrackedResetOpen     = 0;
+        public int    $levelTrackedResetClose    = 0;
 
-        public array  $levelTrackedResetMap        = [];
-        public array  $levelTrackedResetOpenMap    = [];
-        public array  $levelTrackedResetCloseMap   = [];
-
+        public array  $levelTrackedResetMap      = [];
+        public array  $levelTrackedResetOpenMap  = [];
+        public array  $levelTrackedResetCloseMap = [];
 
         public function __construct(string $class) {
             parent::__construct($class);
 
+            if(count($this->getAttrInstances(FallbackTokenAttribute::class)) > 1)
+                throw new RuntimeException("You cannot have more than one fallback token.");
+
             if($tokens = \Cls::getConstant($class, "PRIORITY")) {
                 foreach($tokens as $id) {
-                    if($token = $this->getAttrInstance(TokenAttribute::class, $id)) {
+                    if($token = $this->getAttrInstance(TokenAttribute::class, strval($id))) {
                         $this->tokens[$id] = &$this->customAttributeInstances[$token::class][$id];
                     }
                 }
@@ -53,7 +55,6 @@ class InterpreterDesign extends MetalangDesign  {
                 }
             }
             
-
             foreach($this->getAttrInstances(TokenComplexConstantAttribute::class) as $attribute) {
                 $implementor = $this->getAttrInstance(
                     TokenComplexMethodAttribute::class,

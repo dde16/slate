@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Mvc {
     // use Slate\Utility\Log;
@@ -6,17 +6,14 @@ namespace Slate\Mvc {
     use Slate\Metalang\MetalangClass;
     use Slate\Mvc\Result\ViewResult;
 
-abstract class Controller extends MetalangClass {
+    abstract class Controller extends MetalangClass {
         public const MIDDLEWARE     = [];
         public const HANDLERS       = [];
-
-        // protected function view(array $data = [], string $mime = null): ViewResult {
-        //     return view($this->relativePath, $data, $mime);
-        // }
 
         public static function action(string $action): array {
             return [static::class, $action];
         }
+
     }
 
 }

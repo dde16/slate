@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Mvc\Result {
     use Slate\Http\HttpResponse;

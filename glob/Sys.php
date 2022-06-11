@@ -10,6 +10,11 @@ abstract class Sys {
         }
     }
 
+    public static function ping(string $ip): bool {
+        exec("ping -n 1 $ip", $output, $code);
+
+        return $code === 0;
+    }
 
     public static function getMemoryShares() {
         $shm        = \Str::fromSpaceTable(trim(\Str::afterLast(shell_exec("ipcs -m"), "--------")));

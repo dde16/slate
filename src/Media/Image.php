@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Media {
 
@@ -175,7 +175,7 @@ namespace Slate\Media {
 
             $sizes = [
                 "width"  => $boundingBox[1][0] - $boundingBox[0][0],
-                "height" => \Math::positive($boundingBox[2][1] - $boundingBox[0][1])
+                "height" => abs($boundingBox[2][1] - $boundingBox[0][1])
             ];
 
             $boundingBox = \Arr::key($boundingBox, [
@@ -230,6 +230,9 @@ namespace Slate\Media {
                             $y += $textSizing["height"];
                             break;
                     }
+
+                    $x = intval($x);
+                    $y = intval($y);
 
                     imagettftext(
                         $this->resource,
@@ -322,7 +325,7 @@ namespace Slate\Media {
 
             $scale    = $height / $originalHeight;
             $nuHeight = $height;
-            $nuWidth  = round($scale * $originalWidth);
+            $nuWidth  = intval(round($scale * $originalWidth));
 
             $this->scaleTo($nuWidth, $nuHeight);
         }

@@ -7,6 +7,21 @@ class Path {
     const PATTERN = "/^(?'directory'(?:\/?(?:[\w^ ]+)+)*)\/(?'basename'(?'filename'[\w]+)(?:\.(?'extension'[\w\.]*))?)$/";
     const PART_PATTERN = "[A-Za-z0-9\-\.\_\~\!\$\&\'\(\)\*\+\,\;\=\:\@\%]+";
 
+    public static function assertNotExists(string $path): void {
+        if(\Path::exists($path))
+            throw new Slate\Exception\IOException([$path], Slate\Exception\IOException::ERROR_UNEXPECTED_PATH_FOUND);
+    }
+
+    public static function assertNotFileExists(string $path): void {
+        if(\Path::exists($path) && is_file($path))
+            throw new Slate\Exception\IOException([$path], Slate\Exception\IOException::ERROR_UNEXPECTED_FILE_FOUND);
+    }
+
+    public static function assertNotDirExists(string $path): void {
+        if(\Path::exists($path) && is_dir($path))
+            throw new Slate\Exception\IOException([$path], Slate\Exception\IOException::ERROR_UNEXPECTED_DIR_FOUND);
+    }
+
     public static function assertFileExists(string $path): void {
         \Path::assertExists($path);
 
@@ -25,6 +40,11 @@ class Path {
         }
 
         fclose($resource);
+    }
+
+    public static function tryRename(string $source, string $destination, mixed $context = null): void {
+        if(!rename($source, $destination, $context))
+            throw new Slate\Exception\IOException([$source, $destination], Slate\Exception\IOException::ERROR_RENAME_FAILURE);
     }
 
     public static function assertDirExists(string $path): void {
@@ -105,15 +125,15 @@ class Path {
     }
 
     public static function relativeTo(string $source, string $destination): string {
-        
-        list($prefix, list($source, $destination)) = \Str::getPrefix([$source, $destination]);
+        $prefix = \Str::getPrefix([$source, $destination]);
+
+        if($prefix !== null)
+            [$source, $destination] = \Arr::map([$source, $destination], fn(string $path): string => \Str::removePrefix($path, $prefix));
         
         $traversal = \Arr::join([
             ...\Arr::map(
                 \Arr::slice(\Str::split($source, "/"), 0, -1),
-                function() {
-                    return "..";
-                }
+                fn(): string => ".."
             ),
             $destination
         ], "/");

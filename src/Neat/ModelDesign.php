@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Neat {
 
@@ -6,7 +6,7 @@ namespace Slate\Neat {
     use Slate\Metalang\MetalangTrackedDesign;
     use Slate\Neat\Attribute\Fillable;
     use Slate\Neat\Attribute\Getter;
-    use Slate\Neat\Attribute\ReadOnly;
+    use Slate\Neat\Attribute\SetOnce;
     use Slate\Neat\Attribute\Setter;
 
     class ModelDesign extends MetalangTrackedDesign {
@@ -28,7 +28,7 @@ namespace Slate\Neat {
                 ($property ? (!$property->isPublic() && !$property->isStatic()) : true)
                     ? ((
                         $this->getAttrInstance(Getter::class, $propertyName)
-                        ?? $this->getAttrInstance(ReadOnly::class, $propertyName)
+                        ?? $this->getAttrInstance(SetOnce::class, $propertyName)
                     ) !== null)
                     : true
             ;

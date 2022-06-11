@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Utility {
     use Closure;
@@ -73,7 +73,7 @@ namespace Slate\Utility {
                 })
             ;
 
-            $this->backoff = -1;
+            $this->backoff = $backoff;
 
             $imbalanced = true;
 

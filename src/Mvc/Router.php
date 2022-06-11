@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
  namespace Slate\Mvc {
     use Slate\Http\HttpRequest;
@@ -13,15 +13,15 @@
     use Slate\Mvc\Route\ViewRoute;
     use Slate\Utility\TMacroable;
 
-class Router {
+    class Router {
         use TMacroable;
 
         /**
          * JIT structure that allows the use of closures to define nested structures.
          *
-         * @var JitStructure
+         * @var RouteStructure
          */
-        public JitStructure $jit;
+        public $jit;
 
         /**
          * Stores global patterns for parameters.
@@ -53,7 +53,7 @@ class Router {
         public ?Closure $map = null;
 
         public function __construct() {
-            $this->jit = new JitStructure;
+            $this->jit = new RouteStructure($this);
         }
 
         /**
@@ -97,7 +97,7 @@ class Router {
                     $route->named($name);
             }
 
-            return $routes->passthru();
+            return $routes->passthru(true);
         }
 
         /**
@@ -193,6 +193,10 @@ class Router {
             return $this->add($patterns, $target)->method("patch");
         }
 
+        public function put(string|array $patterns, string|array|Closure $target): Route|Collection {
+            return $this->add($patterns, $target)->method("put");
+        }
+
         public function delete(string|array $patterns, string|array|Closure $target): Route|Collection {
             return $this->add($patterns, $target)->method("delete");
         }
@@ -225,7 +229,7 @@ class Router {
          *
          * @return void
          */
-        public function jit(): JitStructure {
+        public function jit(): RouteStructure {
             return $this->jit;
         }
 
@@ -247,113 +251,28 @@ class Router {
             $this->jit->push($fallback);
         }
 
-        /**
-         * Get the built Routes.
-         *
-         * @return array|null
-         */
-        public function routes(): ?array {
-            if(!$this->built)
-                $this->build;
-
-            return $this->routes;
-        }
-        
-        /**
-         * Build routes from the jit structure.
-         *
-         * @return void
-         */
-        public function build(): void {
-            $jit = $this->jit->toArray();
-
-            foreach(\Arr::flatten($jit) as $route) {
-                $scheme = $route->uri->scheme;
-                $host   = $route->uri->host;
-                $port   = $route->uri->port;
-
-                if(!$route->isFallback()) {
-
-                    if($this->map)
-                        $route = ($this->map)($route);
-                        
-                    $this->routes[$scheme ?: "*"][$host ?: "*"][$port ?: "*"][] = $route;
-                }
-                else {
-                    $path = [$scheme, $host, $port];
-
-                    if(($furthest = \Arr::lastKey($path, fn($part) => $part !== null)) !== null) {
-                        $path = \Arr::slice($path, 0, $furthest+1);
-                    }
-
-                    $path = \Arr::map($path, fn($part) => $part ?: "*");
-
-                    if($this->map)
-                        $route = ($this->map)($route);
+        public function routes(): array {
+            return \Arr::reduce(
+                $this->jit->toArray(),
+                function(array $routes, Route|RouteGroup $group): array|Route {
+                    if(\Cls::isSubclassInstanceOf($group, RouteGroup::class))
+                        foreach($group->getRoutes() as $route)
+                            $routes[] = $route;
+                    else 
+                        $routes[] = $group;
                     
-                    \Compound::set($this->routes, [...$path, "__fallback"], $route, []);
-                }
-            }
-
-            $this->built = true;
+                    return $routes;
+                },
+                []
+            );
         }
 
-        /**
-         * Try and match a request to a route.
-         *
-         * @param HttpRequest $request
-         *
-         * @return array|null
-         */
-        public function match(HttpRequest $request): array|null {
-            if(!$this->built) 
-                $this->build();
-
-            $schemes = [$request->uri->getScheme(), "*"];
-            $hosts   = [$request->uri->getHost(),   "*"];
-            $ports   = ["*"];
-
-            if($request->uri->getPort() !== null)
-                $ports = [$request->uri->getPort(), ...$ports];
-
-            foreach($schemes as $scheme) {
-                if(\Arr::hasKey($this->routes, $scheme)) {
-                    foreach($hosts as $host) {
-                        if(\Arr::hasKey($this->routes[$scheme], $host)) {
-                            foreach($ports as $port) {
-                                if(\Arr::hasKey($this->routes[$scheme][$host], $port)) {
-                                    foreach($this->routes[$scheme][$host][$port] as $route) {
-                                        if(($match = $route->match($request, $this->patterns)) !== NULL) {
-                                            return [$route, $match];
-                                        }
-                                    }
-
-                                    if(\Arr::hasKey($this->routes[$scheme][$host][$port], "__fallback")) {
-                                        $route = $this->routes[$scheme][$host][$port]["__fallback"];
+        public function match(HttpRequest $request): ?array {
+            foreach($this->jit->toArray() as $route) 
+                if($match = $route->match($request, $this->patterns)) 
+                    return $match;
         
-                                        return [$route, $route->match($request, $this->patterns)];
-                                    }
-                                }
-                            }
-
-                            if(\Arr::hasKey($this->routes[$scheme][$host], "__fallback")) {
-                                $route = $this->routes[$scheme][$host]["__fallback"];
-
-                                return [$route, $route->match($request, $this->patterns)];
-                            }
-                        }
-
-                    }
-
-                    if(\Arr::hasKey($this->routes[$scheme], "__fallback")) {
-                        $route = $this->routes[$scheme]["__fallback"];
-
-                        return [$route, $route->match($request, $this->patterns)];
-                    }
-                }
-            }
-
-            return  null;
+            return null;
         }
     }
 }

@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Foundation\Provider {
 
@@ -6,7 +6,7 @@ namespace Slate\Foundation\Provider {
     use Slate\Foundation\Provider;
     use Slate\Mvc\Env;
     use Slate\Sql\SqlConnection;
-    use Slate\Sql\SqlConnectionFactory;
+    use Slate\Sql\Connection\SqlConnectionFactory;
 
     class ConnectionProvider extends Provider {
         public function register(): void {

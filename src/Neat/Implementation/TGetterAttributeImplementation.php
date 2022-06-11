@@ -1,20 +1,18 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Slate\Neat\Implementation {
     use Slate\Metalang\Attribute\HookGet;
-    use Slate\Neat\Attribute\Computed;
     use Slate\Neat\Attribute\Getter;
-    use Slate\Neat\Attribute\GetterOf;
-    use Slate\Neat\Attribute\Property;
-    use Slate\Neat\Attribute\ReadOnly;
+    use Slate\Neat\Attribute\SetOnce;
 
     trait TGetterAttributeImplementation {
+        
         #[HookGet(Getter::class)]
-        #[HookGet(ReadOnly::class)]
+        #[HookGet(SetOnce::class)]
         public function getterImplemetor(string $name, object $next): mixed {
             $design = static::design();
 
-            if(($readonly = $design->getAttrInstance(ReadOnly::class, $name)) !== null) {
+            if(($readonly = $design->getAttrInstance(SetOnce::class, $name)) !== null) {
                 list($match, $result) = $next($name);
 
                 if(!$match)
